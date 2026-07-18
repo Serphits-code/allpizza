@@ -204,44 +204,59 @@ export default function MenuPage({ pizzaCategories, standardCategories }: MenuPa
           <h3 className="font-serif text-2xl font-bold tracking-wide mb-6 border-l-4 border-brand-red pl-3">
             Sabores de Pizzas
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 pt-4">
             {filteredPizzas.map(({ flavor, categoryName, prices }) => (
               <div
                 key={flavor.id}
-                className="group flex flex-col justify-between rounded-2xl border border-brand-mediumGray bg-brand-darkGray hover:border-brand-red/30 transition-all p-5 shadow-lg"
+                className="group relative ml-6 sm:ml-8 flex items-center rounded-2xl border border-brand-mediumGray bg-brand-darkGray hover:border-brand-red/30 transition-all p-4 pl-20 sm:pl-24 shadow-lg min-h-[140px]"
               >
-                <div className="space-y-3">
-                  <div className="flex justify-between items-start gap-2">
-                    <h4 className="font-serif text-lg font-bold tracking-wide group-hover:text-brand-red transition-colors">
-                      {flavor.name}
-                    </h4>
-                    <span className="text-xxs font-semibold uppercase tracking-wider bg-brand-bg border border-brand-mediumGray text-brand-lightGray px-2.5 py-1 rounded-md">
-                      {categoryName}
-                    </span>
-                  </div>
-                  <p className="text-xs text-brand-lightGray line-clamp-2 h-8">
-                    {flavor.description}
-                  </p>
-                  
-                  {/* Tabela de Preços Simples no card */}
-                  <div className="grid grid-cols-4 gap-1 text-center py-2 bg-brand-bg/50 rounded-lg text-xxs font-mono text-brand-lightGray border border-brand-mediumGray/35">
-                    <div>P: R${prices.P}</div>
-                    <div>M: R${prices.M}</div>
-                    <div>G: R${prices.G}</div>
-                    <div>GG: R${prices.GG}</div>
-                  </div>
+                {/* Pizza Image - Left side overlapping */}
+                <div className="absolute -left-6 sm:-left-8 top-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-brand-mediumGray bg-brand-bg shadow-xl overflow-hidden flex-shrink-0">
+                  <img
+                    src={flavor.imageUrl || "/images/pizza-placeholder.png"}
+                    alt={flavor.name}
+                    className="w-full h-full object-cover group-hover:rotate-12 transition-transform duration-500"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/images/pizza-placeholder.png";
+                    }}
+                  />
                 </div>
 
-                <div className="pt-4 flex items-center justify-between gap-4">
-                  <span className="text-xxs text-brand-lightGray/70 font-sans italic">
-                    Preço inteiro acima
-                  </span>
-                  <Link
-                    href={`/monte-sua-pizza?flavorId=${flavor.id}`}
-                    className="rounded-lg bg-brand-bg hover:bg-brand-mediumGray border border-brand-mediumGray px-4 py-2 text-xs font-semibold text-white transition-colors text-center"
-                  >
-                    Montar Pizza
-                  </Link>
+                {/* Content */}
+                <div className="flex-1 flex flex-col justify-between min-w-0 space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-start gap-2">
+                      <h4 className="font-serif text-base sm:text-lg font-bold tracking-wide group-hover:text-brand-red transition-colors truncate">
+                        {flavor.name}
+                      </h4>
+                      <span className="text-xxs font-semibold uppercase tracking-wider bg-brand-bg border border-brand-mediumGray text-brand-lightGray px-2 py-0.5 rounded-md flex-shrink-0">
+                        {categoryName}
+                      </span>
+                    </div>
+                    <p className="text-xs text-brand-lightGray line-clamp-2 leading-normal">
+                      {flavor.description}
+                    </p>
+                    
+                    {/* Tabela de Preços Simples no card */}
+                    <div className="grid grid-cols-4 gap-1 text-center py-1 bg-brand-bg/50 rounded-lg text-xxs font-mono text-brand-lightGray border border-brand-mediumGray/35">
+                      <div>P: R${prices.P}</div>
+                      <div>M: R${prices.M}</div>
+                      <div>G: R${prices.G}</div>
+                      <div>GG: R${prices.GG}</div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between gap-4 border-t border-brand-mediumGray/30">
+                    <span className="text-[10px] text-brand-lightGray/70 font-sans italic">
+                      Preço inteiro acima
+                    </span>
+                    <Link
+                      href={`/monte-sua-pizza?flavorId=${flavor.id}`}
+                      className="rounded-lg bg-brand-bg hover:bg-brand-mediumGray border border-brand-mediumGray px-3 py-1.5 text-xs font-semibold text-white transition-colors text-center"
+                    >
+                      Montar Pizza
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
@@ -255,11 +270,11 @@ export default function MenuPage({ pizzaCategories, standardCategories }: MenuPa
           <h3 className="font-serif text-2xl font-bold tracking-wide mb-6 border-l-4 border-brand-red pl-3">
             Bebidas e Outros
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filteredProducts.map(({ product, categoryName }) => (
               <div
                 key={product.id}
-                className="group flex flex-col justify-between rounded-2xl border border-brand-mediumGray bg-brand-darkGray hover:border-brand-red/30 transition-all p-5 shadow-lg"
+                className="group flex flex-col justify-between rounded-2xl border border-brand-mediumGray bg-brand-darkGray hover:border-brand-red/30 transition-all p-5 shadow-lg min-h-[140px]"
               >
                 <div className="space-y-3">
                   <div className="flex justify-between items-start gap-2">

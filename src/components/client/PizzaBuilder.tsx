@@ -463,7 +463,7 @@ export default function PizzaBuilder({ flavors, crusts }: PizzaBuilderProps) {
                     <span className="block text-xxs font-bold uppercase tracking-wider text-brand-red border-b border-brand-mediumGray/50 pb-1.5">
                       {catName}
                     </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 pt-2">
                       {list.map((flavor) => {
                         // Preço para o tamanho atual selecionado no painel principal
                         let flavorPrice = 0;
@@ -476,14 +476,27 @@ export default function PizzaBuilder({ flavors, crusts }: PizzaBuilderProps) {
                           <div
                             key={flavor.id}
                             onClick={() => handleSelectFlavor(flavor)}
-                            className="group flex flex-col justify-between p-3.5 rounded-xl border border-brand-mediumGray bg-brand-bg hover:border-brand-red/30 transition-all cursor-pointer"
+                            className="group relative ml-6 flex items-center justify-between p-3.5 pl-20 sm:pl-24 rounded-xl border border-brand-mediumGray bg-brand-bg hover:border-brand-red/30 transition-all cursor-pointer min-h-[90px]"
                           >
-                            <div className="space-y-1">
+                            {/* Pizza Image - Left side overlapping */}
+                            <div className="absolute -left-5 top-1/2 -translate-y-1/2 w-16 h-16 sm:w-20 sm:h-20 rounded-full border border-brand-mediumGray bg-brand-darkGray shadow-lg overflow-hidden flex-shrink-0">
+                              <img
+                                src={flavor.imageUrl || "/images/pizza-placeholder.png"}
+                                alt={flavor.name}
+                                className="w-full h-full object-cover group-hover:rotate-12 transition-transform duration-500"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = "/images/pizza-placeholder.png";
+                                }}
+                              />
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 flex flex-col justify-between min-w-0 space-y-1">
                               <div className="flex justify-between items-start gap-2">
-                                <span className="font-serif font-bold text-sm tracking-wide group-hover:text-brand-red transition-colors">
+                                <span className="font-serif font-bold text-sm tracking-wide group-hover:text-brand-red transition-colors truncate">
                                   {flavor.name}
                                 </span>
-                                <span className="text-xxs font-mono text-brand-lightGray">
+                                <span className="text-xxs font-mono text-brand-lightGray flex-shrink-0">
                                   R${flavorPrice}
                                 </span>
                               </div>
