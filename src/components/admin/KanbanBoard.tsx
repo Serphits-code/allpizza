@@ -1,0 +1,425 @@
+"use client";
+
+import React, { useEffect, useState, useMemo } from "react";
+import { OrderStatus, OrderType, PaymentMethod } from "@prisma/client";
+
+interface OrderItem {
+  id: string;
+  name: string;
+  quantity: number;
+  basePrice: number;
+  totalPrice: number;
+  isPizza: boolean;
+  pizzaSize?: string | null;
+  crustType?: string | null;
+  crustPrice: number;
+  flavors: {
+    id: string;
+    flavorName: string;
+    categoryName: string;
+  }[];
+}
+
+interface Order {
+  id: string;
+  orderNumber: number;
+  status: OrderStatus;
+  type: OrderType;
+  customerName: string;
+  customerPhone: string;
+  customerAddress?: string | null;
+  addressNumber?: string | null;
+  reference?: string | null;
+  paymentMethod: PaymentMethod;
+  changeFor?: number | null;
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  notes?: string | null;
+  createdAt: string | Date;
+  items: OrderItem[];
+}
+
+interface KanbanBoardProps {
+  initialOrders: any[];
+  initialStoreOpen: boolean;
+}
+
+export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanBoardProps) {
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [storeOpen, setStoreOpen] = useState<boolean>(initialStoreOpen);
+
+  // Se conecta ao SSE Stream no mount para receber atualizações automáticas
+  useEffect(() => {
+    const eventSource = new EventSource("/api/print/events");
+
+    eventSource.addEventListener("order_created", (event: any) => {
+      const newOrder = JSON.parse(event.data);
+      console.log("[SSE] Novo pedido recebido no painel:", newOrder.orderNumber);
+      
+      // Toca um alerta sonoro discreto de notificação
+      try {
+        const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav");
+        audio.play();
+      } catch (err) {
+        console.warn("Falha ao tocar som de notificação:", err);
+      }
+
+      setOrders((prev) => {
+        // Evita duplicatas
+        if (prev.some((o) => o.id === newOrder.id)) return prev;
+        return [newOrder, ...prev];
+      });
+    });
+
+    eventSource.addEventListener("order_updated", (event: any) => {
+      const updatedOrder = JSON.parse(event.data);
+      console.log("[SSE] Pedido atualizado no painel:", updatedOrder.orderNumber);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o))
+      );
+    });
+
+    eventSource.addEventListener("store_status_changed", (event: any) => {
+      const data = JSON.parse(event.data);
+      console.log("[SSE] Status do delivery alterado:", data.open);
+      setStoreOpen(data.open);
+    });
+
+    eventSource.onerror = (err) => {
+      console.error("[SSE] Erro no stream do Kanban. Tentando reconectar...", err);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
+
+  const handleToggleStore = async () => {
+    const nextState = !storeOpen;
+    try {
+      const res = await fetch("/api/admin/store-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ open: nextState }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert("Erro ao alterar status da loja");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao conectar para alterar status da loja");
+    }
+  };
+
+  // Handler para atualizar o status do pedido
+  const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      
+      if (!data.success) {
+        alert(data.error || "Erro ao atualizar status");
+      }
+    } catch (err) {
+      console.error("Status update error:", err);
+      alert("Erro de conexão ao atualizar status.");
+    }
+  };
+
+  // Separação de pedidos pelas colunas convencionais e áreas exclusivas
+  const columns = useMemo(() => {
+    const novo = orders.filter(
+      (o) => o.status === OrderStatus.NOVO && o.type !== OrderType.COMANDA
+    );
+    const emPreparo = orders.filter(
+      (o) => o.status === OrderStatus.EM_PREPARO && o.type !== OrderType.COMANDA
+    );
+    const emRota = orders.filter(
+      (o) => o.status === OrderStatus.EM_ROTA && o.type === OrderType.DELIVERY
+    );
+    const entregue = orders.filter(
+      (o) => o.status === OrderStatus.ENTREGUE
+    );
+    
+    // Área de Balcão (PRONTO_RETIRADA)
+    const balcao = orders.filter(
+      (o) => o.status === OrderStatus.PRONTO_RETIRADA
+    );
+
+    // Área de Comandas (Consumo Local)
+    const comandas = orders.filter(
+      (o) => o.type === OrderType.COMANDA
+    );
+
+    return { novo, emPreparo, emRota, entregue, balcao, comandas };
+  }, [orders]);
+
+  const renderOrderCard = (order: Order) => {
+    const paymentLabels = {
+      [PaymentMethod.PIX]: "PIX",
+      [PaymentMethod.DINHEIRO]: "Dinheiro",
+      [PaymentMethod.CREDITO]: "Crédito",
+      [PaymentMethod.DEBITO]: "Débito",
+    };
+
+    return (
+      <div
+        key={order.id}
+        className="rounded-xl border border-brand-mediumGray bg-brand-bg p-4 space-y-3 hover:border-brand-lightGray/30 transition-all text-xs"
+      >
+        {/* Header do Card */}
+        <div className="flex justify-between items-start">
+          <div>
+            <span className="font-mono font-bold text-brand-red text-sm">#{order.orderNumber}</span>
+            <span className="block text-xxs text-brand-lightGray/85 capitalize font-semibold">{order.customerName}</span>
+          </div>
+          <span className="text-xxs font-bold uppercase tracking-wider bg-brand-darkGray px-2 py-0.5 rounded border border-brand-mediumGray">
+            {order.type === OrderType.DELIVERY ? "Delivery" : order.type === OrderType.RETIRADA ? "Retirada" : "Mesa"}
+          </span>
+        </div>
+
+        {/* Itens do Pedido */}
+        <div className="space-y-1 bg-brand-darkGray/40 p-2 rounded border border-brand-mediumGray/20 max-h-24 overflow-y-auto">
+          {order.items.map((item) => (
+            <div key={item.id} className="text-xxs text-brand-lightGray leading-normal">
+              <span className="font-bold text-white">{item.quantity}x</span> {item.name}
+              {item.isPizza && item.flavors.length > 0 && (
+                <span className="block italic opacity-70 text-xxxs">
+                  Sabor(es): {item.flavors.map((f) => f.flavorName).join(" / ")}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Notas do Cozinha */}
+        {order.notes && (
+          <div className="p-2 rounded bg-brand-red/5 border border-brand-red/10 text-xxs italic text-brand-red">
+            Obs: "{order.notes}"
+          </div>
+        )}
+
+        {/* Informações de Endereço ou Mesa */}
+        {order.type === OrderType.DELIVERY && order.customerAddress && (
+          <div className="text-xxs text-brand-lightGray">
+            📍 {order.customerAddress}, {order.addressNumber}
+            {order.reference && <span className="block opacity-75">Ref: {order.reference}</span>}
+          </div>
+        )}
+
+        {/* Pagamento e Valor */}
+        <div className="flex justify-between items-center text-xxs text-brand-lightGray font-mono pt-1">
+          <span>Pg: {paymentLabels[order.paymentMethod]}</span>
+          <span className="font-bold text-white text-xs">Total: R$ {order.total.toFixed(2)}</span>
+        </div>
+
+        {/* Ações de Estado */}
+        <div className="pt-2 flex flex-wrap gap-1.5 border-t border-brand-mediumGray/50">
+          
+          {order.status === OrderStatus.NOVO && (
+            <button
+              onClick={() => handleUpdateStatus(order.id, OrderStatus.EM_PREPARO)}
+              className="flex-1 bg-brand-red hover:bg-brand-redHover text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs"
+            >
+              Preparar
+            </button>
+          )}
+
+          {order.status === OrderStatus.EM_PREPARO && order.type === OrderType.DELIVERY && (
+            <button
+              onClick={() => handleUpdateStatus(order.id, OrderStatus.EM_ROTA)}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs"
+            >
+              Enviar Rota
+            </button>
+          )}
+
+          {order.status === OrderStatus.EM_PREPARO && order.type === OrderType.RETIRADA && (
+            <button
+              onClick={() => handleUpdateStatus(order.id, OrderStatus.PRONTO_RETIRADA)}
+              className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs"
+            >
+              Colocar no Balcão
+            </button>
+          )}
+
+          {order.status === OrderStatus.EM_PREPARO && order.type === OrderType.COMANDA && (
+            <button
+              onClick={() => handleUpdateStatus(order.id, OrderStatus.ENTREGUE)}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs"
+            >
+              Mesa Entregue
+            </button>
+          )}
+
+          {order.status === OrderStatus.EM_ROTA && (
+            <button
+              onClick={() => handleUpdateStatus(order.id, OrderStatus.ENTREGUE)}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs"
+            >
+              Entregue
+            </button>
+          )}
+
+          {order.status === OrderStatus.PRONTO_RETIRADA && (
+            <button
+              onClick={() => handleUpdateStatus(order.id, OrderStatus.ENTREGUE)}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs"
+            >
+              Cliente Retirou
+            </button>
+          )}
+
+          {/* Pedidos concluídos ou cancelados mostram etiqueta de finalizado */}
+          {order.status === OrderStatus.ENTREGUE && (
+            <span className="flex-1 text-center py-1 bg-green-500/10 border border-green-500/20 text-green-400 font-bold rounded text-xxs">
+              ✓ Pedido Concluído
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-10">
+      
+      {/* Grid Principal do Kanban (Delivery Convencional) */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h3 className="font-serif text-lg font-bold text-brand-red border-l-4 border-brand-red pl-2.5">
+            Fluxo de Entrega (Delivery)
+          </h3>
+          
+          {/* Botão de Status do Delivery */}
+          <button
+            onClick={handleToggleStore}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs cursor-pointer transition-all border ${
+              storeOpen
+                ? "bg-green-600/10 border-green-500/30 text-green-400 hover:bg-green-600/25"
+                : "bg-brand-red/10 border-brand-red/35 text-brand-red hover:bg-brand-red/25"
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${storeOpen ? "bg-green-400 animate-pulse" : "bg-brand-red"}`} />
+            DELIVERY: {storeOpen ? "ABERTO (ON)" : "FECHADO (OFF)"}
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          
+          {/* Coluna 1: NOVO */}
+          <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 flex flex-col space-y-4 min-h-[300px]">
+            <div className="flex justify-between items-center border-b border-brand-mediumGray/50 pb-2">
+              <span className="font-bold text-xs uppercase text-white">Novos</span>
+              <span className="font-mono font-bold bg-brand-bg px-2.5 py-0.5 rounded text-brand-red text-xxs">
+                {columns.novo.length}
+              </span>
+            </div>
+            <div className="flex-1 space-y-3 overflow-y-auto max-h-[500px] pr-1">
+              {columns.novo.map(renderOrderCard)}
+              {columns.novo.length === 0 && (
+                <div className="text-center text-xxs text-brand-lightGray/50 py-12">Sem novos pedidos.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Coluna 2: EM PREPARO */}
+          <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 flex flex-col space-y-4 min-h-[300px]">
+            <div className="flex justify-between items-center border-b border-brand-mediumGray/50 pb-2">
+              <span className="font-bold text-xs uppercase text-white">Na Cozinha</span>
+              <span className="font-mono font-bold bg-brand-bg px-2.5 py-0.5 rounded text-white text-xxs">
+                {columns.emPreparo.length}
+              </span>
+            </div>
+            <div className="flex-1 space-y-3 overflow-y-auto max-h-[500px] pr-1">
+              {columns.emPreparo.map(renderOrderCard)}
+              {columns.emPreparo.length === 0 && (
+                <div className="text-center text-xxs text-brand-lightGray/50 py-12">Nenhum em preparo.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Coluna 3: EM ROTA */}
+          <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 flex flex-col space-y-4 min-h-[300px]">
+            <div className="flex justify-between items-center border-b border-brand-mediumGray/50 pb-2">
+              <span className="font-bold text-xs uppercase text-white">Em Rota (Motoboy)</span>
+              <span className="font-mono font-bold bg-brand-bg px-2.5 py-0.5 rounded text-blue-400 text-xxs">
+                {columns.emRota.length}
+              </span>
+            </div>
+            <div className="flex-1 space-y-3 overflow-y-auto max-h-[500px] pr-1">
+              {columns.emRota.map(renderOrderCard)}
+              {columns.emRota.length === 0 && (
+                <div className="text-center text-xxs text-brand-lightGray/50 py-12">Sem envios em rota.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Coluna 4: ENTREGUE */}
+          <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 flex flex-col space-y-4 min-h-[300px]">
+            <div className="flex justify-between items-center border-b border-brand-mediumGray/50 pb-2">
+              <span className="font-bold text-xs uppercase text-white">Concluídos</span>
+              <span className="font-mono font-bold bg-brand-bg px-2.5 py-0.5 rounded text-green-400 text-xxs">
+                {columns.entregue.length}
+              </span>
+            </div>
+            <div className="flex-1 space-y-3 overflow-y-auto max-h-[500px] pr-1">
+              {columns.entregue.map(renderOrderCard)}
+              {columns.entregue.length === 0 && (
+                <div className="text-center text-xxs text-brand-lightGray/50 py-12">Sem concluídos hoje.</div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Áreas Laterais/Horizontais Exclusivas: Balcão & Comandas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-brand-mediumGray/40">
+        
+        {/* Balcão / Retiradas */}
+        <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-6 flex flex-col space-y-4">
+          <div className="flex justify-between items-center border-b border-brand-mediumGray/50 pb-3">
+            <h3 className="font-serif text-base font-bold text-white">
+              Retirada no Balcão
+            </h3>
+            <span className="font-mono font-bold bg-brand-bg px-2.5 py-0.5 rounded text-brand-red text-xxs">
+              {columns.balcao.length} ativas
+            </span>
+          </div>
+          <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
+            {columns.balcao.map(renderOrderCard)}
+            {columns.balcao.length === 0 && (
+              <div className="text-center text-xxs text-brand-lightGray/50 py-12">Sem retiradas agendadas.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Consumo Local / Comandas */}
+        <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-6 flex flex-col space-y-4">
+          <div className="flex justify-between items-center border-b border-brand-mediumGray/50 pb-3">
+            <h3 className="font-serif text-base font-bold text-white">
+              Comandas de Mesa
+            </h3>
+            <span className="font-mono font-bold bg-brand-bg px-2.5 py-0.5 rounded text-brand-red text-xxs">
+              {columns.comandas.length} mesas
+            </span>
+          </div>
+          <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
+            {columns.comandas.map(renderOrderCard)}
+            {columns.comandas.length === 0 && (
+              <div className="text-center text-xxs text-brand-lightGray/50 py-12">Sem comandas abertas no local.</div>
+            )}
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  );
+}

@@ -1,0 +1,9 @@
+{
+  "name": "alldelivery-print",
+  "version": "1.0.0",
+  "description": "SSE listener thermal print daemon for AllDelivery",
+  "main": "main.ts",
+  "dependencies": {
+    "eventsource": "^2.0.2"
+  }
+}

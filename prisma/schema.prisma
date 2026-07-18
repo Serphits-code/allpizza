@@ -1,0 +1,183 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum OrderStatus {
+  NOVO
+  EM_PREPARO
+  EM_ROTA
+  PRONTO_RETIRADA
+  ENTREGUE
+  COMANDA_MESA
+}
+
+enum OrderType {
+  DELIVERY
+  RETIRADA
+  COMANDA
+}
+
+enum PaymentMethod {
+  PIX
+  DINHEIRO
+  CREDITO
+  DEBITO
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  KITCHEN
+  DRIVER
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  imageUrl    String
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  products Product[]
+}
+
+model PizzaCategory {
+  id      String        @id @default(cuid())
+  name    String        @unique // Tradicionais, Especiais, Executivas, Premium, Doces, Doces Premium
+  priceP  Float         // Preço Pequena (4 fatias)
+  priceM  Float         // Preço Média (6 fatias)
+  priceG  Float         // Preço Grande (8 fatias)
+  priceGG Float         // Preço GG (10 fatias)
+  flavors PizzaFlavor[]
+}
+
+model PizzaFlavor {
+  id              String        @id @default(cuid())
+  name            String
+  description     String
+  imageUrl        String        // Foto aérea de alta resolução
+  pizzaCategoryId String
+  category        PizzaCategory @relation(fields: [pizzaCategoryId], references: [id])
+}
+
+model DeliveryZone {
+  id          String   @id @default(cuid())
+  title       String
+  geometry    Json     // Armazena GeoJSON Polygon estruturado
+  deliveryFee Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Order {
+  id               String        @id @default(cuid())
+  orderNumber      Int           @unique @default(autoincrement())
+  status           OrderStatus   @default(NOVO)
+  type             OrderType     @default(DELIVERY)
+  customerName     String
+  customerPhone    String        // Indexador de busca (telefone sanitizado, 11 dígitos)
+  customerAddress  String?
+  addressNumber    String?
+  reference        String?
+  customerLat      Float?
+  customerLng      Float?
+  paymentMethod    PaymentMethod @default(PIX)
+  changeFor        Float?
+  subtotal         Float
+  deliveryFee      Float         @default(0)
+  total            Float
+  notes            String?       // Observações (ex: "Sem cebola")
+  createdAt        DateTime      @default(now())
+  preparedAt       DateTime?     // Data de transição para "Em Preparo"
+  sentAt           DateTime?     // Data de transição para "Em Rota"
+  readyForPickupAt DateTime?     // Data de transição para "Pronto para Retirada"
+  deliveredAt      DateTime?     // Data de transição para "Entregue"
+  items            OrderItem[]
+  driverId         String?
+  driver           AdminUser?    @relation("DriverOrders", fields: [driverId], references: [id], onDelete: SetNull)
+}
+
+model OrderItem {
+  id         String            @id @default(cuid())
+  orderId    String
+  order      Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name       String            // Ex: "Pizza Customizada Grande"
+  quantity   Int
+  basePrice  Float
+  totalPrice Float
+  isPizza    Boolean           @default(false)
+  pizzaSize  String?           // P, M, G, GG
+  crustType  String?           // Tradicional, Catupiry, Cheddar, etc.
+  crustPrice Float             @default(0)
+  flavors    OrderItemFlavor[]
+}
+
+model OrderItemFlavor {
+  id           String    @id @default(cuid())
+  orderItemId  String
+  orderItem    OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  flavorName   String
+  categoryName String
+}
+
+model CustomerContactProfile {
+  id                  String   @id @default(cuid())
+  phoneKey            String   @unique // Chave de telefone normalizada (11 dígitos)
+  notes               String?  // Anotações avançadas internas do Admin
+  displayNameOverride String?  // Nome customizado definido pelo estabelecimento
+  createdAt           DateTime @default(now())
+}
+
+model AdminUser {
+  id                String             @id @default(cuid())
+  email             String             @unique
+  passwordHash      String
+  role              UserRole           @default(KITCHEN)
+  name              String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  driverLat         Float?
+  driverLng         Float?
+  driverUpdatedAt   DateTime?
+  orders            Order[]            @relation("DriverOrders")
+  driverActiveRoute DriverActiveRoute?
+}
+
+model DriverActiveRoute {
+  driverId      String    @id
+  driver        AdminUser @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  orderedIds    String[]
+  steps         Json
+  routeGeometry Json
+  summary       Json
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model CrustType {
+  id        String   @id @default(cuid())
+  name      String   @unique // Catupiry, Cheddar, Requeijão, etc.
+  pricePM   Float    // Preço para P/M
+  priceGGG  Float    // Preço para G/GG
+  caracol   Boolean  @default(false) // Borda caracol
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SystemConfig {
+  key   String @id
+  value String
+}
