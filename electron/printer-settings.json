@@ -1,0 +1,25 @@
+{
+  "serverUrl": "http://localhost:3000",
+  "configs": {
+    "NOVO": {
+      "printer": "",
+      "auto": false
+    },
+    "EM_PREPARO": {
+      "printer": "ELGIN i8",
+      "auto": true
+    },
+    "EM_ROTA": {
+      "printer": "",
+      "auto": false
+    },
+    "PRONTO_RETIRADA": {
+      "printer": "",
+      "auto": false
+    },
+    "ENTREGUE": {
+      "printer": "",
+      "auto": false
+    }
+  }
+}

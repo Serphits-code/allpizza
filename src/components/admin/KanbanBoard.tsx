@@ -49,7 +49,9 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [storeOpen, setStoreOpen] = useState<boolean>(initialStoreOpen);
 
-  // Se conecta ao SSE Stream no mount para receber atualizações automáticas
+  // Impressao e feita automaticamente pelo Electron via SSE ao criar/atualizar pedidos
+
+  // Se conecta ao SSE Stream no mount para receber atualizacoes automaticas
   useEffect(() => {
     const eventSource = new EventSource("/api/print/events");
 
@@ -57,16 +59,15 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
       const newOrder = JSON.parse(event.data);
       console.log("[SSE] Novo pedido recebido no painel:", newOrder.orderNumber);
       
-      // Toca um alerta sonoro discreto de notificação
+      // Toca um alerta sonoro discreto de notificacao
       try {
         const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav");
         audio.play();
-      } catch (err) {
-        console.warn("Falha ao tocar som de notificação:", err);
+      } catch (err) { 
+        console.warn("Falha ao tocar som de notificacao:", err);
       }
 
       setOrders((prev) => {
-        // Evita duplicatas
         if (prev.some((o) => o.id === newOrder.id)) return prev;
         return [newOrder, ...prev];
       });
@@ -83,7 +84,7 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
     eventSource.addEventListener("store_status_changed", (event: any) => {
       const data = JSON.parse(event.data);
       console.log("[SSE] Status do delivery alterado:", data.open);
-      setStoreOpen(data.open);
+      setStoreOpen(data.open); 
     });
 
     eventSource.onerror = (err) => {
@@ -128,11 +129,11 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
       }
     } catch (err) {
       console.error("Status update error:", err);
-      alert("Erro de conexão ao atualizar status.");
+      alert("Erro de conexao ao atualizar status.");
     }
   };
 
-  // Separação de pedidos pelas colunas convencionais e áreas exclusivas
+  // Separacao de pedidos pelas colunas convencionais e areas exclusivas
   const columns = useMemo(() => {
     const novo = orders.filter(
       (o) => o.status === OrderStatus.NOVO && o.type !== OrderType.COMANDA
@@ -147,12 +148,12 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
       (o) => o.status === OrderStatus.ENTREGUE
     );
     
-    // Área de Balcão (PRONTO_RETIRADA)
+    // Area de Balcao (PRONTO_RETIRADA)
     const balcao = orders.filter(
       (o) => o.status === OrderStatus.PRONTO_RETIRADA
     );
 
-    // Área de Comandas (Consumo Local)
+    // Area de Comandas (Consumo Local)
     const comandas = orders.filter(
       (o) => o.type === OrderType.COMANDA
     );
@@ -164,8 +165,8 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
     const paymentLabels = {
       [PaymentMethod.PIX]: "PIX",
       [PaymentMethod.DINHEIRO]: "Dinheiro",
-      [PaymentMethod.CREDITO]: "Crédito",
-      [PaymentMethod.DEBITO]: "Débito",
+      [PaymentMethod.CREDITO]: "Credito",
+      [PaymentMethod.DEBITO]: "Debito",
     };
 
     return (
@@ -198,14 +199,14 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
           ))}
         </div>
 
-        {/* Notas do Cozinha */}
+        {/* Notas da Cozinha */}
         {order.notes && (
           <div className="p-2 rounded bg-brand-red/5 border border-brand-red/10 text-xxs italic text-brand-red">
-            Obs: "{order.notes}"
+            Obs: &quot;{order.notes}&quot;
           </div>
         )}
 
-        {/* Informações de Endereço ou Mesa */}
+        {/* Informacoes de Endereco ou Mesa */}
         {order.type === OrderType.DELIVERY && order.customerAddress && (
           <div className="text-xxs text-brand-lightGray">
             📍 {order.customerAddress}, {order.addressNumber}
@@ -219,9 +220,9 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
           <span className="font-bold text-white text-xs">Total: R$ {order.total.toFixed(2)}</span>
         </div>
 
-        {/* Ações de Estado */}
+        {/* Acoes de Estado */}
         <div className="pt-2 flex flex-wrap gap-1.5 border-t border-brand-mediumGray/50">
-          
+
           {order.status === OrderStatus.NOVO && (
             <button
               onClick={() => handleUpdateStatus(order.id, OrderStatus.EM_PREPARO)}
@@ -245,7 +246,7 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
               onClick={() => handleUpdateStatus(order.id, OrderStatus.PRONTO_RETIRADA)}
               className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs"
             >
-              Colocar no Balcão
+              Colocar no Balcao
             </button>
           )}
 
@@ -276,10 +277,10 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
             </button>
           )}
 
-          {/* Pedidos concluídos ou cancelados mostram etiqueta de finalizado */}
+          {/* Pedidos concluidos ou cancelados mostram etiqueta de finalizado */}
           {order.status === OrderStatus.ENTREGUE && (
             <span className="flex-1 text-center py-1 bg-green-500/10 border border-green-500/20 text-green-400 font-bold rounded text-xxs">
-              ✓ Pedido Concluído
+              ✓ Pedido Concluido
             </span>
           )}
         </div>
@@ -297,18 +298,20 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
             Fluxo de Entrega (Delivery)
           </h3>
           
-          {/* Botão de Status do Delivery */}
-          <button
-            onClick={handleToggleStore}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs cursor-pointer transition-all border ${
-              storeOpen
-                ? "bg-green-600/10 border-green-500/30 text-green-400 hover:bg-green-600/25"
-                : "bg-brand-red/10 border-brand-red/35 text-brand-red hover:bg-brand-red/25"
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${storeOpen ? "bg-green-400 animate-pulse" : "bg-brand-red"}`} />
-            DELIVERY: {storeOpen ? "ABERTO (ON)" : "FECHADO (OFF)"}
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Botao de Status do Delivery */}
+            <button
+              onClick={handleToggleStore}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs cursor-pointer transition-all border ${
+                storeOpen
+                  ? "bg-green-600/10 border-green-500/30 text-green-400 hover:bg-green-600/25"
+                  : "bg-brand-red/10 border-brand-red/35 text-brand-red hover:bg-brand-red/25"
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${storeOpen ? "bg-green-400 animate-pulse" : "bg-brand-red"}`} />
+              DELIVERY: {storeOpen ? "ABERTO (ON)" : "FECHADO (OFF)"}
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           
@@ -363,7 +366,7 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
           {/* Coluna 4: ENTREGUE */}
           <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 flex flex-col space-y-4 min-h-[300px]">
             <div className="flex justify-between items-center border-b border-brand-mediumGray/50 pb-2">
-              <span className="font-bold text-xs uppercase text-white">Concluídos</span>
+              <span className="font-bold text-xs uppercase text-white">Concluidos</span>
               <span className="font-mono font-bold bg-brand-bg px-2.5 py-0.5 rounded text-green-400 text-xxs">
                 {columns.entregue.length}
               </span>
@@ -371,7 +374,7 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
             <div className="flex-1 space-y-3 overflow-y-auto max-h-[500px] pr-1">
               {columns.entregue.map(renderOrderCard)}
               {columns.entregue.length === 0 && (
-                <div className="text-center text-xxs text-brand-lightGray/50 py-12">Sem concluídos hoje.</div>
+                <div className="text-center text-xxs text-brand-lightGray/50 py-12">Sem concluidos hoje.</div>
               )}
             </div>
           </div>
@@ -379,14 +382,14 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
         </div>
       </div>
 
-      {/* Áreas Laterais/Horizontais Exclusivas: Balcão & Comandas */}
+      {/* Areas Laterais/Horizontais Exclusivas: Balcao & Comandas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-brand-mediumGray/40">
         
-        {/* Balcão / Retiradas */}
+        {/* Balcao / Retiradas */}
         <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-6 flex flex-col space-y-4">
           <div className="flex justify-between items-center border-b border-brand-mediumGray/50 pb-3">
             <h3 className="font-serif text-base font-bold text-white">
-              Retirada no Balcão
+              Retirada no Balcao
             </h3>
             <span className="font-mono font-bold bg-brand-bg px-2.5 py-0.5 rounded text-brand-red text-xxs">
               {columns.balcao.length} ativas

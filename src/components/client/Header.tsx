@@ -11,36 +11,18 @@ export default function ClientHeader() {
   const [companyName, setCompanyName] = useState("Artisanal");
   const [companyLogo, setCompanyLogo] = useState("");
 
-  // Evita erros de hidratação e escuta eventos SSE
+  // Busca o status da loja uma vez no mount (sem SSE para nao bloquear conexoes HTTP)
   useEffect(() => {
     setMounted(true);
 
-    // Busca status inicial do delivery
     fetch("/api/public/store-status")
       .then((res) => res.json())
       .then((data) => {
-        if (data.open !== undefined) {
-          setStoreOpen(data.open);
-        }
-        if (data.companyName) {
-          setCompanyName(data.companyName);
-        }
-        if (data.companyLogo) {
-          setCompanyLogo(data.companyLogo);
-        }
+        if (data.open !== undefined) setStoreOpen(data.open);
+        if (data.companyName) setCompanyName(data.companyName);
+        if (data.companyLogo) setCompanyLogo(data.companyLogo);
       })
       .catch((err) => console.error("Erro ao carregar status da loja no header:", err));
-
-    // Conecta via SSE
-    const eventSource = new EventSource("/api/print/events");
-    eventSource.addEventListener("store_status_changed", (event: any) => {
-      const data = JSON.parse(event.data);
-      setStoreOpen(data.open);
-    });
-
-    return () => {
-      eventSource.close();
-    };
   }, []);
 
   return (

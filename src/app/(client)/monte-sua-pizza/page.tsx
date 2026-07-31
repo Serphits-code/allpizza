@@ -30,9 +30,27 @@ export default async function MonteSuaPizzaPage() {
     },
   });
 
+  // Busca as outras categorias e seus produtos comuns (ex: Bebidas)
+  const standardCategories = await prisma.category.findMany({
+    include: {
+      products: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          imageUrl: true,
+        },
+      },
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
   return (
     <Suspense fallback={<div className="text-center py-20 text-brand-lightGray text-sm">Carregando construtor de pizza...</div>}>
-      <PizzaBuilder flavors={flavors} crusts={crusts} />
+      <PizzaBuilder flavors={flavors} crusts={crusts} standardCategories={standardCategories} />
     </Suspense>
   );
 }

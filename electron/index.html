@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>AllDelivery | Central de Impressão Desktop</title>
+  <style>
+    :root {
+      --bg: #131313;
+      --card-bg: #1a1a1a;
+      --border: #2a2a2a;
+      --red: #e31837;
+      --red-hover: #c2122b;
+      --text: #ffffff;
+      --text-gray: #a0a0a0;
+      --green: #22c55e;
+      --yellow: #eab308;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-b: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h1 span {
+      color: var(--red);
+    }
+
+    .badge {
+      font-size: 10px;
+      font-weight: 700;
+      background-color: var(--border);
+      color: var(--text-gray);
+      padding: 4px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-cols: 1fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      .grid {
+        grid-template-cols: 1fr;
+      }
+    }
+
+    .panel {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--red);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-left: 3px solid var(--red);
+      padding-left: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-gray);
+      text-transform: uppercase;
+    }
+
+    input[type="text"], select {
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+
+    input[type="text"]:focus, select:focus {
+      border-color: var(--red);
+    }
+
+    .status-box {
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--text-gray);
+    }
+
+    .dot.online {
+      background-color: var(--green);
+      box-shadow: 0 0 10px var(--green);
+    }
+
+    .dot.offline {
+      background-color: var(--red);
+      box-shadow: 0 0 10px var(--red);
+    }
+
+    .status-text {
+      font-weight: 700;
+    }
+    
+    .status-text.online { color: var(--green); }
+    .status-text.offline { color: var(--red); }
+
+    .print-settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      gap: 12px;
+    }
+
+    .print-settings-row .label {
+      font-size: 12px;
+      font-weight: 600;
+      flex: 1;
+    }
+
+    .print-settings-row select {
+      max-width: 180px;
+      padding: 6px 10px;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text-gray);
+      user-select: none;
+    }
+
+    .checkbox-label:hover {
+      color: var(--text);
+    }
+
+    input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: var(--red);
+    }
+
+    button.btn {
+      background-color: var(--red);
+      color: var(--text);
+      border: none;
+      padding: 12px 24px;
+      font-weight: 700;
+      font-size: 13px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      width: 100%;
+    }
+
+    button.btn:hover {
+      background-color: var(--red-hover);
+    }
+
+    .logs-area {
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #38bdf8;
+      height: 350px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .log-entry {
+      margin-bottom: 6px;
+      line-height: 1.4;
+      border-left: 2px solid var(--border);
+      padding-left: 6px;
+    }
+
+    .log-time {
+      color: var(--text-gray);
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>AllDelivery <span>Desktop Print Hub</span></h1>
+    <div class="badge">Local Print Server: Port 3001</div>
+  </header>
+
+  <div class="grid">
+    <!-- Coluna 1: Configurações -->
+    <div class="panel">
+      <div class="panel-title">Configurações Gerais</div>
+
+      <div class="status-box">
+        <span>Status da Conexão SSE:</span>
+        <div class="status-indicator">
+          <div id="sse-dot" class="dot"></div>
+          <span id="sse-text" class="status-text">Desconectado</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="server-url">URL do Servidor AllPizza (WEB)</label>
+        <input type="text" id="server-url" placeholder="http://localhost:3000">
+      </div>
+
+      <div class="form-group" style="margin-top: 24px; margin-bottom: 24px;">
+        <label>Configurações de Impressão por Status</label>
+        
+        <!-- NOVO -->
+        <div class="print-settings-row">
+          <span class="label">Novos Pedidos</span>
+          <select id="printer-NOVO"></select>
+          <label class="checkbox-label">
+            <input type="checkbox" id="auto-NOVO"> Auto
+          </label>
+        </div>
+
+        <!-- EM_PREPARO -->
+        <div class="print-settings-row">
+          <span class="label">Cozinha (Preparo)</span>
+          <select id="printer-EM_PREPARO"></select>
+          <label class="checkbox-label">
+            <input type="checkbox" id="auto-EM_PREPARO"> Auto
+          </label>
+        </div>
+
+        <!-- EM_ROTA -->
+        <div class="print-settings-row">
+          <span class="label">Motoboy (Em Rota)</span>
+          <select id="printer-EM_ROTA"></select>
+          <label class="checkbox-label">
+            <input type="checkbox" id="auto-EM_ROTA"> Auto
+          </label>
+        </div>
+
+        <!-- PRONTO_RETIRADA -->
+        <div class="print-settings-row">
+          <span class="label">Balcão (Retirada)</span>
+          <select id="printer-PRONTO_RETIRADA"></select>
+          <label class="checkbox-label">
+            <input type="checkbox" id="auto-PRONTO_RETIRADA"> Auto
+          </label>
+        </div>
+
+        <!-- ENTREGUE -->
+        <div class="print-settings-row">
+          <span class="label">Concluídos</span>
+          <select id="printer-ENTREGUE"></select>
+          <label class="checkbox-label">
+            <input type="checkbox" id="auto-ENTREGUE"> Auto
+          </label>
+        </div>
+      </div>
+
+      <button id="btn-save" class="btn">Salvar Configurações</button>
+    </div>
+
+    <!-- Coluna 2: Log de Atividades -->
+    <div class="panel">
+      <div class="panel-title">Logs de Atividade</div>
+      <div id="logs" class="logs-area"></div>
+    </div>
+  </div>
+
+  <script>
+    let sseSource = null;
+    let printersList = [];
+    let currentSettings = { serverUrl: "http://localhost:3000", configs: {} };
+    let printedLog = new Set(); // Evita dupla impressão por eventos duplicados do SSE
+
+    // Elementos do DOM
+    const logsEl = document.getElementById("logs");
+    const serverUrlInput = document.getElementById("server-url");
+    const saveBtn = document.getElementById("btn-save");
+    const sseDot = document.getElementById("sse-dot");
+    const sseText = document.getElementById("sse-text");
+
+    const statuses = ["NOVO", "EM_PREPARO", "EM_ROTA", "PRONTO_RETIRADA", "ENTREGUE"];
+
+    function addLog(message, type = "info") {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("pt-BR");
+      const entry = document.createElement("div");
+      entry.className = "log-entry";
+      entry.innerHTML = `<span class="log-time">[${timeStr}]</span> ${message}`;
+      logsEl.appendChild(entry);
+      logsEl.scrollTop = logsEl.scrollHeight;
+      console.log(`[Log] ${message}`);
+    }
+
+    // Carrega impressoras e configurações iniciais
+    async function init() {
+      addLog("Inicializando Central de Impressão...");
+
+      try {
+        // Carrega impressoras locais
+        printersList = await window.electronAPI.getPrinters();
+        addLog(`Encontradas ${printersList.length} impressoras no sistema.`);
+        
+        // Popula os seletores de impressora
+        statuses.forEach(status => {
+          const select = document.getElementById(`printer-${status}`);
+          select.innerHTML = '<option value="">Desabilitada</option>';
+          printersList.forEach(p => {
+            const option = document.createElement("option");
+            option.value = p.name;
+            option.textContent = p.displayName || p.name;
+            select.appendChild(option);
+          });
+        });
+
+        // Carrega configurações persistidas do Electron Main Process
+        currentSettings = await window.electronAPI.loadSettings();
+        serverUrlInput.value = currentSettings.serverUrl || "http://localhost:3000";
+
+        // Preenche campos de configuração
+        statuses.forEach(status => {
+          const config = currentSettings.configs[status] || { printer: "", auto: false };
+          document.getElementById(`printer-${status}`).value = config.printer || "";
+          document.getElementById(`auto-${status}`).checked = !!config.auto;
+        });
+
+        addLog("Configurações locais carregadas com sucesso.");
+
+        // Conecta ao fluxo SSE
+        connectSSE();
+      } catch (err) {
+        addLog(`Erro durante a inicialização: ${err.message}`, "error");
+      }
+    }
+
+    // Salva configurações
+    saveBtn.addEventListener("click", async () => {
+      const configs = {};
+      statuses.forEach(status => {
+        configs[status] = {
+          printer: document.getElementById(`printer-${status}`).value,
+          auto: document.getElementById(`auto-${status}`).checked,
+        };
+      });
+
+      const updatedSettings = {
+        serverUrl: serverUrlInput.value.trim(),
+        configs
+      };
+
+      const success = await window.electronAPI.saveSettings(updatedSettings);
+      if (success) {
+        currentSettings = updatedSettings;
+        addLog("Configurações salvas no arquivo persistente.");
+        connectSSE(); // Reconecta SSE caso a URL do servidor tenha mudado
+      } else {
+        addLog("Falha ao salvar configurações no disco.", "error");
+      }
+    });
+
+    // Conecta ao SSE do servidor AllPizza
+    function connectSSE() {
+      if (sseSource) {
+        addLog("Fechando conexão SSE anterior...");
+        sseSource.close();
+      }
+
+      const sseUrl = `${currentSettings.serverUrl}/api/print/events`;
+      addLog(`Tentando se conectar ao barramento SSE: ${sseUrl}...`);
+
+      sseDot.className = "dot";
+      sseText.textContent = "Conectando...";
+      sseText.className = "status-text";
+
+      try {
+        sseSource = new EventSource(sseUrl);
+
+        sseSource.onopen = () => {
+          addLog("Conexão SSE aberta com sucesso!");
+          sseDot.className = "dot online";
+          sseText.textContent = "Conectado";
+          sseText.className = "status-text online";
+        };
+
+        // Escuta novo pedido criado
+        sseSource.addEventListener("order_created", (event) => {
+          try {
+            const newOrder = JSON.parse(event.data);
+            addLog(`SSE: Novo pedido recebido: #${newOrder.orderNumber}`);
+
+            const config = currentSettings.configs["NOVO"];
+            if (config && config.auto && config.printer) {
+              triggerPrint(newOrder, "NOVO", config.printer);
+            }
+          } catch (e) {
+            addLog(`Erro ao processar order_created: ${e.message}`, "error");
+          }
+        });
+
+        // Escuta pedido atualizado (Kanban / Entrega)
+        sseSource.addEventListener("order_updated", (event) => {
+          try {
+            const updatedOrder = JSON.parse(event.data);
+            addLog(`SSE: Pedido #${updatedOrder.orderNumber} atualizado para status ${updatedOrder.status}`);
+
+            const config = currentSettings.configs[updatedOrder.status];
+            if (config && config.auto && config.printer) {
+              triggerPrint(updatedOrder, updatedOrder.status, config.printer);
+            }
+          } catch (e) {
+            addLog(`Erro ao processar order_updated: ${e.message}`, "error");
+          }
+        });
+
+        sseSource.onerror = (err) => {
+          addLog("Erro na conexão SSE. Tentando reconectar...", "error");
+          sseDot.className = "dot offline";
+          sseText.textContent = "Desconectado";
+          sseText.className = "status-text offline";
+        };
+      } catch (err) {
+        addLog(`Erro ao iniciar EventSource: ${err.message}`, "error");
+        sseDot.className = "dot offline";
+        sseText.textContent = "Erro";
+        sseText.className = "status-text offline";
+      }
+    }
+
+    // Executa e registra a ação de impressão
+    async function triggerPrint(order, status, printerName) {
+      const logKey = `${order.id}_${status}`;
+      if (printedLog.has(logKey)) {
+        addLog(`[Print] Pedido #${order.orderNumber} já impresso para status ${status} nesta sessão. Ignorando.`);
+        return;
+      }
+
+      addLog(`Enviando cupom do pedido #${order.orderNumber} para a impressora: ${printerName}...`);
+      
+      const receiptText = formatThermalReceipt(order);
+      const res = await window.electronAPI.printReceipt(printerName, receiptText);
+
+      if (res.success) {
+        printedLog.add(logKey);
+        addLog(`✓ Pedido #${order.orderNumber} IMPRESSO com sucesso para etapa ${status}.`);
+      } else {
+        addLog(`✗ FALHA ao imprimir pedido #${order.orderNumber}: ${res.error || 'Erro desconhecido'}.`, "error");
+      }
+    }
+
+    // Formatacao do cupom termico (largura 32 chars - compativel com 58mm em font 11.5px)
+    function formatThermalReceipt(order) {
+      const W = 32; // largura total da linha
+      const line   = "-".repeat(W) + "\n";
+      const dline  = "=".repeat(W) + "\n";
+
+      // Helper: formata valor monetario com seguranca (Prisma Decimal pode vir como string)
+      const money = (v) => `R$${parseFloat(v || 0).toFixed(2)}`;
+
+      // Helper: linha com label e valor alinhados nas extremidades
+      const priceRow = (label, value) => {
+        const valStr = money(value);  // ex: "R$71.00" (7 chars)
+        const maxLabel = W - valStr.length - 1;
+        const labelStr = label.substring(0, maxLabel);
+        const spaces = W - labelStr.length - valStr.length;
+        return labelStr + " ".repeat(Math.max(1, spaces)) + valStr + "\n";
+      };
+
+      // Helper: centraliza texto (trunca se for maior que W)
+      const center = (text) => {
+        const t = text.substring(0, W);
+        const pad = Math.max(0, Math.floor((W - t.length) / 2));
+        return " ".repeat(pad) + t + "\n";
+      };
+
+      // Helper: linha simples que nao ultrapassa W chars
+      const row = (str) => str.substring(0, W) + "\n";
+
+      let out = "";
+      out += dline;
+      out += center("ARTISANAL CRUST & EMBER");
+      out += center("AllDelivery");
+      out += dline;
+
+      const dataStr = new Date(order.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+      out += row(`Pedido: #${order.orderNumber}`);
+      out += row(`Data  : ${dataStr}`);
+      out += row(`Tipo  : ${order.type}`);
+      out += row(`Pagto : ${order.paymentMethod}`);
+      if (order.changeFor && parseFloat(order.changeFor) > 0) {
+        out += row(`Troco : ${money(order.changeFor)}`);
+      }
+
+      out += line;
+      out += row(`Cliente: ${order.customerName}`);
+      out += row(`Tel    : ${order.customerPhone}`);
+      if (order.customerAddress) {
+        const addr = `${order.customerAddress}, ${order.addressNumber || ""}`;
+        out += "Endereco:\n";
+        out += row(`  ${addr}`);
+        if (order.reference) out += row(`Ref: ${order.reference}`);
+      }
+
+      out += line;
+      // Cabecalho da tabela de itens
+      const hQty = "Qtd";
+      const hPrice = "Preco";
+      const hItem = "Item".padEnd(W - hQty.length - hPrice.length - 2, " ");
+      out += `${hQty} ${hItem} ${hPrice}\n`;
+      out += line;
+
+      for (const item of order.items) {
+        const qty   = String(item.quantity).padEnd(3, " ");
+        const price = money(item.totalPrice);  // ex: "R$71.00"
+        const nameMax = W - qty.length - price.length - 2;
+        const name  = (item.name || "").substring(0, nameMax).padEnd(nameMax, " ");
+        out += `${qty} ${name} ${price}\n`;
+
+        if (item.isPizza && item.flavors && item.flavors.length > 0) {
+          if (item.pizzaSize) out += row(`  Tam: ${item.pizzaSize} Borda: ${item.crustType || "Trad"}`);
+          for (const f of item.flavors) {
+            const fn = (f.flavorName || f.name || "").substring(0, W - 5);
+            out += `  - ${fn}\n`;
+          }
+        }
+      }
+
+      out += line;
+      out += priceRow("Subtotal", order.subtotal);
+      if (parseFloat(order.deliveryFee || 0) > 0) {
+        out += priceRow("Taxa Entrega", order.deliveryFee);
+      }
+      out += dline;
+      out += priceRow("TOTAL", order.total);
+      out += dline;
+
+      if (order.notes) {
+        out += "Obs:\n";
+        const notes = order.notes;
+        for (let i = 0; i < notes.length; i += W - 2) {
+          out += `  ${notes.substring(i, i + W - 2)}\n`;
+        }
+        out += line;
+      }
+
+      out += "\n\n\n\n";
+      return out;
+    }
+
+    // Inicializa
+    init();
+  </script>
+</body>
+</html>

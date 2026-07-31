@@ -38,6 +38,7 @@ interface MenuPageProps {
 
 export default function MenuPage({ pizzaCategories, standardCategories }: MenuPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("todas-pizzas"); // "todas-pizzas" | Category Names
   const addItem = useCartStore((state) => state.addItem);
 
@@ -208,30 +209,65 @@ export default function MenuPage({ pizzaCategories, standardCategories }: MenuPa
             {filteredPizzas.map(({ flavor, categoryName, prices }) => (
               <div
                 key={flavor.id}
-                className="group relative ml-6 sm:ml-8 flex items-center rounded-2xl border border-brand-mediumGray bg-brand-darkGray hover:border-brand-red/30 transition-all p-4 pl-20 sm:pl-24 shadow-lg min-h-[140px]"
+                className="group relative ml-10 sm:ml-12 flex items-center rounded-2xl border border-brand-mediumGray bg-brand-darkGray hover:border-brand-red/30 transition-all p-4 pl-24 sm:pl-28 shadow-lg min-h-[150px]"
               >
-                {/* Pizza Image - Left side overlapping */}
-                <div className="absolute -left-6 sm:-left-8 top-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-brand-mediumGray bg-brand-bg shadow-xl overflow-hidden flex-shrink-0">
+                {/* Pizza Image - Left side overlapping, clickable to view large */}
+                <div
+                  onClick={() => setLightboxImage(flavor.imageUrl || "/images/pizza-placeholder.png")}
+                  className="absolute -left-10 sm:-left-12 top-1/2 -translate-y-1/2 w-28 h-28 sm:w-32 sm:h-32 rounded-full border border-brand-mediumGray bg-brand-bg shadow-xl overflow-hidden flex-shrink-0 cursor-pointer group/img"
+                  title="Visualizar pizza grande"
+                >
                   <img
                     src={flavor.imageUrl || "/images/pizza-placeholder.png"}
                     alt={flavor.name}
-                    className="w-full h-full object-cover group-hover:rotate-12 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover/img:scale-105 group-hover:rotate-6 transition-transform duration-500"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = "/images/pizza-placeholder.png";
                     }}
                   />
+                  {/* Hover Overlay with Eye Icon */}
+                  <div className="absolute inset-0 bg-black/45 opacity-0 group-hover/img:opacity-100 flex items-center justify-center text-white transition-opacity duration-300">
+                    <svg
+                      className="w-7 h-7 transform scale-75 group-hover/img:scale-100 transition-transform duration-300"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </div>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 flex flex-col justify-between min-w-0 space-y-3">
                   <div className="space-y-1.5">
-                    <div className="flex justify-between items-start gap-2">
-                      <h4 className="font-serif text-base sm:text-lg font-bold tracking-wide group-hover:text-brand-red transition-colors truncate">
+                    <div className="flex justify-between items-start gap-4">
+                      <h4 className="font-serif text-base sm:text-lg font-bold tracking-wide group-hover:text-brand-red transition-colors whitespace-normal break-words">
                         {flavor.name}
                       </h4>
-                      <span className="text-xxs font-semibold uppercase tracking-wider bg-brand-bg border border-brand-mediumGray text-brand-lightGray px-2 py-0.5 rounded-md flex-shrink-0">
-                        {categoryName}
-                      </span>
+                      {/* Botão de Olhinho para visualizar pizza grande */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setLightboxImage(flavor.imageUrl || "/images/pizza-placeholder.png");
+                        }}
+                        className="p-1.5 rounded-lg bg-brand-bg/60 hover:bg-brand-mediumGray border border-brand-mediumGray/50 text-brand-lightGray hover:text-white transition-colors cursor-pointer flex-shrink-0"
+                        title="Visualizar pizza grande"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
                     </div>
                     <p className="text-xs text-brand-lightGray line-clamp-2 leading-normal">
                       {flavor.description}
@@ -323,6 +359,36 @@ export default function MenuPage({ pizzaCategories, standardCategories }: MenuPa
           >
             Limpar Busca
           </button>
+        </div>
+      )}
+
+      {/* Lightbox Modal overlay for large pizza preview */}
+      {lightboxImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div 
+            className="relative max-w-2xl w-full bg-brand-darkGray border border-brand-mediumGray rounded-3xl p-3 shadow-2xl overflow-hidden flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setLightboxImage(null)}
+              className="absolute right-4 top-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 hover:scale-105 transition-all text-white font-bold cursor-pointer border border-brand-mediumGray/50"
+            >
+              ✕
+            </button>
+            <div className="w-full aspect-square max-h-[70vh] rounded-2xl overflow-hidden bg-brand-bg flex items-center justify-center border border-brand-mediumGray/30 p-4">
+              <img
+                src={lightboxImage}
+                alt="Visualização ampliada da pizza"
+                className="max-w-full max-h-full object-contain rounded-xl"
+              />
+            </div>
+            <p className="mt-3 text-xs text-brand-lightGray font-sans italic">
+              Clique fora ou no botão fechar para sair
+            </p>
+          </div>
         </div>
       )}
     </main>

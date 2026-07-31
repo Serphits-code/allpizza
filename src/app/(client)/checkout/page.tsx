@@ -54,6 +54,8 @@ export default function CheckoutPage() {
   const [checkingCoverage, setCheckingCoverage] = useState(false);
   const [coverageError, setCoverageError] = useState<string | null>(null);
   const [matchedZoneTitle, setMatchedZoneTitle] = useState("");
+  // Guarda se o usuário já escolheu uma localização — impede checagem automática no mount
+  const [userPickedLocation, setUserPickedLocation] = useState(false);
 
   // --- Passo 4: Pagamento ---
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.PIX);
@@ -68,7 +70,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     setMounted(true);
     
-    // Busca status inicial do delivery e configurações do banco
+    // Busca status do delivery uma vez no mount (sem SSE para nao bloquear HTTP)
     fetch("/api/public/store-status")
       .then((res) => res.json())
       .then((data) => {
@@ -77,32 +79,11 @@ export default function CheckoutPage() {
         }
         if (data.deliveryCities && data.deliveryCities.length > 0) {
           setDeliveryCities(data.deliveryCities);
-          
-          // Geocodifica a primeira cidade configurada para centrar o mapa nela por padrão ao invés de Recife!
-          const defaultCity = data.deliveryCities[0];
-          fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(defaultCity + ", Pernambuco, Brasil")}&format=json&limit=1`)
-            .then((r) => r.json())
-            .then((res) => {
-              if (res && res.length > 0) {
-                setLat(parseFloat(res[0].lat));
-                setLng(parseFloat(res[0].lon));
-              }
-            })
-            .catch((err) => console.error("Erro ao centrar na cidade padrão:", err));
+          // Nota: NAO geocodificamos a cidade aqui para nao disparar checagem de cobertura
+          // no mount. O mapa comeca no centro padrao e o usuario escolhe o endereco.
         }
       })
       .catch((err) => console.error("Erro ao carregar status da loja:", err));
-
-    // Conecta via SSE
-    const eventSource = new EventSource("/api/print/events");
-    eventSource.addEventListener("store_status_changed", (event: any) => {
-      const data = JSON.parse(event.data);
-      setStoreOpen(data.open);
-    });
-
-    return () => {
-      eventSource.close();
-    };
   }, []);
 
   const subtotal = getCartSubtotal();
@@ -122,8 +103,9 @@ export default function CheckoutPage() {
     }
   }, [customerPhone]);
 
-  // Checagem de cobertura do mapa ao mover o pino
+  // Checagem de cobertura — só dispara quando o usuário escolheu uma localização
   useEffect(() => {
+    if (!userPickedLocation) return;
     if (type === OrderType.DELIVERY) {
       checkDeliveryCoverage(lat, lng);
     } else {
@@ -131,7 +113,7 @@ export default function CheckoutPage() {
       setDeliveryFee(0);
       setCoverageError(null);
     }
-  }, [lat, lng, type]);
+  }, [lat, lng, type, userPickedLocation]);
 
   const triggerCustomerLookup = async (phone: string) => {
     setLookupLoading(true);
@@ -199,6 +181,7 @@ export default function CheckoutPage() {
   const handlePositionChange = (newLat: number, newLng: number) => {
     setLat(newLat);
     setLng(newLng);
+    setUserPickedLocation(true); // Usuário moveu o mapa → ativa checagem de cobertura
     if (gpsTriggered) {
       triggerReverseGeocoding(newLat, newLng);
     }
@@ -217,6 +200,7 @@ export default function CheckoutPage() {
         const { latitude, longitude } = position.coords;
         setLat(latitude);
         setLng(longitude);
+        setUserPickedLocation(true); // GPS ativado → ativa checagem de cobertura
         
         // Reverse Geocoding inicial
         try {
@@ -283,6 +267,7 @@ export default function CheckoutPage() {
     setReference(history.reference);
     setLat(history.lat);
     setLng(history.lng);
+    setUserPickedLocation(true); // Endereço do histórico → ativa checagem de cobertura
     setGpsTriggered(false);
     setAddressMode("map"); // Vai para confirmação no mapa
   };

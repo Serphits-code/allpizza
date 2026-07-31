@@ -1,0 +1,13 @@
+{
+  "name": "alldelivery-desktop",
+  "version": "1.0.0",
+  "description": "Desktop Application for AllDelivery with native thermal print support",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}
