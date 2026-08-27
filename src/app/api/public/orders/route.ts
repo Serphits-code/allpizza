@@ -6,6 +6,15 @@ import { OrderStatus, OrderType, PaymentMethod } from "@prisma/client";
 import { z } from "zod";
 
 // Validador Zod do payload do pedido
+const orderItemToppingSchema = z.object({
+  toppingName: z.string(),
+  targetType: z.string(),
+  flavorName: z.string().optional().nullable(),
+  slicesCount: z.number().default(1),
+  totalSlices: z.number().default(1),
+  price: z.number(),
+});
+
 const orderItemSchema = z.object({
   name: z.string(),
   isPizza: z.boolean(),
@@ -20,6 +29,7 @@ const orderItemSchema = z.object({
       categoryName: z.string(),
     })
   ).optional(),
+  toppings: z.array(orderItemToppingSchema).optional(),
 });
 
 const orderSchema = z.object({
@@ -92,7 +102,7 @@ export async function POST(request: Request) {
         },
       });
 
-      // 2. Cria os Itens do Pedido (com seus respectivos sabores, se for pizza)
+      // 2. Cria os Itens do Pedido (com seus respectivos sabores e adicionais)
       for (const item of data.items) {
         const orderItem = await tx.orderItem.create({
           data: {
@@ -119,6 +129,22 @@ export async function POST(request: Request) {
             });
           }
         }
+
+        if (item.isPizza && item.toppings) {
+          for (const topping of item.toppings) {
+            await tx.orderItemTopping.create({
+              data: {
+                orderItemId: orderItem.id,
+                toppingName: topping.toppingName,
+                targetType: topping.targetType,
+                flavorName: topping.flavorName || null,
+                slicesCount: topping.slicesCount || 1,
+                totalSlices: topping.totalSlices || 1,
+                price: topping.price,
+              },
+            });
+          }
+        }
       }
 
       // 3. Atualiza ou Cria o Perfil de Contato do Cliente
@@ -137,6 +163,7 @@ export async function POST(request: Request) {
           items: {
             include: {
               flavors: true,
+              toppings: true,
             },
           },
         },

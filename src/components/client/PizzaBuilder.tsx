@@ -3,9 +3,10 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCartStore } from "@/stores/cartStore";
-import { calcPizzaItemTotal, FlavorInput, CrustInput } from "@/lib/pricing";
+import { calcPizzaItemTotal, calcSingleToppingPrice, FlavorInput, CrustInput, SelectedToppingItem } from "@/lib/pricing";
 import PizzaSvg from "./PizzaSvg";
 import FlavorDistribution from "./FlavorDistribution";
+import ToppingSelector, { ToppingCategory } from "./ToppingSelector";
 
 interface PizzaFlavor {
   id: string;
@@ -47,15 +48,18 @@ interface PizzaBuilderProps {
   flavors: PizzaFlavor[];
   crusts: CrustType[];
   standardCategories: StandardCategory[];
+  toppingCategories?: ToppingCategory[];
 }
 
-export default function PizzaBuilder({ flavors, crusts, standardCategories }: PizzaBuilderProps) {
+export default function PizzaBuilder({ flavors, crusts, standardCategories, toppingCategories = [] }: PizzaBuilderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const addItem = useCartStore((state) => state.addItem);
 
-  // Estados do fluxo multi-etapa
-  const [step, setStep] = useState<"pizza" | "drinks">("pizza");
+  // Estados do fluxo multi-etapa: "pizza" | "toppings" | "drinks"
+  const [step, setStep] = useState<"pizza" | "toppings" | "drinks">("pizza");
+  const [toppingTarget, setToppingTarget] = useState<"FULL" | number>("FULL");
+  const [selectedToppings, setSelectedToppings] = useState<SelectedToppingItem[]>([]);
   const [selectedDrinks, setSelectedDrinks] = useState<{ [productId: string]: number }>({});
 
   // Estados de Configuração da Pizza
@@ -65,6 +69,20 @@ export default function PizzaBuilder({ flavors, crusts, standardCategories }: Pi
   const [selectedCrust, setSelectedCrust] = useState<CrustType | null>(null);
   const [caracolRequested, setCaracolRequested] = useState<boolean>(false);
   const [notes, setNotes] = useState<string>("");
+
+  const toppingsCountBySector = useMemo(() => {
+    const counts: { [sectorIdx: number]: number } = {};
+    const activeFlavorsList = selectedFlavors.slice(0, flavorCount);
+    selectedToppings.forEach((item) => {
+      if (item.targetType === "FLAVOR" && item.flavorName) {
+        const sectorIdx = activeFlavorsList.findIndex((f) => f?.name === item.flavorName);
+        if (sectorIdx > -1) {
+          counts[sectorIdx] = (counts[sectorIdx] || 0) + (item.quantity || 1);
+        }
+      }
+    });
+    return counts;
+  }, [selectedToppings, selectedFlavors, flavorCount]);
 
   // Estado da Distribuição Dinâmica de Fatias
   const [slicesDistribution, setSlicesDistribution] = useState<number[]>([]);
@@ -206,8 +224,8 @@ export default function PizzaBuilder({ flavors, crusts, standardCategories }: Pi
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
-  // Avançar para a etapa de bebidas
-  const handleProceedToDrinks = () => {
+  // Avançar para a etapa 2: Adicionais Extra
+  const handleProceedToToppings = () => {
     // Valida se todos os setores necessários estão preenchidos
     for (let i = 0; i < flavorCount; i++) {
       if (!selectedFlavors[i]) {
@@ -226,6 +244,11 @@ export default function PizzaBuilder({ flavors, crusts, standardCategories }: Pi
       return;
     }
 
+    setStep("toppings");
+  };
+
+  // Avançar para a etapa 3: Bebidas & Acompanhamentos
+  const handleProceedToDrinks = () => {
     setStep("drinks");
   };
 
@@ -299,6 +322,16 @@ export default function PizzaBuilder({ flavors, crusts, standardCategories }: Pi
       crustType: selectedCrust?.name || "Tradicional",
       crustPrice: selectedCrust ? (size === "P" || size === "M" ? selectedCrust.pricePM : selectedCrust.priceGGG) : 0,
       caracolRequested,
+      toppings: selectedToppings.map((t) => ({
+        toppingId: t.topping.id,
+        toppingName: t.topping.name,
+        targetType: t.targetType,
+        flavorName: t.flavorName,
+        slicesCount: t.slicesCount,
+        totalSlices: t.totalSlices,
+        price: calcSingleToppingPrice(t.topping, size, t.slicesCount, t.totalSlices, t.quantity || 1),
+        quantity: t.quantity || 1,
+      })),
       notes,
     });
 
@@ -330,7 +363,60 @@ export default function PizzaBuilder({ flavors, crusts, standardCategories }: Pi
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 relative">
-      {step === "pizza" ? (
+      {/* CABEÇALHO DE ETAPAS */}
+      <div className="mb-8 flex items-center justify-center">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 bg-brand-darkGray border border-brand-mediumGray p-2 rounded-2xl shadow-lg text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setStep("pizza")}
+            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer ${
+              step === "pizza" ? "bg-brand-red text-white shadow-md" : "text-brand-lightGray hover:text-white"
+            }`}
+          >
+            <span>🍕</span>
+            <span>1. Pizza & Sabores</span>
+          </button>
+
+          <span className="text-neutral-600">→</span>
+
+          <button
+            type="button"
+            onClick={handleProceedToToppings}
+            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer ${
+              step === "toppings" ? "bg-brand-red text-white shadow-md" : "text-brand-lightGray hover:text-white"
+            }`}
+          >
+            <span>✨</span>
+            <span>2. Adicionais Extra</span>
+            {selectedToppings.length > 0 && (
+              <span className="bg-brand-gold text-black text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                {selectedToppings.length}
+              </span>
+            )}
+          </button>
+
+          <span className="text-neutral-600">→</span>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (selectedFlavors.slice(0, flavorCount).every(Boolean)) {
+                setStep("drinks");
+              } else {
+                handleProceedToToppings();
+              }
+            }}
+            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer ${
+              step === "drinks" ? "bg-brand-red text-white shadow-md" : "text-brand-lightGray hover:text-white"
+            }`}
+          >
+            <span>🥤</span>
+            <span>3. Bebidas & Finalização</span>
+          </button>
+        </div>
+      </div>
+
+      {step === "pizza" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
           
           {/* Coluna Esquerda: Visualização Gráfica da Pizza */}
@@ -495,22 +581,148 @@ export default function PizzaBuilder({ flavors, crusts, standardCategories }: Pi
             {/* Painel Final de Preço e Ação */}
             <div className="border-t border-brand-mediumGray/50 pt-6 flex items-center justify-between gap-4">
               <div className="space-y-1">
-                <span className="text-xxs text-brand-lightGray font-sans uppercase tracking-wider">Subtotal do Item</span>
+                <span className="text-xxs text-brand-lightGray font-sans uppercase tracking-wider">Subtotal da Pizza</span>
                 <div className="text-2xl font-bold font-mono text-brand-red">
                   R$ {currentTotal.toFixed(2)}
                 </div>
               </div>
 
               <button
+                onClick={handleProceedToToppings}
+                className="rounded-xl bg-brand-red hover:bg-brand-redHover px-6 py-3.5 font-bold text-sm text-white transition-colors cursor-pointer shadow-lg shadow-brand-red/10 flex items-center gap-2"
+              >
+                <span>Avançar (Adicionais)</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === "toppings" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Coluna Esquerda: Visualização Dinâmica sutil no Disco */}
+          <div className="lg:col-span-5 flex flex-col items-center justify-center space-y-5 rounded-2xl border border-brand-mediumGray/70 bg-brand-darkGray p-6 shadow-xl sticky top-6">
+            <div className="text-center space-y-1">
+              <h2 className="font-serif text-xl font-bold tracking-wide text-brand-red">
+                Visualização Dinâmica
+              </h2>
+              <p className="text-xxs italic text-brand-lightGray">
+                Toque no setor do sabor no disco para selecioná-lo (destaque em verde 🟢).
+              </p>
+            </div>
+
+            {/* SVG Interativo com Borda Verde no Setor Selecionado */}
+            <PizzaSvg
+              size={size}
+              flavorCount={flavorCount}
+              selectedFlavors={selectedFlavors}
+              slicesDistribution={slicesDistribution}
+              onSectorClick={(idx) => setToppingTarget(idx)}
+              activeSectorIndex={typeof toppingTarget === "number" ? toppingTarget : null}
+              isFullPizzaSelected={toppingTarget === "FULL"}
+              toppingsCountBySector={toppingsCountBySector}
+            />
+
+            {/* Alternador sutil de Alvo (Pizza Inteira vs Setores) */}
+            <div className="w-full flex flex-col gap-2 pt-2 border-t border-brand-mediumGray/40">
+              <button
+                type="button"
+                onClick={() => setToppingTarget("FULL")}
+                className={`py-2 px-3.5 rounded-xl text-xs font-bold transition flex items-center justify-between cursor-pointer ${
+                  toppingTarget === "FULL"
+                    ? "bg-emerald-950 border border-emerald-500 text-emerald-300 shadow-sm"
+                    : "bg-brand-bg text-brand-lightGray border border-brand-mediumGray hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${toppingTarget === "FULL" ? "bg-emerald-400 animate-pulse" : "bg-neutral-600"}`} />
+                  <span>🍕 Aplicar na Pizza Inteira</span>
+                </span>
+                <span className="text-[10px] text-neutral-400 font-mono">
+                  ({size === "P" ? 4 : size === "M" ? 6 : size === "G" ? 8 : 10} fatias)
+                </span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                {selectedFlavors.slice(0, flavorCount).map((flavor, idx) => {
+                  if (!flavor) return null;
+                  const isSelected = toppingTarget === idx;
+
+                  return (
+                    <button
+                      key={flavor.id + idx}
+                      type="button"
+                      onClick={() => setToppingTarget(idx)}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-between cursor-pointer ${
+                        isSelected
+                          ? "bg-emerald-950 border border-emerald-500 text-emerald-300 shadow-sm"
+                          : "bg-brand-bg text-brand-lightGray border border-brand-mediumGray hover:text-white"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 truncate">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isSelected ? "bg-emerald-400 animate-pulse" : "bg-neutral-600"}`} />
+                        <span className="truncate">{flavor.name}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Coluna Direita: Seletor de Adicionais */}
+          <div className="lg:col-span-7 space-y-6 rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-6 sm:p-8 shadow-xl">
+            <div className="space-y-2 border-b border-brand-mediumGray/30 pb-4">
+              <h1 className="font-serif text-3xl font-bold tracking-wide text-white flex items-center gap-2">
+                <span>✨</span> Adicionais Extra
+              </h1>
+              <p className="text-xs text-brand-lightGray">
+                Selecione os adicionais para a parte selecionada no disco.
+              </p>
+            </div>
+
+            <ToppingSelector
+              size={size}
+              totalSlices={size === "P" ? 4 : size === "M" ? 6 : size === "G" ? 8 : 10}
+              flavors={selectedFlavors
+                .slice(0, flavorCount)
+                .filter((f): f is PizzaFlavor => f !== null)
+                .map((f, idx) => ({
+                  id: f.id,
+                  name: f.name,
+                  slices: size === "P" && flavorCount === 2 ? 2 : (slicesDistribution[idx] || 0),
+                }))}
+              categories={toppingCategories}
+              selectedToppings={selectedToppings}
+              onChange={setSelectedToppings}
+              activeTarget={toppingTarget}
+              onTargetChange={setToppingTarget}
+            />
+
+            {/* Ações de Navegação */}
+            <div className="flex flex-col sm:flex-row items-center justify-between border-t border-brand-mediumGray/50 pt-6 mt-8 gap-4">
+              <button
+                type="button"
+                onClick={() => setStep("pizza")}
+                className="w-full sm:w-auto rounded-xl border border-brand-mediumGray bg-brand-bg hover:bg-brand-mediumGray px-5 py-3 font-semibold text-sm text-brand-lightGray hover:text-white transition-colors cursor-pointer text-center"
+              >
+                ← Voltar para Sabores
+              </button>
+
+              <button
+                type="button"
                 onClick={handleProceedToDrinks}
-                className="rounded-xl bg-brand-red hover:bg-brand-redHover px-6 py-3.5 font-bold text-sm text-white transition-colors cursor-pointer"
+                className="w-full sm:w-auto rounded-xl bg-brand-red hover:bg-brand-redHover px-6 py-3 font-bold text-sm text-white transition-colors cursor-pointer text-center shadow-lg shadow-brand-red/10"
               >
                 Avançar (Bebidas) →
               </button>
             </div>
           </div>
         </div>
-      ) : (
+      )}
+
+      {step === "drinks" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Coluna Esquerda: Listagem de Bebidas */}
           <div className="lg:col-span-8 space-y-8 rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-6 sm:p-8 shadow-xl">
@@ -599,10 +811,10 @@ export default function PizzaBuilder({ flavors, crusts, standardCategories }: Pi
             <div className="flex flex-col sm:flex-row items-center justify-between border-t border-brand-mediumGray/50 pt-6 mt-8 gap-4">
               <button
                 type="button"
-                onClick={() => setStep("pizza")}
+                onClick={() => setStep("toppings")}
                 className="w-full sm:w-auto rounded-xl border border-brand-mediumGray bg-brand-bg hover:bg-brand-mediumGray px-5 py-3 font-semibold text-sm text-brand-lightGray hover:text-white transition-colors cursor-pointer text-center"
               >
-                ← Voltar para a Pizza
+                ← Voltar para Adicionais
               </button>
 
               <button

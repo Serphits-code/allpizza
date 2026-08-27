@@ -1,12 +1,23 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export interface CartItemTopping {
+  toppingId: string;
+  toppingName: string;
+  targetType: "FULL" | "FLAVOR";
+  flavorName?: string;
+  slicesCount: number;
+  totalSlices: number;
+  price: number;
+  quantity?: number;
+}
+
 export interface CartItem {
   id: string; // Unique cart item ID (UUID or generated)
   name: string; // e.g. "Pizza Customizada (Calabresa / Mussarela)" or "Coca-Cola 2L"
   isPizza: boolean;
   quantity: number;
-  price: number; // Unit price (base + crust)
+  price: number; // Unit price (base + crust + toppings)
   notes?: string;
   // Pizza details
   pizzaSize?: string; // P, M, G, GG
@@ -14,6 +25,7 @@ export interface CartItem {
   crustType?: string;
   crustPrice?: number;
   caracolRequested?: boolean;
+  toppings?: CartItemTopping[];
   // Product details
   productId?: string;
 }

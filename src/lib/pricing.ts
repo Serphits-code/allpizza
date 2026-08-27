@@ -17,6 +17,23 @@ export interface CrustInput {
   caracol: boolean;
 }
 
+export interface ToppingInput {
+  id: string;
+  name: string;
+  pricePM: number;
+  priceGGG: number;
+  isUnit: boolean;
+}
+
+export interface SelectedToppingItem {
+  topping: ToppingInput;
+  targetType: "FULL" | "FLAVOR";
+  flavorName?: string;
+  slicesCount: number; // Ex: 4 fatias
+  totalSlices: number; // Ex: 8 fatias
+  quantity?: number;   // Quantidade do adicional (padrão 1)
+}
+
 /**
  * Retorna o preço correspondente ao tamanho na categoria de preço.
  */
@@ -34,6 +51,40 @@ export function getCategoryPriceForSize(category: PizzaCategoryPrice, size: stri
     default:
       throw new Error(`Tamanho de pizza inválido: ${size}`);
   }
+}
+
+/**
+ * Calcula o preço proporcional de um adicional.
+ */
+export function calcSingleToppingPrice(
+  topping: ToppingInput,
+  size: string,
+  slicesCount: number,
+  totalSlices: number,
+  quantity: number = 1
+): number {
+  const normSize = size.toUpperCase();
+  const basePrice = (normSize === "P" || normSize === "M") ? topping.pricePM : topping.priceGGG;
+
+  if (topping.isUnit) {
+    return basePrice * quantity;
+  }
+
+  const fraction = totalSlices > 0 ? (slicesCount / totalSlices) : 1;
+  return basePrice * fraction * quantity;
+}
+
+/**
+ * Calcula a soma de todos os adicionais da pizza.
+ */
+export function calcAllToppingsTotal(
+  toppings: SelectedToppingItem[],
+  size: string
+): number {
+  if (!toppings || toppings.length === 0) return 0;
+  return toppings.reduce((acc, item) => {
+    return acc + calcSingleToppingPrice(item.topping, size, item.slicesCount, item.totalSlices, item.quantity || 1);
+  }, 0);
 }
 
 /**
@@ -83,15 +134,17 @@ export function calcCrustPrice(size: string, crust: CrustInput, caracolRequested
 }
 
 /**
- * Calcula o preço total de um item de pizza (base + borda).
+ * Calcula o preço total de um item de pizza (base + borda + adicionais).
  */
 export function calcPizzaItemTotal(
   size: string,
   flavors: FlavorInput[],
   crust?: CrustInput,
-  caracolRequested: boolean = false
+  caracolRequested: boolean = false,
+  toppings: SelectedToppingItem[] = []
 ): number {
   const basePrice = calcPizzaBasePrice(size, flavors);
   const crustPrice = crust ? calcCrustPrice(size, crust, caracolRequested) : 0;
-  return basePrice + crustPrice;
+  const toppingsPrice = calcAllToppingsTotal(toppings, size);
+  return basePrice + crustPrice + toppingsPrice;
 }

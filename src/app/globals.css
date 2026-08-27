@@ -10,4 +10,10 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif;
   }
+
+  /* Previne que SVG sem classe de largura explodam na tela em navegadores antigos ou FOUT */
+  svg:not([class*="w-"]) {
+    max-width: 100%;
+    height: auto;
+  }
 }

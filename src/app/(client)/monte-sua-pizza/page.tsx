@@ -48,9 +48,35 @@ export default async function MonteSuaPizzaPage() {
     },
   });
 
+  // Busca todas as categorias de adicionais e seus respectivos adicionais
+  const toppingCategories = await prisma.pizzaToppingCategory.findMany({
+    include: {
+      toppings: {
+        select: {
+          id: true,
+          name: true,
+          pricePM: true,
+          priceGGG: true,
+          isUnit: true,
+        },
+        orderBy: {
+          name: "asc",
+        },
+      },
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
   return (
     <Suspense fallback={<div className="text-center py-20 text-brand-lightGray text-sm">Carregando construtor de pizza...</div>}>
-      <PizzaBuilder flavors={flavors} crusts={crusts} standardCategories={standardCategories} />
+      <PizzaBuilder
+        flavors={flavors}
+        crusts={crusts}
+        standardCategories={standardCategories}
+        toppingCategories={toppingCategories}
+      />
     </Suspense>
   );
 }

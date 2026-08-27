@@ -1,5 +1,5 @@
 import { PrismaClient, UserRole } from "@prisma/client";
-import * as bcrypt from "bcrypt";
+import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -7,6 +7,7 @@ async function main() {
   console.log("Starting seed process...");
 
   // 1. Clean the database
+  await prisma.orderItemTopping.deleteMany();
   await prisma.orderItemFlavor.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
@@ -15,6 +16,8 @@ async function main() {
   await prisma.pizzaFlavor.deleteMany();
   await prisma.pizzaCategory.deleteMany();
   await prisma.crustType.deleteMany();
+  await prisma.pizzaTopping.deleteMany();
+  await prisma.pizzaToppingCategory.deleteMany();
   await prisma.deliveryZone.deleteMany();
   await prisma.adminUser.deleteMany();
   await prisma.customerContactProfile.deleteMany();
@@ -225,6 +228,83 @@ async function main() {
     },
   });
   console.log("Delivery zone created:", zone.title);
+
+  // 8. Seed Pizza Toppings & Categories
+  const toppingsData = [
+    // INGREDIENTES
+    { category: "INGREDIENTES", name: "Azeitona", pricePM: 3.0, priceGGG: 6.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Atum", pricePM: 8.0, priceGGG: 15.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Bacon", pricePM: 8.0, priceGGG: 15.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Charque", pricePM: 8.0, priceGGG: 15.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Camarão", pricePM: 14.0, priceGGG: 25.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Calabresa", pricePM: 8.0, priceGGG: 15.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Carne de Sol", pricePM: 8.0, priceGGG: 15.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Frango", pricePM: 8.0, priceGGG: 15.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Lombo Canadense", pricePM: 8.0, priceGGG: 15.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Presunto", pricePM: 7.0, priceGGG: 12.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Queijo Coalho", pricePM: 7.0, priceGGG: 12.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Queijo Provolone", pricePM: 7.0, priceGGG: 12.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Mussarela", pricePM: 10.0, priceGGG: 16.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Peperone", pricePM: 8.0, priceGGG: 14.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Parmesão", pricePM: 8.0, priceGGG: 14.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Salaminho Italiano", pricePM: 8.0, priceGGG: 14.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Tomate", pricePM: 2.0, priceGGG: 4.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Cebola", pricePM: 2.0, priceGGG: 4.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Ovo", pricePM: 3.0, priceGGG: 5.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Ervilha", pricePM: 3.0, priceGGG: 5.0, isUnit: false },
+    { category: "INGREDIENTES", name: "Milho", pricePM: 3.0, priceGGG: 5.0, isUnit: false },
+
+    // CREMES
+    { category: "CREMES", name: "Catupiry", pricePM: 4.0, priceGGG: 6.0, isUnit: false },
+    { category: "CREMES", name: "Cheddar", pricePM: 4.0, priceGGG: 6.0, isUnit: false },
+    { category: "CREMES", name: "Cream Cheese", pricePM: 9.0, priceGGG: 14.0, isUnit: false },
+    { category: "CREMES", name: "Catupiry Original", pricePM: 11.0, priceGGG: 18.0, isUnit: false },
+    { category: "CREMES", name: "Cheddar Original", pricePM: 11.0, priceGGG: 18.0, isUnit: false },
+    { category: "CREMES", name: "Cream Cheese Original", pricePM: 11.0, priceGGG: 18.0, isUnit: false },
+    { category: "CREMES", name: "Requeijão", pricePM: 7.0, priceGGG: 10.0, isUnit: false },
+
+    // DOCES
+    { category: "DOCES", name: "Bis", pricePM: 4.0, priceGGG: 8.0, isUnit: false },
+    { category: "DOCES", name: "Chocolate Branco", pricePM: 8.0, priceGGG: 12.0, isUnit: false },
+    { category: "DOCES", name: "Chocolate ao Leite", pricePM: 8.0, priceGGG: 12.0, isUnit: false },
+    { category: "DOCES", name: "Chocolate Avelã", pricePM: 10.0, priceGGG: 16.0, isUnit: false },
+    { category: "DOCES", name: "Goiabada", pricePM: 6.0, priceGGG: 10.0, isUnit: false },
+    { category: "DOCES", name: "Granulado", pricePM: 4.0, priceGGG: 8.0, isUnit: false },
+    { category: "DOCES", name: "M.&.M", pricePM: 6.0, priceGGG: 10.0, isUnit: false },
+    { category: "DOCES", name: "Nutella", pricePM: 10.0, priceGGG: 16.0, isUnit: false },
+    { category: "DOCES", name: "Sonho de Valsa (Unidade)", pricePM: 2.0, priceGGG: 2.0, isUnit: true },
+    { category: "DOCES", name: "Ouro Branco (Unidade)", pricePM: 2.0, priceGGG: 2.0, isUnit: true },
+    { category: "DOCES", name: "Kit.Kat (Unidade)", pricePM: 6.0, priceGGG: 6.0, isUnit: true },
+    { category: "DOCES", name: "Cocô Ralado", pricePM: 6.0, priceGGG: 10.0, isUnit: false },
+
+    // FRUTAS
+    { category: "FRUTAS", name: "Morango", pricePM: 8.0, priceGGG: 14.0, isUnit: false },
+    { category: "FRUTAS", name: "Banana", pricePM: 5.0, priceGGG: 10.0, isUnit: false },
+    { category: "FRUTAS", name: "Uva", pricePM: 8.0, priceGGG: 14.0, isUnit: false },
+  ];
+
+  const toppingCategoryMap: { [catName: string]: string } = {};
+
+  for (const item of toppingsData) {
+    if (!toppingCategoryMap[item.category]) {
+      const createdCat = await prisma.pizzaToppingCategory.create({
+        data: { name: item.category },
+      });
+      toppingCategoryMap[item.category] = createdCat.id;
+    }
+
+    await prisma.pizzaTopping.create({
+      data: {
+        name: item.name,
+        pricePM: item.pricePM,
+        priceGGG: item.priceGGG,
+        isUnit: item.isUnit,
+        categoryId: toppingCategoryMap[item.category],
+      },
+    });
+  }
+
+  console.log("Pizza toppings seeded successfully.");
 
   console.log("Seed process completed successfully.");
 }

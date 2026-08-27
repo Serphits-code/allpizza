@@ -94,6 +94,7 @@ model OrderItem {
   crustPrice Float             @default(0)
   order      Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
   flavors    OrderItemFlavor[]
+  toppings   OrderItemTopping[]
 }
 
 model OrderItemFlavor {
@@ -102,6 +103,38 @@ model OrderItemFlavor {
   flavorName   String
   categoryName String
   orderItem    OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+}
+
+model OrderItemTopping {
+  id          String    @id @default(cuid())
+  orderItemId String
+  toppingName String
+  targetType  String
+  flavorName  String?
+  slicesCount Int       @default(1)
+  totalSlices Int       @default(1)
+  price       Float
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+}
+
+model PizzaToppingCategory {
+  id        String         @id @default(cuid())
+  name      String         @unique
+  toppings  PizzaTopping[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model PizzaTopping {
+  id         String               @id @default(cuid())
+  name       String
+  pricePM    Float
+  priceGGG   Float
+  isUnit     Boolean              @default(false)
+  categoryId String
+  category   PizzaToppingCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
 }
 
 model CustomerContactProfile {

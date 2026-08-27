@@ -84,7 +84,10 @@ export default function ClientHeader() {
               viewBox="0 0 24 24"
               strokeWidth={1.5}
               stroke="currentColor"
-              className="w-6 h-6"
+              width={24}
+              height={24}
+              style={{ width: "24px", height: "24px", minWidth: "24px", minHeight: "24px" }}
+              className="w-6 h-6 shrink-0"
             >
               <path
                 strokeLinecap="round"

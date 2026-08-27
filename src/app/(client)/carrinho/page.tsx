@@ -67,7 +67,17 @@ export default function CartPage() {
                     <div className="text-xxs text-brand-lightGray space-y-0.5">
                       <p>Tamanho: <span className="text-white font-mono">{item.pizzaSize}</span></p>
                       <p>Borda: <span className="text-white">{item.crustType}</span> {item.caracolRequested && <span className="text-brand-red">(Caracol)</span>}</p>
-                      {item.notes && <p className="italic text-brand-red/80">Obs: "{item.notes}"</p>}
+                      {item.toppings && item.toppings.length > 0 && (
+                        <div className="text-xxs text-amber-300/90 pt-1 space-y-0.5 border-t border-brand-mediumGray/30 mt-1">
+                          <span className="font-semibold block text-brand-gold">Adicionais:</span>
+                          {item.toppings.map((top, tIdx) => (
+                            <p key={tIdx} className="leading-tight">
+                              + {top.toppingName} ({top.targetType === "FULL" ? "Pizza Inteira" : top.flavorName}) - <span className="font-mono text-white">R$ {top.price.toFixed(2)}</span>
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      {item.notes && <p className="italic text-brand-red/80 pt-1">Obs: "{item.notes}"</p>}
                     </div>
                   )}
                   

@@ -19,6 +19,9 @@ interface PizzaSvgProps {
   selectedFlavors: (PizzaFlavor | null)[];
   slicesDistribution: number[];
   onSectorClick: (idx: number) => void;
+  activeSectorIndex?: number | null;
+  isFullPizzaSelected?: boolean;
+  toppingsCountBySector?: { [sectorIdx: number]: number };
 }
 
 export default function PizzaSvg({
@@ -27,18 +30,25 @@ export default function PizzaSvg({
   selectedFlavors,
   slicesDistribution,
   onSectorClick,
+  activeSectorIndex,
+  isFullPizzaSelected,
+  toppingsCountBySector,
 }: PizzaSvgProps) {
-  const [animatedSlices, setAnimatedSlices] = useState<number[]>(slicesDistribution);
+  const safeInputSlices = useMemo(() => {
+    return slicesDistribution && slicesDistribution.length > 0 ? slicesDistribution : [8];
+  }, [slicesDistribution]);
+
+  const [animatedSlices, setAnimatedSlices] = useState<number[]>(safeInputSlices);
 
   // Sincroniza e anima fatias
   useEffect(() => {
-    if (animatedSlices.length !== slicesDistribution.length) {
-      setAnimatedSlices(slicesDistribution);
+    if (!animatedSlices || animatedSlices.length !== safeInputSlices.length) {
+      setAnimatedSlices(safeInputSlices);
       return;
     }
 
     const startValues = [...animatedSlices];
-    const endValues = [...slicesDistribution];
+    const endValues = [...safeInputSlices];
 
     const controls = animate(0, 1, {
       duration: 0.3,
@@ -52,11 +62,13 @@ export default function PizzaSvg({
     });
 
     return () => controls.stop();
-  }, [slicesDistribution]);
+  }, [safeInputSlices]);
+
+  const safeSlices = animatedSlices && animatedSlices.length > 0 ? animatedSlices : safeInputSlices;
 
   const totalSlices = useMemo(() => {
-    return animatedSlices.reduce((a, b) => a + b, 0) || 1;
-  }, [animatedSlices]);
+    return safeSlices.reduce((a, b) => a + b, 0) || 1;
+  }, [safeSlices]);
 
   const radius = 45; // raio útil
   const cx = 50;
@@ -66,7 +78,7 @@ export default function PizzaSvg({
   const sectors = useMemo(() => {
     let currentAngle = 0;
 
-    return animatedSlices.map((slices, idx) => {
+    return safeSlices.map((slices, idx) => {
       const angle = (slices / totalSlices) * 360;
       const isFullCircle = angle >= 359.9;
 
@@ -116,10 +128,12 @@ export default function PizzaSvg({
         dividerLine: { x2: divX, y2: divY },
       };
     });
-  }, [animatedSlices, totalSlices]);
+  }, [safeSlices, totalSlices]);
 
   return (
-    <div className="relative w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-brand-bg shadow-2xl flex items-center justify-center">
+    <div className={`relative w-72 h-72 sm:w-88 sm:h-88 rounded-full bg-brand-bg shadow-2xl flex items-center justify-center transition-all ${
+      isFullPizzaSelected ? "ring-4 ring-emerald-500/70 shadow-emerald-500/20" : ""
+    }`}>
       {/* SVG da Pizza */}
       <svg
         className="w-full h-full filter drop-shadow-xl"
@@ -250,7 +264,40 @@ export default function PizzaSvg({
           );
         })}
 
-        {/* 4. Linhas divisórias (para 2 ou mais fatias) */}
+        {/* 4. Destaque Visual em Verde para o Setor Selecionado */}
+        {sectors.map((sector) => {
+          const isActive = activeSectorIndex === sector.idx;
+          if (!isActive && !isFullPizzaSelected) return null;
+
+          if (isFullPizzaSelected) return null; // Já destravamos a anilha externa
+
+          return (
+            <g key={`highlight-${sector.idx}`} className="pointer-events-none">
+              {sector.isFullCircle ? (
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={radius - 0.5}
+                  fill="rgba(16, 185, 129, 0.12)"
+                  stroke="#10b981"
+                  strokeWidth="2.5"
+                  className="animate-pulse"
+                />
+              ) : (
+                <path
+                  d={sector.pathData}
+                  fill="rgba(16, 185, 129, 0.18)"
+                  stroke="#10b981"
+                  strokeWidth="2.2"
+                  strokeLinejoin="round"
+                  className="transition-all duration-300"
+                />
+              )}
+            </g>
+          );
+        })}
+
+        {/* 5. Linhas divisórias (para 2 ou mais fatias) */}
         {flavorCount > 1 &&
           sectors.map((sector) => {
             if (!sector.dividerLine) return null;
@@ -269,20 +316,44 @@ export default function PizzaSvg({
               />
             );
           })}
+
+        {/* Borda verde para pizza inteira selecionada */}
+        {isFullPizzaSelected && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={radius + 0.5}
+            fill="none"
+            stroke="#10b981"
+            strokeWidth="2.5"
+            className="pointer-events-none animate-pulse"
+          />
+        )}
       </svg>
 
-      {/* 5. Rótulos/Botões de Sabores flutuando nos centroides */}
+      {/* 6. Rótulos/Botões de Sabores flutuando nos centroides */}
       {sectors.map((sector) => {
         const flavor = selectedFlavors[sector.idx];
+        const isActive = activeSectorIndex === sector.idx && !isFullPizzaSelected;
+        const toppingsCount = toppingsCountBySector?.[sector.idx] || 0;
 
         return (
           <button
             key={`btn-${sector.idx}`}
             onClick={() => onSectorClick(sector.idx)}
             style={sector.centroid}
-            className="absolute z-30 -translate-x-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg bg-brand-bg/95 border border-brand-red/40 hover:border-brand-red hover:bg-brand-red hover:text-white transition-all text-[10px] sm:text-xs font-bold text-brand-red tracking-wider shadow-lg cursor-pointer max-w-[120px] truncate"
+            className={`absolute z-30 -translate-x-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-xl border transition-all text-[10px] sm:text-xs font-bold tracking-wider shadow-lg cursor-pointer max-w-[140px] flex items-center gap-1.5 ${
+              isActive
+                ? "bg-emerald-950/95 border-emerald-400 text-emerald-300 ring-2 ring-emerald-500 scale-105 shadow-emerald-950/80 font-extrabold"
+                : "bg-brand-bg/95 border-brand-red/40 hover:border-brand-red hover:bg-brand-red hover:text-white text-brand-red"
+            }`}
           >
-            {flavor ? flavor.name : `Sabor ${sector.idx + 1}`}
+            <span className="truncate">{flavor ? flavor.name : `Sabor ${sector.idx + 1}`}</span>
+            {toppingsCount > 0 && (
+              <span className="bg-emerald-500 text-black text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-black flex-shrink-0">
+                +{toppingsCount}
+              </span>
+            )}
           </button>
         );
       })}
