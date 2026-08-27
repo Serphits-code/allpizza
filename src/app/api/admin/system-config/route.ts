@@ -43,6 +43,8 @@ export async function POST(request: Request) {
       { key: "primary_color", value: primaryColor || "#e31837" },
       { key: "vroom_depot_lat", value: depotLat || "-8.05" },
       { key: "vroom_depot_lng", value: depotLng || "-34.90" },
+      { key: "depotLat", value: depotLat || "-8.05" },
+      { key: "depotLng", value: depotLng || "-34.90" },
     ];
 
     for (const update of updates) {
@@ -52,6 +54,9 @@ export async function POST(request: Request) {
         create: { key: update.key, value: update.value },
       });
     }
+
+    // Limpa rotas antigas em cache para forçar recálculo na nova sede
+    await prisma.driverActiveRoute.deleteMany({});
 
     return NextResponse.json({ success: true });
   } catch (error) {

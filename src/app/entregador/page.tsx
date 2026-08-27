@@ -1,11 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import DeliveryMap from "@/components/entregador/DeliveryMap";
-import { OrderStatus, PaymentMethod } from "@prisma/client";
 import { calculateHaversineDistance } from "@/lib/geo";
+
+interface OrderItem {
+  id: string;
+  name: string;
+  quantity: number;
+  totalPrice: number;
+  flavors?: { flavorName: string }[];
+  toppings?: { toppingName: string }[];
+}
 
 interface Order {
   id: string;
@@ -17,96 +25,101 @@ interface Order {
   reference: string | null;
   customerLat: number | null;
   customerLng: number | null;
-  paymentMethod: PaymentMethod;
+  paymentMethod: string;
+  changeFor: number | null;
+  subtotal: number;
+  deliveryFee: number;
   total: number;
   notes: string | null;
   createdAt: string;
+  items?: OrderItem[];
 }
 
 export default function DriverDashboard() {
-  const sessionResult = useSession();
-  const session = sessionResult?.data;
-  const sessionStatus = sessionResult?.status || "loading";
+  const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
 
-  // Coordenadas e velocidade do motoboy
-  const [driverLat, setDriverLat] = useState<number | null>(null);
-  const [driverLng, setDriverLng] = useState<number | null>(null);
+  // Coordenadas e velocidade do piloto
+  const [driverLat, setDriverLat] = useState<number>(-8.05);
+  const [driverLng, setDriverLng] = useState<number>(-34.90);
   const [driverSpeed, setDriverSpeed] = useState<number | null>(null);
+
+  // Identidade da Empresa / Loja
+  const [companyName, setCompanyName] = useState("AllDelivery");
+  const [companyLogo, setCompanyLogo] = useState("");
 
   // Filas de Pedidos
   const [publicOrders, setPublicOrders] = useState<Order[]>([]);
   const [bagOrders, setBagOrders] = useState<Order[]>([]);
 
-  // Dados da Rota Ativa
+  // Rota Ativa
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
   const [routeSummary, setRouteSummary] = useState<{ distance: number; duration: number } | null>(null);
 
-  // Estado geral
+  // Estado da Interface
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [optimizing, setOptimizing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
-  // Depot da loja (sede)
+  // Modo Rota / Navegação em Tela Cheia
+  const [isRouteMode, setIsRouteMode] = useState(false);
+  const [currentStopIndex, setCurrentStopIndex] = useState(0);
+  const wakeLockRef = useRef<any>(null);
+
+  // Sede / Depot
   const [depotLat, setDepotLat] = useState(-8.05);
   const [depotLng, setDepotLng] = useState(-34.90);
 
-  // Refs de controle de tráfego de GPS
+  // Refs de controle de GPS
   const lastPostPos = useRef<{ lat: number; lng: number } | null>(null);
   const lastPostTime = useRef<number>(0);
 
-  // Redirecionamento se não autenticado ou papel incorreto
+  // Redirecionamento se não autenticado
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
       router.push("/admin/login");
     } else if (sessionStatus === "authenticated") {
       const role = session?.user?.role;
       if (role !== "DRIVER" && role !== "ADMIN" && role !== "MANAGER") {
-        alert("Acesso restrito a entregadores e administradores.");
-        signOut({ callbackUrl: "/admin/login" });
+        router.push("/admin/login");
       }
     }
   }, [sessionStatus, session, router]);
 
-  // Carrega listagem de pedidos e depot inicial
+  // Carrega configurações da loja (nome, logo, cores, depot)
+  useEffect(() => {
+    const fetchConfigs = async () => {
+      try {
+        const res = await fetch("/api/admin/system-config");
+        if (res.ok) {
+          const cfg = await res.json();
+          if (cfg.companyName) setCompanyName(cfg.companyName);
+          if (cfg.companyLogo) setCompanyLogo(cfg.companyLogo);
+          if (cfg.depotLat) setDepotLat(parseFloat(cfg.depotLat));
+          if (cfg.depotLng) setDepotLng(parseFloat(cfg.depotLng));
+        }
+      } catch (err) {
+        console.error("Error loading store config:", err);
+      }
+    };
+    fetchConfigs();
+  }, []);
+
+  // Carrega listagem de pedidos
   const loadOrders = async () => {
     try {
-      // 1. Busca status e depot da loja
-      const storeRes = await fetch("/api/public/store-status");
-      const storeData = await storeRes.json();
-      // O depotLat/lng vêm junto com o store-status no nosso endpoint customizado!
-      if (storeData.deliveryCities) {
-        // busca depot nas configs
-        const configsRes = await fetch("/api/admin/system-config");
-        const configsData = await configsRes.json();
-        // tenta ler do banco ou default para Cachoeirinha
-        const baseLat = parseFloat(configsData.depotLat) || -8.0142;
-        const baseLng = parseFloat(configsData.depotLng) || -34.95;
-        setDepotLat(baseLat);
-        setDepotLng(baseLng);
-      }
-
-      // 2. Busca lista geral de pedidos do motorista
-      // Vamos buscar todos os pedidos ativos "EM_ROTA"
-      const res = await fetch("/api/public/orders"); // ou criamos um endpoint próprio, mas o list de ordens públicas ativas serve perfeitamente
+      const res = await fetch("/api/entregador/orders");
+      if (!res.ok) throw new Error("Erro ao consultar pedidos do entregador");
       const data = await res.json();
-      
-      if (Array.isArray(data)) {
-        const activeDeliveryOrders = data.filter(
-          (o: any) => o.status === OrderStatus.EM_ROTA && o.type === "DELIVERY"
-        );
 
-        // Separa Fila Pública (driverId = null) vs Minha Bag (driverId = me)
-        const myId = session?.user?.id;
-        const pub = activeDeliveryOrders.filter((o: any) => !o.driverId);
-        const bag = activeDeliveryOrders.filter((o: any) => o.driverId === myId);
-
-        setPublicOrders(pub);
-        setBagOrders(bag);
-      }
+      setBagOrders(data.bag || []);
+      setPublicOrders(data.available || []);
+      if (data.routeGeometry) setRouteGeometry(data.routeGeometry);
+      if (data.summary) setRouteSummary(data.summary);
     } catch (err) {
-      console.error("Error loading orders:", err);
-      setErrorMsg("Erro ao carregar listagem de entregas.");
+      console.error("Error loading driver orders:", err);
     } finally {
       setLoading(false);
     }
@@ -115,44 +128,15 @@ export default function DriverDashboard() {
   useEffect(() => {
     if (sessionStatus === "authenticated") {
       loadOrders();
-      // Polling de pedidos a cada 8 segundos
-      const interval = setInterval(loadOrders, 8000);
-      return () => clearInterval(interval);
+      const timer = setInterval(loadOrders, 5000);
+      return () => clearInterval(timer);
     }
   }, [sessionStatus]);
 
-  // --- Otimização de Rota (Chama backend sempre que a bag ou localização muda significativamente) ---
-  const optimizeActiveRoute = async (lat: number, lng: number) => {
-    if (bagOrders.length === 0) {
-      setRouteGeometry(null);
-      setRouteSummary(null);
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/entregador/optimize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          driverLat: lat,
-          driverLng: lng,
-        }),
-      });
-      const data = await res.json();
-      if (data && data.routeGeometry) {
-        setRouteGeometry(data.routeGeometry);
-        setRouteSummary(data.summary);
-      }
-    } catch (err) {
-      console.error("Optimization failed:", err);
-    }
-  };
-
-  // --- GPS Geolocation watchPosition + Heartbeat Loop ---
+  // --- GPS Geolocation watchPosition + Heartbeat ---
   useEffect(() => {
     if (!navigator.geolocation || sessionStatus !== "authenticated") return;
 
-    // Função de verificação e transmissão da localização para o banco
     const transmitLocation = async (lat: number, lng: number) => {
       const now = Date.now();
       let shouldPost = false;
@@ -160,16 +144,15 @@ export default function DriverDashboard() {
       if (!lastPostPos.current) {
         shouldPost = true;
       } else {
-        const distanceMoved = calculateHaversineDistance(
-          lastPostPos.current.lat,
-          lastPostPos.current.lng,
-          lat,
-          lng
-        ) * 1000; // converte para metros
+        const distanceMoved =
+          calculateHaversineDistance(
+            lastPostPos.current.lat,
+            lastPostPos.current.lng,
+            lat,
+            lng
+          ) * 1000;
+        const timeElapsed = (now - lastPostTime.current) / 1000;
 
-        const timeElapsed = (now - lastPostTime.current) / 1000; // segundos
-
-        // Filtro de tráfego eficiente: se moveu >= 4 metros OU passou >= 30 segundos (heartbeat)
         if (distanceMoved >= 4 || timeElapsed >= 30) {
           shouldPost = true;
         }
@@ -185,54 +168,74 @@ export default function DriverDashboard() {
           lastPostPos.current = { lat, lng };
           lastPostTime.current = now;
         } catch (err) {
-          console.error("Failed to post location:", err);
+          console.error("Failed to transmit driver location:", err);
         }
       }
     };
 
     const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const speed = position.coords.speed; // m/s ou null
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const speed = pos.coords.speed;
 
         setDriverLat(lat);
         setDriverLng(lng);
         setDriverSpeed(speed);
 
         transmitLocation(lat, lng);
-        optimizeActiveRoute(lat, lng);
       },
-      (error) => {
-        console.error("Geolocation watch error:", error);
+      (err) => {
+        console.warn("Geolocation watch error:", err);
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 10000,
+        maximumAge: 5000,
+        timeout: 15000,
       }
     );
 
-    // Bypass de Segundo Plano (intervalo auxiliar de segundo plano para mitigar suspensão de aba)
-    const backupHeartbeat = setInterval(() => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          transmitLocation(lat, lng);
-        },
-        null,
-        { enableHighAccuracy: true }
-      );
-    }, 15000);
-
     return () => {
       navigator.geolocation.clearWatch(watchId);
-      clearInterval(backupHeartbeat);
     };
-  }, [sessionStatus, bagOrders.length]);
+  }, [sessionStatus]);
 
-  // --- Ações de Clique (Claim, Release, Deliver) ---
+  // --- Otimizar Rota ---
+  const handleOptimizeRoute = async () => {
+    if (bagOrders.length === 0) {
+      alert("Adicione ao menos um pedido à bag para otimizar a rota.");
+      return;
+    }
+    setOptimizing(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch("/api/entregador/optimize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          driverLat,
+          driverLng,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        if (data.routeGeometry) setRouteGeometry(data.routeGeometry);
+        if (data.summary) setRouteSummary(data.summary);
+        await loadOrders();
+      } else {
+        setErrorMsg(data.error || "Erro ao otimizar rota");
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg("Erro de conexão ao otimizar rota.");
+    } finally {
+      setOptimizing(false);
+    }
+  };
+
+  // --- Ações de Pedido (Claim, Release, Deliver) ---
   const handleOrderAction = async (orderId: string, action: "claim" | "release" | "deliver") => {
     setActionLoading(orderId);
     setErrorMsg(null);
@@ -246,176 +249,500 @@ export default function DriverDashboard() {
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMsg(data.error || "Ocorreu um erro ao processar a ação.");
+        setErrorMsg(data.error || "Erro ao atualizar pedido");
       } else {
-        await loadOrders(); // Recarrega filas
-        if (driverLat && driverLng) {
-          optimizeActiveRoute(driverLat, driverLng);
+        await loadOrders();
+        if (action === "deliver" && bagOrders.length <= 1) {
+          setIsRouteMode(false);
         }
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Erro de conexão ao enviar requisição.");
+      setErrorMsg("Erro ao processar ação do pedido.");
     } finally {
       setActionLoading(null);
     }
   };
 
-  if (sessionStatus === "loading" || loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-brand-bg">
-        <span className="text-sm text-brand-lightGray animate-pulse">Iniciando painel do entregador...</span>
-      </div>
+  // --- Wake Lock (Tela Ativa no Modo Rota) ---
+  const activateWakeLock = async () => {
+    try {
+      if ("wakeLock" in navigator) {
+        wakeLockRef.current = await (navigator as any).wakeLock.request("screen");
+      }
+    } catch (err) {
+      console.warn("WakeLock error:", err);
+    }
+  };
+
+  const releaseWakeLock = async () => {
+    try {
+      if (wakeLockRef.current) {
+        await wakeLockRef.current.release();
+        wakeLockRef.current = null;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const toggleRouteMode = () => {
+    if (!isRouteMode) {
+      if (bagOrders.length === 0) {
+        alert("Sua bag está vazia. Adicione pedidos para iniciar o modo rota.");
+        return;
+      }
+      setIsRouteMode(true);
+      setCurrentStopIndex(0);
+      activateWakeLock();
+    } else {
+      setIsRouteMode(false);
+      releaseWakeLock();
+    }
+  };
+
+  // Próxima Parada Ativa no Modo Rota
+  const activeStopOrder = useMemo(() => {
+    if (bagOrders.length === 0) return null;
+    return bagOrders[Math.min(currentStopIndex, bagOrders.length - 1)];
+  }, [bagOrders, currentStopIndex]);
+
+  // Distância até a próxima parada em metros
+  const distanceToNextStop = useMemo(() => {
+    if (!activeStopOrder || !activeStopOrder.customerLat || !activeStopOrder.customerLng) {
+      return null;
+    }
+    const km = calculateHaversineDistance(
+      driverLat,
+      driverLng,
+      activeStopOrder.customerLat,
+      activeStopOrder.customerLng
     );
-  }
+    return Math.round(km * 1000);
+  }, [activeStopOrder, driverLat, driverLng]);
+
+  // Abre navegação no Google Maps
+  const openExternalNavigation = (lat: number | null, lng: number | null, address: string | null) => {
+    if (lat && lng) {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+      window.open(url, "_blank");
+    } else if (address) {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&travelmode=driving`;
+      window.open(url, "_blank");
+    }
+  };
+
+  // Abre WhatsApp com mensagem pré-preenchida
+  const openWhatsApp = (phone: string, customerName: string, orderNumber: number) => {
+    const cleanPhone = phone.replace(/\D/g, "");
+    const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+    const text = encodeURIComponent(
+      `Olá ${customerName}! Aqui é o entregador da ${companyName}. Estou a caminho com o seu pedido #${orderNumber}.`
+    );
+    window.open(`https://wa.me/${formattedPhone}?text=${text}`, "_blank");
+  };
+
+  const formatCurrency = (val: number) =>
+    `R$ ${val.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
-    <main className="mx-auto max-w-md px-4 py-6 font-sans space-y-6">
-      
-      {/* Header Piloto */}
-      <div className="flex items-center justify-between border-b border-brand-mediumGray pb-4">
-        <div>
-          <span className="text-xxs text-brand-lightGray uppercase font-bold tracking-wider">Entregador Conectado</span>
-          <h2 className="text-base font-serif font-bold text-white mt-0.5">👤 {session?.user?.name}</h2>
+    <div className="flex flex-col min-h-screen p-4 sm:p-5 space-y-5 font-sans">
+      {/* ------------------------------------------------------------- */}
+      {/* HEADER SUPERIOR: Logo, Nome da Empresa & Botão de Saída       */}
+      {/* ------------------------------------------------------------- */}
+      <header className="flex items-center justify-between border-b border-brand-mediumGray pb-3">
+        <div className="flex items-center gap-3">
+          {companyLogo ? (
+            <div className="w-10 h-10 rounded-xl bg-brand-darkGray border border-brand-mediumGray flex items-center justify-center overflow-hidden p-1 shadow-md">
+              <img src={companyLogo} alt={companyName} className="w-full h-full object-contain" />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-brand-red flex items-center justify-center text-white text-lg shadow-md shadow-brand-red/30">
+              🚚
+            </div>
+          )}
+          <div>
+            <h1 className="font-bold text-white text-sm tracking-wide leading-tight">
+              {companyName}
+            </h1>
+            <span className="text-xxs text-brand-lightGray block">Painel do Entregador</span>
+          </div>
         </div>
+
         <button
           onClick={() => signOut({ callbackUrl: "/admin/login" })}
-          className="rounded-lg bg-brand-darkGray border border-brand-mediumGray px-3 py-1.5 text-xxs font-bold text-brand-lightGray hover:text-white cursor-pointer"
+          className="p-2 rounded-xl bg-brand-darkGray border border-brand-mediumGray text-brand-lightGray hover:text-white hover:bg-brand-bg transition-colors cursor-pointer"
+          title="Sair da Conta"
         >
-          Sair
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+            />
+          </svg>
         </button>
-      </div>
+      </header>
 
+      {/* Mensagem de Erro */}
       {errorMsg && (
-        <div className="p-3.5 bg-brand-red/10 border border-brand-red/20 rounded-xl text-xxs text-brand-red text-center font-bold">
+        <div className="p-3.5 bg-brand-red/10 border border-brand-red/20 rounded-xl text-xs text-brand-red text-center font-medium">
           {errorMsg}
         </div>
       )}
 
-      {/* Exibição do Mapa Interativo de Navegação */}
-      {driverLat && driverLng ? (
-        <div className="space-y-2">
-          <div className="flex justify-between items-center text-xxs text-brand-lightGray">
-            <span>📍 GPS Conectado</span>
-            {routeSummary && (
-              <span className="font-mono text-brand-red font-bold">
-                Distância: {(routeSummary.distance / 1000).toFixed(2)} km
+      {/* ------------------------------------------------------------- */}
+      {/* TÍTULO DA SEÇÃO & BOTÕES DE AÇÃO                              */}
+      {/* ------------------------------------------------------------- */}
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-base text-brand-red">📦</span>
+            <h2 className="font-bold text-base md:text-lg text-white tracking-tight">
+              Bag do Entregador
+            </h2>
+          </div>
+          <span className="text-xs text-brand-lightGray block mt-0.5">
+            {bagOrders.length} na bag · {publicOrders.length} disponíveis em rota
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Botão Modo Rota */}
+          <button
+            onClick={toggleRouteMode}
+            disabled={bagOrders.length === 0}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-40 ${
+              isRouteMode
+                ? "bg-emerald-600 border-emerald-500 text-white"
+                : "bg-brand-darkGray border-brand-mediumGray text-brand-lightGray hover:text-white hover:bg-brand-bg"
+            }`}
+          >
+            <span>☡</span> Modo rota
+          </button>
+
+          {/* Botão Otimizar Rota */}
+          <button
+            onClick={handleOptimizeRoute}
+            disabled={optimizing || bagOrders.length === 0}
+            className="px-3.5 py-2 rounded-xl bg-brand-red hover:bg-brand-redHover text-white text-xs font-bold transition-all cursor-pointer shadow-lg shadow-brand-red/20 disabled:opacity-40 flex items-center gap-1.5"
+          >
+            <span>✈</span> {optimizing ? "Otimizando..." : "Otimizar Rota"}
+          </button>
+
+          {/* Botão Atualizar */}
+          <button
+            onClick={loadOrders}
+            className="p-2 rounded-xl bg-brand-darkGray border border-brand-mediumGray text-brand-lightGray hover:text-white hover:bg-brand-bg transition-colors cursor-pointer"
+            title="Atualizar lista"
+          >
+            ↻
+          </button>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* MAPA INTERATIVO SATÉLITE HÍBRIDO                              */}
+      {/* ------------------------------------------------------------- */}
+      <DeliveryMap
+        driverLat={driverLat}
+        driverLng={driverLng}
+        driverSpeed={driverSpeed}
+        routeGeometry={routeGeometry}
+        orders={bagOrders}
+        depotLat={depotLat}
+        depotLng={depotLng}
+        activeStopIndex={currentStopIndex}
+        isNavigationMode={isRouteMode}
+      />
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODO ROTA ATIVO: OVERLAY DE NAVEGAÇÃO EM TELA CHEIA            */}
+      {/* ------------------------------------------------------------- */}
+      {isRouteMode && activeStopOrder && (
+        <div className="bg-brand-darkGray border border-brand-red/50 rounded-2xl p-4 shadow-2xl space-y-4 animate-fadeIn">
+          {/* Header da Parada */}
+          <div className="flex justify-between items-start border-b border-brand-mediumGray pb-3">
+            <div>
+              <span className="text-xxs font-mono uppercase font-bold text-brand-red block">
+                Próxima Parada ({currentStopIndex + 1}/{bagOrders.length})
               </span>
+              <h3 className="font-bold text-white text-sm mt-0.5">
+                Pedido #{activeStopOrder.orderNumber} — {activeStopOrder.customerName}
+              </h3>
+              <p className="text-xs text-brand-lightGray mt-1">
+                📍 {activeStopOrder.customerAddress}, {activeStopOrder.addressNumber}
+              </p>
+              {activeStopOrder.reference && (
+                <p className="text-xxs text-brand-lightGray/70">Ref: {activeStopOrder.reference}</p>
+              )}
+            </div>
+
+            {distanceToNextStop !== null && (
+              <div className="text-right">
+                <span className="text-xxs text-brand-lightGray block">Distância</span>
+                <span className="font-mono font-bold text-sm text-emerald-400">
+                  {distanceToNextStop > 1000
+                    ? `${(distanceToNextStop / 1000).toFixed(1)} km`
+                    : `${distanceToNextStop} m`}
+                </span>
+              </div>
             )}
           </div>
-          <DeliveryMap
-            driverLat={driverLat}
-            driverLng={driverLng}
-            driverSpeed={driverSpeed}
-            routeGeometry={routeGeometry}
-            orders={bagOrders}
-            depotLat={depotLat}
-            depotLng={depotLng}
-          />
-        </div>
-      ) : (
-        <div className="h-44 bg-brand-darkGray border border-brand-mediumGray rounded-2xl flex items-center justify-center text-center p-6 text-xxs text-brand-lightGray">
-          <span className="animate-pulse">Aguardando coordenadas de satélite do GPS... Permita o acesso à localização.</span>
+
+          {/* Botões de Ação do Modo Rota */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={() =>
+                openExternalNavigation(
+                  activeStopOrder.customerLat,
+                  activeStopOrder.customerLng,
+                  activeStopOrder.customerAddress
+                )
+              }
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/20"
+            >
+              <span>🧭</span> Abrir no Google Maps
+            </button>
+
+            <button
+              onClick={() =>
+                openWhatsApp(
+                  activeStopOrder.customerPhone,
+                  activeStopOrder.customerName,
+                  activeStopOrder.orderNumber
+                )
+              }
+              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20"
+            >
+              <span>💬</span> WhatsApp
+            </button>
+          </div>
+
+          {/* Botão de Conclusão */}
+          <button
+            disabled={actionLoading === activeStopOrder.id}
+            onClick={() => handleOrderAction(activeStopOrder.id, "deliver")}
+            className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all cursor-pointer shadow-lg shadow-emerald-600/30 disabled:opacity-50"
+          >
+            {actionLoading === activeStopOrder.id
+              ? "Confirmando Entrega..."
+              : "✓ Concluir e Ir para Próxima Entrega"}
+          </button>
         </div>
       )}
 
-      {/* FILA 2: MINHA BAG (Fila Privada) */}
-      <div className="space-y-3">
-        <div className="flex items-center space-x-2">
-          <span className="text-base">💼</span>
-          <h3 className="font-serif text-sm font-bold text-white uppercase tracking-wider">
-            Minha Bag ({bagOrders.length})
-          </h3>
-        </div>
-
-        {bagOrders.length === 0 ? (
-          <div className="p-6 rounded-2xl border border-dashed border-brand-mediumGray bg-brand-darkGray text-center text-xxs text-brand-lightGray">
-            Nenhum pedido na bag no momento. Colete um pedido abaixo!
+      {/* ------------------------------------------------------------- */}
+      {/* LISTAGEM DE PEDIDOS (Minha Bag + Disponíveis)                  */}
+      {/* ------------------------------------------------------------- */}
+      {bagOrders.length === 0 && publicOrders.length === 0 ? (
+        /* Estado Vazio */
+        <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+          <div className="w-16 h-16 rounded-2xl bg-brand-darkGray border border-brand-mediumGray flex items-center justify-center text-3xl opacity-50">
+            📦
           </div>
-        ) : (
-          <div className="space-y-3">
-            {bagOrders.map((o, idx) => (
-              <div key={o.id} className="rounded-xl border border-brand-red/35 bg-brand-darkGray p-4 space-y-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-brand-red font-mono font-bold text-xs">#{o.orderNumber}</span>
-                    <span className="block text-xxs font-bold text-white capitalize mt-0.5">{o.customerName}</span>
-                  </div>
-                  <span className="px-2 py-0.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded text-xxxs font-bold font-mono">
-                    Parada {idx + 1}
+          <p className="text-xs text-brand-lightGray font-medium">
+            Nenhuma entrega em rota no momento
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {/* 1. SEÇÃO: MINHA BAG */}
+          {bagOrders.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-brand-red flex items-center gap-1.5">
+                  <span>💼</span> Minha Bag ({bagOrders.length})
+                </h3>
+                {routeSummary && (
+                  <span className="text-xxs font-mono text-brand-lightGray">
+                    Total: {(routeSummary.distance / 1000).toFixed(1)} km
                   </span>
-                </div>
-
-                <div className="text-xxs text-brand-lightGray space-y-1 leading-relaxed">
-                  <p>📍 {o.customerAddress}, {o.addressNumber}</p>
-                  {o.reference && <p className="opacity-75">Ref: {o.reference}</p>}
-                  {o.notes && <p className="text-brand-red/80 italic font-medium">Obs: "{o.notes}"</p>}
-                </div>
-
-                <div className="flex space-x-2 pt-2 border-t border-brand-mediumGray/40">
-                  <button
-                    disabled={actionLoading !== null}
-                    onClick={() => handleOrderAction(o.id, "release")}
-                    className="flex-1 py-2 bg-brand-bg hover:bg-brand-mediumGray border border-brand-mediumGray rounded-lg text-xxs font-bold text-white transition-colors cursor-pointer"
-                  >
-                    Devolver
-                  </button>
-                  <button
-                    disabled={actionLoading !== null}
-                    onClick={() => handleOrderAction(o.id, "deliver")}
-                    className="flex-1 py-2 bg-brand-red hover:bg-brand-redHover rounded-lg text-xxs font-bold text-white transition-colors cursor-pointer"
-                  >
-                    {actionLoading === o.id ? "..." : "Entregar ➔"}
-                  </button>
-                </div>
+                )}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* FILA 1: PEDIDOS DISPONÍVEIS (Fila Pública) */}
-      <div className="space-y-3">
-        <div className="flex items-center space-x-2">
-          <span className="text-base">📦</span>
-          <h3 className="font-serif text-sm font-bold text-white uppercase tracking-wider">
-            Pedidos Disponíveis na Rota ({publicOrders.length})
-          </h3>
-        </div>
+              <div className="space-y-3">
+                {bagOrders.map((ord, idx) => {
+                  const isExpanded = expandedOrderId === ord.id;
 
-        {publicOrders.length === 0 ? (
-          <div className="p-6 rounded-2xl border border-brand-mediumGray bg-brand-darkGray text-center text-xxs text-brand-lightGray">
-            Nenhum pedido despachado aguardando coleta.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {publicOrders.map((o) => (
-              <div key={o.id} className="rounded-xl border border-brand-mediumGray bg-brand-darkGray p-4 space-y-3 font-sans">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-brand-lightGray font-mono font-bold text-xs">#{o.orderNumber}</span>
-                    <span className="block text-xxs font-bold text-white capitalize mt-0.5">{o.customerName}</span>
+                  return (
+                    <div
+                      key={ord.id}
+                      className="rounded-2xl border border-brand-red/40 bg-brand-darkGray overflow-hidden shadow-lg transition-all"
+                    >
+                      {/* Header do Card */}
+                      <div className="p-4 space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-brand-red text-white font-bold text-xs flex items-center justify-center">
+                              {idx + 1}
+                            </span>
+                            <div>
+                              <span className="font-mono font-bold text-brand-red text-xs block">
+                                #{ord.orderNumber}
+                              </span>
+                              <span className="font-bold text-white text-xs block">
+                                {ord.customerName}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="font-mono font-bold text-white text-xs block">
+                              {formatCurrency(ord.total)}
+                            </span>
+                            <span className="text-xxxs text-brand-lightGray uppercase font-mono">
+                              {ord.paymentMethod}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Endereço */}
+                        <div className="text-xs text-brand-lightGray leading-snug">
+                          📍 {ord.customerAddress}, {ord.addressNumber}
+                          {ord.reference && (
+                            <span className="block text-xxs text-brand-lightGray/70">Ref: {ord.reference}</span>
+                          )}
+                        </div>
+
+                        {ord.notes && (
+                          <div className="p-2 rounded-lg bg-brand-red/10 border border-brand-red/20 text-xxs italic text-brand-red">
+                            Obs: &quot;{ord.notes}&quot;
+                          </div>
+                        )}
+
+                        {/* Botões Rápidos */}
+                        <div className="flex items-center gap-2 pt-2 border-t border-brand-mediumGray/60">
+                          <button
+                            onClick={() =>
+                              openWhatsApp(ord.customerPhone, ord.customerName, ord.orderNumber)
+                            }
+                            className="px-3 py-1.5 rounded-lg bg-emerald-950/70 border border-emerald-800/40 text-emerald-400 hover:bg-emerald-900 text-xxs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                          >
+                            <span>💬</span> WhatsApp
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              openExternalNavigation(
+                                ord.customerLat,
+                                ord.customerLng,
+                                ord.customerAddress
+                              )
+                            }
+                            className="px-3 py-1.5 rounded-lg bg-blue-950/70 border border-blue-800/40 text-blue-400 hover:bg-blue-900 text-xxs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                          >
+                            <span>🧭</span> Rota
+                          </button>
+
+                          <button
+                            onClick={() => setExpandedOrderId(isExpanded ? null : ord.id)}
+                            className="text-xxs text-brand-lightGray hover:text-white ml-auto cursor-pointer"
+                          >
+                            {isExpanded ? "Ocultar detalhes ▲" : "Ver detalhes ▼"}
+                          </button>
+                        </div>
+
+                        {/* Ações de Devolução e Entrega */}
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            disabled={actionLoading !== null}
+                            onClick={() => handleOrderAction(ord.id, "release")}
+                            className="flex-1 py-2 bg-brand-bg hover:bg-brand-mediumGray border border-brand-mediumGray rounded-xl text-xxs font-bold text-brand-lightGray hover:text-white transition-colors cursor-pointer"
+                          >
+                            Devolver
+                          </button>
+                          <button
+                            disabled={actionLoading !== null}
+                            onClick={() => handleOrderAction(ord.id, "deliver")}
+                            className="flex-1 py-2 bg-brand-red hover:bg-brand-redHover rounded-xl text-xxs font-bold text-white transition-colors cursor-pointer shadow-md shadow-brand-red/20"
+                          >
+                            {actionLoading === ord.id ? "Entregando..." : "Confirmar Entrega ➔"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Detalhe Expandido de Itens */}
+                      {isExpanded && ord.items && (
+                        <div className="p-4 bg-brand-bg/60 border-t border-brand-mediumGray space-y-2 text-xs">
+                          <span className="text-xxs font-semibold uppercase text-brand-lightGray block">
+                            Itens do Pedido:
+                          </span>
+                          {ord.items.map((it) => (
+                            <div
+                              key={it.id}
+                              className="flex justify-between items-center text-brand-lightGray text-xxs"
+                            >
+                              <span>
+                                {it.quantity}x {it.name}
+                              </span>
+                              <span className="font-mono text-white">{formatCurrency(it.totalPrice)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 2. SEÇÃO: PEDIDOS DISPONÍVEIS NA ROTA */}
+          {publicOrders.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-brand-lightGray flex items-center gap-1.5">
+                <span>📦</span> Disponíveis em Rota ({publicOrders.length})
+              </h3>
+
+              <div className="space-y-3">
+                {publicOrders.map((ord) => (
+                  <div
+                    key={ord.id}
+                    className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 space-y-3 shadow-md"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-mono font-bold text-brand-lightGray text-xs block">
+                          #{ord.orderNumber}
+                        </span>
+                        <span className="font-bold text-white text-xs block">
+                          {ord.customerName}
+                        </span>
+                      </div>
+                      <span className="font-mono font-bold text-white text-xs">
+                        {formatCurrency(ord.total)}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-brand-lightGray">
+                      📍 {ord.customerAddress}, {ord.addressNumber}
+                    </div>
+
+                    <button
+                      disabled={actionLoading !== null}
+                      onClick={() => handleOrderAction(ord.id, "claim")}
+                      className="w-full py-2.5 bg-brand-red hover:bg-brand-redHover rounded-xl text-xs font-bold text-white transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-brand-red/20"
+                    >
+                      <span>＋</span> {actionLoading === ord.id ? "Coletando..." : "Colocar na bag"}
+                    </button>
                   </div>
-                  <span className="text-xxs font-mono text-white font-bold">R$ {o.total.toFixed(2)}</span>
-                </div>
-
-                <div className="text-xxs text-brand-lightGray leading-relaxed">
-                  <p>📍 {o.customerAddress}, {o.addressNumber}</p>
-                </div>
-
-                <button
-                  disabled={actionLoading !== null}
-                  onClick={() => handleOrderAction(o.id, "claim")}
-                  className="w-full py-2 bg-brand-red hover:bg-brand-redHover rounded-lg text-xxs font-bold text-white transition-colors cursor-pointer"
-                >
-                  {actionLoading === o.id ? "Coletando..." : "Coletar para Bag"}
-                </button>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
 
-    </main>
+      {/* ------------------------------------------------------------- */}
+      {/* RODAPÉ INSTITUCIONAL                                          */}
+      {/* ------------------------------------------------------------- */}
+      <footer className="pt-8 pb-4 text-center">
+        <span className="text-xxxs text-brand-lightGray/60 tracking-wider">
+          Desenvolvido pela Almeida Estúdios
+        </span>
+      </footer>
+    </div>
   );
 }

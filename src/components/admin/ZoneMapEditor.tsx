@@ -12,13 +12,20 @@ interface DeliveryZone {
 
 interface ZoneMapEditorProps {
   initialZones: any[];
+  depotLat?: number;
+  depotLng?: number;
 }
 
-export default function ZoneMapEditor({ initialZones }: ZoneMapEditorProps) {
+export default function ZoneMapEditor({
+  initialZones,
+  depotLat = -8.05,
+  depotLng = -34.90,
+}: ZoneMapEditorProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const drawingLayerRef = useRef<any>(null);
   const zonesGroupRef = useRef<any>(null);
+  const depotMarkerRef = useRef<any>(null);
 
   const [zones, setZones] = useState<DeliveryZone[]>(initialZones);
   const [loaded, setLoaded] = useState(false);
@@ -54,8 +61,8 @@ export default function ZoneMapEditor({ initialZones }: ZoneMapEditorProps) {
     const L = (window as any).L;
     if (!L) return;
 
-    // Inicializa o mapa centralizado em Recife (-8.05, -34.90)
-    const map = L.map(mapContainerRef.current).setView([-8.05, -34.90], 13);
+    // Inicializa o mapa centralizado na sede cadastrada
+    const map = L.map(mapContainerRef.current).setView([depotLat, depotLng], 13);
     mapRef.current = map;
 
     // Camada de tiles do Google Maps via URL com fallback para OpenStreetMap
@@ -79,6 +86,22 @@ export default function ZoneMapEditor({ initialZones }: ZoneMapEditorProps) {
 
     // Grupo de camadas para exibir zonas salvas
     zonesGroupRef.current = L.featureGroup().addTo(map);
+
+    // Marcador da Sede da Pizzaria
+    const storeIcon = L.divIcon({
+      html: `
+        <div style="background-color: var(--brand-primary, #e31837);" class="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-xs shadow-lg">
+          🍕
+        </div>
+      `,
+      className: "depot-marker-icon",
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+
+    depotMarkerRef.current = L.marker([depotLat, depotLng], { icon: storeIcon })
+      .bindPopup("<b>Sede da Pizzaria</b><br/>Ponto central de saída/retorno")
+      .addTo(map);
 
     // Camada para desenhar polígono em andamento
     drawingLayerRef.current = L.polygon([], { color: "#e31837", weight: 3, fillOpacity: 0.2 }).addTo(map);

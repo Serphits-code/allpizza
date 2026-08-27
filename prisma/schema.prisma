@@ -78,6 +78,8 @@ model Order {
   deliveredAt      DateTime?
   driverId         String?
   driver           AdminUser?    @relation("DriverOrders", fields: [driverId], references: [id])
+  comandaId        String?
+  comanda          Comanda?      @relation(fields: [comandaId], references: [id])
   items            OrderItem[]
 }
 
@@ -151,6 +153,7 @@ model AdminUser {
   passwordHash      String
   role              UserRole           @default(KITCHEN)
   name              String
+  active            Boolean            @default(true)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   driverLat         Float?
@@ -181,6 +184,17 @@ model CrustType {
   updatedAt DateTime @updatedAt
 }
 
+model Comanda {
+  id              String        @id @default(cuid())
+  number          Int           @unique
+  status          ComandaStatus @default(LIVRE)
+  responsibleName String?
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  orders          Order[]
+}
+
 model SystemConfig {
   key   String @id
   value String
@@ -193,6 +207,7 @@ enum OrderStatus {
   PRONTO_RETIRADA
   ENTREGUE
   COMANDA_MESA
+  CANCELADO
 }
 
 enum OrderType {
@@ -213,4 +228,11 @@ enum UserRole {
   MANAGER
   KITCHEN
   DRIVER
+  GARCOM
+}
+
+enum ComandaStatus {
+  LIVRE
+  OCUPADA
+  INATIVA
 }

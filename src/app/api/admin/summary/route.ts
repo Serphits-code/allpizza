@@ -1,0 +1,122 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+// GET /api/admin/summary?date=YYYY-MM-DD
+export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const dateParam = searchParams.get("date");
+
+    const targetDate = dateParam ? new Date(dateParam) : new Date();
+    if (isNaN(targetDate.getTime())) {
+      return NextResponse.json({ error: "Data inválida" }, { status: 400 });
+    }
+
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // 1. Busca pedidos do dia selecionado
+    const orders = await prisma.order.findMany({
+      where: {
+        createdAt: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      include: {
+        driver: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        items: {
+          include: {
+            flavors: true,
+            toppings: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const total = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const count = orders.length;
+    const finishedCount = orders.filter(
+      (o) => o.status === "ENTREGUE" || o.status === "PRONTO_RETIRADA"
+    ).length;
+    const averageTicket = count > 0 ? total / count : 0;
+
+    // 2. Alerta de Entregas Aguardando Fechamento (Sessões Anteriores)
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: "delivery_last_closed_at" },
+    });
+
+    let stalledDeliveryAlert = [];
+
+    // Busca pedidos de delivery travados em aberto anteriores ao início do dia atual
+    const now = new Date();
+    const cutoffDate = config?.value ? new Date(config.value) : startOfDay;
+
+    const stalledOrders = await prisma.order.findMany({
+      where: {
+        type: "DELIVERY",
+        status: { in: ["NOVO", "EM_PREPARO", "EM_ROTA"] },
+        createdAt: { lte: startOfDay },
+      },
+      include: {
+        driver: {
+          select: { id: true, name: true },
+        },
+        items: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    stalledDeliveryAlert = stalledOrders.map((o) => {
+      const diffMs = now.getTime() - new Date(o.createdAt).getTime();
+      const elapsedHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const elapsedMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      return {
+        id: o.id,
+        orderNumber: o.orderNumber,
+        status: o.status,
+        customerName: o.customerName,
+        customerPhone: o.customerPhone,
+        customerAddress: o.customerAddress,
+        addressNumber: o.addressNumber,
+        total: o.total,
+        driverName: o.driver?.name || null,
+        itemsCount: o.items.length,
+        createdAt: o.createdAt,
+        elapsedTimeFormatted: `${elapsedHours}h ${elapsedMinutes}min`,
+      };
+    });
+
+    return NextResponse.json({
+      date: startOfDay.toISOString().split("T")[0],
+      total,
+      count,
+      finishedCount,
+      averageTicket,
+      orders,
+      stalledDeliveryAlert,
+    });
+  } catch (error) {
+    console.error("Daily summary error:", error);
+    return NextResponse.json({ error: "Erro ao gerar resumo diário" }, { status: 500 });
+  }
+}

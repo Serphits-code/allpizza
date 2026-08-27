@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import DepotLocationPickerModal from "@/components/admin/configuracoes/DepotLocationPickerModal";
 
 export default function ConfigPage() {
   const [companyName, setCompanyName] = useState("");
@@ -9,6 +10,7 @@ export default function ConfigPage() {
   const [primaryColor, setPrimaryColor] = useState("#e31837");
   const [depotLat, setDepotLat] = useState("-8.05");
   const [depotLng, setDepotLng] = useState("-34.90");
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -205,32 +207,53 @@ export default function ConfigPage() {
         </div>
 
         {/* Coordenadas Sede (Depot) */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xxs font-semibold uppercase tracking-wider text-brand-lightGray mb-1">
-              Latitude da Sede (Depot)
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Ex: -8.05"
-              value={depotLat}
-              onChange={(e) => setDepotLat(e.target.value)}
-              className="w-full rounded-lg border border-brand-mediumGray bg-brand-bg px-4 py-2.5 text-xs text-white focus:border-brand-red focus:outline-none"
-            />
+        <div className="space-y-2 bg-brand-bg/50 p-4 rounded-xl border border-brand-mediumGray/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <label className="block text-xxs font-semibold uppercase tracking-wider text-brand-lightGray">
+                Localização da Sede (Depot Central da Pizzaria)
+              </label>
+              <span className="text-xxxs text-brand-lightGray/70 block">
+                Define o centro dos mapas operacionais e o ponto de partida/retorno da rota dos entregadores.
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsMapModalOpen(true)}
+              className="px-3.5 py-2 rounded-lg bg-brand-red/15 hover:bg-brand-red/25 border border-brand-red/40 text-brand-red text-xxs font-bold transition-all cursor-pointer flex items-center gap-1.5 self-start sm:self-auto shadow-sm"
+            >
+              <span>📍</span> Selecionar Minha Sede no Mapa
+            </button>
           </div>
-          <div>
-            <label className="block text-xxs font-semibold uppercase tracking-wider text-brand-lightGray mb-1">
-              Longitude da Sede (Depot)
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Ex: -34.90"
-              value={depotLng}
-              onChange={(e) => setDepotLng(e.target.value)}
-              className="w-full rounded-lg border border-brand-mediumGray bg-brand-bg px-4 py-2.5 text-xs text-white focus:border-brand-red focus:outline-none"
-            />
+
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <div>
+              <label className="block text-xxxs font-semibold uppercase text-brand-lightGray/80 mb-1">
+                Latitude
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ex: -8.05"
+                value={depotLat}
+                onChange={(e) => setDepotLat(e.target.value)}
+                className="w-full rounded-lg border border-brand-mediumGray bg-brand-bg px-3.5 py-2 text-xs text-white font-mono focus:border-brand-red focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xxxs font-semibold uppercase text-brand-lightGray/80 mb-1">
+                Longitude
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ex: -34.90"
+                value={depotLng}
+                onChange={(e) => setDepotLng(e.target.value)}
+                className="w-full rounded-lg border border-brand-mediumGray bg-brand-bg px-3.5 py-2 text-xs text-white font-mono focus:border-brand-red focus:outline-none"
+              />
+            </div>
           </div>
         </div>
 
@@ -267,6 +290,24 @@ export default function ConfigPage() {
         </div>
 
       </form>
+
+      {/* Modal de Seleção de Sede no Mapa */}
+      {isMapModalOpen && (
+        <DepotLocationPickerModal
+          initialLat={depotLat}
+          initialLng={depotLng}
+          onClose={() => setIsMapModalOpen(false)}
+          onConfirm={(lat, lng) => {
+            setDepotLat(lat);
+            setDepotLng(lng);
+            setIsMapModalOpen(false);
+            setMessage({
+              type: "success",
+              text: `Localização da sede selecionada no mapa (${lat}, ${lng}). Lembre-se de clicar em "Salvar Configurações" para gravar.`,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -135,27 +135,28 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
 
   // Separacao de pedidos pelas colunas convencionais e areas exclusivas
   const columns = useMemo(() => {
-    const novo = orders.filter(
-      (o) => o.status === OrderStatus.NOVO && o.type !== OrderType.COMANDA
-    );
-    const emPreparo = orders.filter(
-      (o) => o.status === OrderStatus.EM_PREPARO && o.type !== OrderType.COMANDA
-    );
+    // Coluna Novos recebe tanto Delivery, Retirada quanto Comandas de Mesa
+    const novo = orders.filter((o) => o.status === OrderStatus.NOVO);
+
+    // Coluna Em Preparo (Na Cozinha)
+    const emPreparo = orders.filter((o) => o.status === OrderStatus.EM_PREPARO);
+
+    // Coluna Em Rota (apenas Delivery)
     const emRota = orders.filter(
       (o) => o.status === OrderStatus.EM_ROTA && o.type === OrderType.DELIVERY
     );
-    const entregue = orders.filter(
-      (o) => o.status === OrderStatus.ENTREGUE
-    );
-    
-    // Area de Balcao (PRONTO_RETIRADA)
+
+    // Coluna Concluídos
+    const entregue = orders.filter((o) => o.status === OrderStatus.ENTREGUE);
+
+    // Area de Balcao (PRONTO_RETIRADA para Retirada)
     const balcao = orders.filter(
-      (o) => o.status === OrderStatus.PRONTO_RETIRADA
+      (o) => o.status === OrderStatus.PRONTO_RETIRADA && o.type === OrderType.RETIRADA
     );
 
-    // Area de Comandas (Consumo Local)
+    // Area de Comandas de Mesa (Prontos para Servir no salão ou em consumo)
     const comandas = orders.filter(
-      (o) => o.type === OrderType.COMANDA
+      (o) => o.type === OrderType.COMANDA && o.status === OrderStatus.PRONTO_RETIRADA
     );
 
     return { novo, emPreparo, emRota, entregue, balcao, comandas };
@@ -169,19 +170,37 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
       [PaymentMethod.DEBITO]: "Debito",
     };
 
+    const isTableOrder = order.type === OrderType.COMANDA;
+
     return (
       <div
         key={order.id}
-        className="rounded-xl border border-brand-mediumGray bg-brand-bg p-4 space-y-3 hover:border-brand-lightGray/30 transition-all text-xs"
+        className={`rounded-xl border bg-brand-bg p-4 space-y-3 hover:border-brand-lightGray/30 transition-all text-xs ${
+          isTableOrder ? "border-purple-500/40 bg-purple-950/10" : "border-brand-mediumGray"
+        }`}
       >
         {/* Header do Card */}
         <div className="flex justify-between items-start">
           <div>
             <span className="font-mono font-bold text-brand-red text-sm">#{order.orderNumber}</span>
-            <span className="block text-xxs text-brand-lightGray/85 capitalize font-semibold">{order.customerName}</span>
+            <span className="block text-xxs text-brand-lightGray/85 capitalize font-semibold">
+              {order.customerName}
+            </span>
           </div>
-          <span className="text-xxs font-bold uppercase tracking-wider bg-brand-darkGray px-2 py-0.5 rounded border border-brand-mediumGray">
-            {order.type === OrderType.DELIVERY ? "Delivery" : order.type === OrderType.RETIRADA ? "Retirada" : "Mesa"}
+          <span
+            className={`text-xxs font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+              isTableOrder
+                ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                : order.type === OrderType.DELIVERY
+                ? "bg-blue-500/15 text-blue-300 border-blue-500/25"
+                : "bg-amber-500/15 text-amber-300 border-amber-500/25"
+            }`}
+          >
+            {isTableOrder
+              ? `🍽️ ${order.customerName.includes("Mesa") ? order.customerName : "Mesa"}`
+              : order.type === OrderType.DELIVERY
+              ? "🛵 Delivery"
+              : "🛍️ Retirada"}
           </span>
         </div>
 
@@ -216,22 +235,23 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
 
         {/* Pagamento e Valor */}
         <div className="flex justify-between items-center text-xxs text-brand-lightGray font-mono pt-1">
-          <span>Pg: {paymentLabels[order.paymentMethod]}</span>
+          <span>Pg: {paymentLabels[order.paymentMethod] || "Comanda"}</span>
           <span className="font-bold text-white text-xs">Total: R$ {order.total.toFixed(2)}</span>
         </div>
 
         {/* Acoes de Estado */}
         <div className="pt-2 flex flex-wrap gap-1.5 border-t border-brand-mediumGray/50">
-
+          {/* Status NOVO -> Prepara */}
           {order.status === OrderStatus.NOVO && (
             <button
               onClick={() => handleUpdateStatus(order.id, OrderStatus.EM_PREPARO)}
               className="flex-1 bg-brand-red hover:bg-brand-redHover text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs"
             >
-              Preparar
+              Preparar (Cozinha)
             </button>
           )}
 
+          {/* Status EM_PREPARO para Delivery -> Envia Rota */}
           {order.status === OrderStatus.EM_PREPARO && order.type === OrderType.DELIVERY && (
             <button
               onClick={() => handleUpdateStatus(order.id, OrderStatus.EM_ROTA)}
@@ -241,6 +261,7 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
             </button>
           )}
 
+          {/* Status EM_PREPARO para Retirada -> Balcão */}
           {order.status === OrderStatus.EM_PREPARO && order.type === OrderType.RETIRADA && (
             <button
               onClick={() => handleUpdateStatus(order.id, OrderStatus.PRONTO_RETIRADA)}
@@ -250,15 +271,18 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
             </button>
           )}
 
+          {/* Status EM_PREPARO para Comanda de Mesa -> Pronto para Servir na Mesa */}
           {order.status === OrderStatus.EM_PREPARO && order.type === OrderType.COMANDA && (
             <button
-              onClick={() => handleUpdateStatus(order.id, OrderStatus.ENTREGUE)}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs"
+              onClick={() => handleUpdateStatus(order.id, OrderStatus.PRONTO_RETIRADA)}
+              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs flex items-center justify-center gap-1 shadow-sm"
+              title="Avisa o garçom no salão que o pedido está pronto para servir"
             >
-              Mesa Entregue
+              <span>🍽️</span> Pronto p/ Servir (Mesa)
             </button>
           )}
 
+          {/* Status EM_ROTA (Delivery) -> Conclui */}
           {order.status === OrderStatus.EM_ROTA && (
             <button
               onClick={() => handleUpdateStatus(order.id, OrderStatus.ENTREGUE)}
@@ -268,7 +292,8 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
             </button>
           )}
 
-          {order.status === OrderStatus.PRONTO_RETIRADA && (
+          {/* Status PRONTO_RETIRADA (Retirada) -> Cliente Retirou */}
+          {order.status === OrderStatus.PRONTO_RETIRADA && order.type === OrderType.RETIRADA && (
             <button
               onClick={() => handleUpdateStatus(order.id, OrderStatus.ENTREGUE)}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs"
@@ -277,7 +302,17 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
             </button>
           )}
 
-          {/* Pedidos concluidos ou cancelados mostram etiqueta de finalizado */}
+          {/* Status PRONTO_RETIRADA (Mesa) -> Garçom / Admin marca como Servido */}
+          {order.status === OrderStatus.PRONTO_RETIRADA && order.type === OrderType.COMANDA && (
+            <button
+              onClick={() => handleUpdateStatus(order.id, OrderStatus.ENTREGUE)}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs flex items-center justify-center gap-1"
+            >
+              <span>✓</span> Servido na Mesa
+            </button>
+          )}
+
+          {/* Pedidos concluídos */}
           {order.status === OrderStatus.ENTREGUE && (
             <span className="flex-1 text-center py-1 bg-green-500/10 border border-green-500/20 text-green-400 font-bold rounded text-xxs">
               ✓ Pedido Concluido

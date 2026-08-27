@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sseManager } from "@/lib/sse";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, OrderType } from "@prisma/client";
 
 export async function PATCH(
   request: Request,
@@ -50,6 +50,7 @@ export async function PATCH(
       where: { id },
       data: updateData,
       include: {
+        comanda: true,
         items: {
           include: {
             flavors: true,
@@ -60,6 +61,15 @@ export async function PATCH(
 
     // Publica alteração de status para o Kanban Board via SSE
     sseManager.publish("order_updated", updatedOrder);
+
+    // Se for pedido de mesa pronto para servir, dispara alerta específico para a tela do garçom
+    if (
+      status === OrderStatus.PRONTO_RETIRADA &&
+      (updatedOrder.type === OrderType.COMANDA || updatedOrder.comandaId)
+    ) {
+      sseManager.publish("table_order_ready", updatedOrder);
+      console.log(`[SSE] Pedido de mesa #${updatedOrder.orderNumber} (Mesa ${updatedOrder.comanda?.number || "—"}) marcado como pronto para servir!`);
+    }
 
     // Se o pedido entra EM_PREPARO, disparamos a notificação estruturada para a bobina térmica
     if (status === OrderStatus.EM_PREPARO) {

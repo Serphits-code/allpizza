@@ -7,6 +7,8 @@ import { OrderStatus } from "@prisma/client";
 import { clearDriverActiveRoute } from "@/lib/driver-active-route";
 import { notifyCustomerOrderStatus } from "@/lib/push-notifications";
 
+export const dynamic = "force-dynamic";
+
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
@@ -16,98 +18,136 @@ export async function PATCH(
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
+  const role = session.user.role;
+  if (role !== "DRIVER" && role !== "ADMIN" && role !== "MANAGER") {
+    return NextResponse.json(
+      { error: "Acesso restrito a entregadores e administradores" },
+      { status: 403 }
+    );
+  }
+
   const driverId = session.user.id;
   const { id } = params;
 
   try {
-    const { action, status } = await request.json();
+    const body = await request.json();
+    const action = body.action || (body.status === "entregue" || body.status === OrderStatus.ENTREGUE ? "deliver" : null);
 
-    // Carrega o pedido
-    const order = await prisma.order.findUnique({
-      where: { id },
-    });
-
-    if (!order) {
-      return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
-    }
-
-    // --- AÇÃO: CLAIM (Coleta para a Bag) ---
+    // --- AÇÃO: CLAIM (Colocar na Bag com proteção de concorrência) ---
     if (action === "claim") {
-      // Regra de concorrência segura utilizando transação/bloqueio ou verificação lógica
-      // Verificamos se o pedido já tem outro motorista associado
-      if (order.driverId && order.driverId !== driverId) {
+      const updateResult = await prisma.order.updateMany({
+        where: {
+          id,
+          status: OrderStatus.EM_ROTA,
+          OR: [{ driverId: null }, { driverId }],
+        },
+        data: {
+          driverId,
+        },
+      });
+
+      if (updateResult.count === 0) {
         return NextResponse.json(
-          { error: "Pedido já está na bag de outro entregador" },
+          { error: "Este pedido já foi assumido por outro entregador ou não está mais disponível em rota." },
           { status: 409 }
         );
       }
 
-      // Coloca na bag do piloto conectado
-      const updatedOrder = await prisma.order.update({
+      const updatedOrder = await prisma.order.findUnique({
         where: { id },
-        data: {
-          driverId,
-          status: OrderStatus.EM_ROTA, // Garante que está em rota
+        include: {
+          items: {
+            include: { flavors: true, toppings: true },
+          },
         },
       });
 
-      // Limpa cache de rota ativa do motorista para recalcular
+      // Limpa cache de rota ativa
       await clearDriverActiveRoute(driverId);
 
-      // Dispara SSE para o painel de administração atualizar
-      sseManager.publish("order_updated", updatedOrder);
+      // Notifica SSE
+      if (updatedOrder) {
+        sseManager.publish("order_updated", updatedOrder);
+      }
 
       return NextResponse.json({ success: true, order: updatedOrder });
     }
 
-    // --- AÇÃO: RELEASE (Devolução à fila pública) ---
+    // --- AÇÃO: RELEASE (Remover da Bag / Devolver à fila pública) ---
     if (action === "release") {
-      if (order.driverId !== driverId) {
+      const updateResult = await prisma.order.updateMany({
+        where: {
+          id,
+          status: OrderStatus.EM_ROTA,
+          driverId,
+        },
+        data: {
+          driverId: null,
+        },
+      });
+
+      if (updateResult.count === 0) {
         return NextResponse.json(
-          { error: "Você só pode liberar pedidos que estão na sua bag" },
+          { error: "Você só pode devolver pedidos que estão na sua bag." },
           { status: 403 }
         );
       }
 
-      const updatedOrder = await prisma.order.update({
+      const updatedOrder = await prisma.order.findUnique({
         where: { id },
-        data: {
-          driverId: null,
-          status: OrderStatus.EM_ROTA, // permanece na fila de entrega pública
+        include: {
+          items: {
+            include: { flavors: true, toppings: true },
+          },
         },
       });
 
       await clearDriverActiveRoute(driverId);
 
-      sseManager.publish("order_updated", updatedOrder);
+      if (updatedOrder) {
+        sseManager.publish("order_updated", updatedOrder);
+      }
 
       return NextResponse.json({ success: true, order: updatedOrder });
     }
 
     // --- AÇÃO: DELIVER (Confirmar entrega realizada) ---
-    if (action === "deliver" || status === "entregue" || status === OrderStatus.ENTREGUE) {
-      if (order.driverId !== driverId) {
-        return NextResponse.json(
-          { error: "Você só pode concluir pedidos que estão na sua bag" },
-          { status: 403 }
-        );
-      }
-
-      const updatedOrder = await prisma.order.update({
-        where: { id },
+    if (action === "deliver") {
+      const updateResult = await prisma.order.updateMany({
+        where: {
+          id,
+          status: OrderStatus.EM_ROTA,
+          driverId,
+        },
         data: {
           status: OrderStatus.ENTREGUE,
           deliveredAt: new Date(),
         },
       });
 
+      if (updateResult.count === 0) {
+        return NextResponse.json(
+          { error: "Você precisa colocar o pedido na sua bag antes de concluir a entrega." },
+          { status: 403 }
+        );
+      }
+
+      const updatedOrder = await prisma.order.findUnique({
+        where: { id },
+        include: {
+          items: {
+            include: { flavors: true, toppings: true },
+          },
+        },
+      });
+
       await clearDriverActiveRoute(driverId);
 
-      // Gatilho de notificação push
+      // Notifica push e SSE
       await notifyCustomerOrderStatus(id, "ENTREGUE");
-
-      // Publica atualização via SSE
-      sseManager.publish("order_updated", updatedOrder);
+      if (updatedOrder) {
+        sseManager.publish("order_updated", updatedOrder);
+      }
 
       return NextResponse.json({ success: true, order: updatedOrder });
     }

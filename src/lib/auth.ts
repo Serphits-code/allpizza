@@ -30,6 +30,10 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Usuário ou senha incorretos.");
         }
 
+        if (!user.active) {
+          throw new Error("Esta conta de usuário está desativada. Entre em contato com o administrador.");
+        }
+
         const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!isValid) {
           throw new Error("Usuário ou senha incorretos.");

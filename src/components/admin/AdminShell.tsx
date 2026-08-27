@@ -16,11 +16,16 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   }
 
   const navItems = [
-    { name: "Painel de Pedidos (Kanban)", href: "/admin/pedidos", roles: ["ADMIN", "MANAGER", "KITCHEN"] },
-    { name: "Cadastro de Cardápio", href: "/admin/cardapio", roles: ["ADMIN", "MANAGER"] },
-    { name: "Zonas de Entrega", href: "/admin/zonas", roles: ["ADMIN", "MANAGER"] },
-    { name: "Histórico de Clientes", href: "/admin/clientes", roles: ["ADMIN", "MANAGER"] },
-    { name: "Configurações", href: "/admin/configuracoes", roles: ["ADMIN", "MANAGER"] },
+    { name: "Dashboard", href: "/admin", icon: "📊", roles: ["ADMIN", "MANAGER"] },
+    { name: "Pedidos (Kanban)", href: "/admin/pedidos", icon: "📋", roles: ["ADMIN", "MANAGER", "KITCHEN"] },
+    { name: "Comandas & Mesas", href: "/admin/comandas", icon: "🍽️", roles: ["ADMIN", "MANAGER", "GARCOM"] },
+    { name: "Mapa de Entregas", href: "/admin/mapa", icon: "🗺️", roles: ["ADMIN", "MANAGER"] },
+    { name: "Resumo Diário", href: "/admin/resumo", icon: "📅", roles: ["ADMIN", "MANAGER"] },
+    { name: "Contatos / Clientes", href: "/admin/contatos", icon: "👥", roles: ["ADMIN", "MANAGER"] },
+    { name: "Cadastro de Cardápio", href: "/admin/cardapio", icon: "🍕", roles: ["ADMIN", "MANAGER"] },
+    { name: "Zonas de Entrega", href: "/admin/zonas", icon: "📍", roles: ["ADMIN", "MANAGER"] },
+    { name: "Usuários & Equipe", href: "/admin/usuarios", icon: "👤", roles: ["ADMIN"] },
+    { name: "Configurações", href: "/admin/configuracoes", icon: "⚙️", roles: ["ADMIN", "MANAGER"] },
   ];
 
   const userRole = session?.user?.role || "KITCHEN";
@@ -43,7 +48,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             AllDelivery Control
           </span>
         </div>
-        <nav className="flex-1 space-y-1 px-4 py-6">
+        <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
           {navItems
             .filter((item) => item.roles.includes(userRole))
             .map((item) => {
@@ -52,13 +57,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`group flex items-center px-4 py-3 text-sm font-semibold rounded-lg transition-colors ${
+                  className={`group flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all ${
                     active
-                      ? "bg-brand-red text-white"
+                      ? "bg-brand-red text-white shadow-lg shadow-brand-red/20 font-bold"
                       : "text-brand-lightGray hover:bg-brand-bg hover:text-white"
                   }`}
                 >
-                  {item.name}
+                  <span className="text-sm">{item.icon}</span>
+                  <span>{item.name}</span>
                 </Link>
               );
             })}
@@ -71,7 +77,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
           <button
             onClick={handleLogout}
-            className="w-full rounded-lg bg-brand-bg border border-brand-mediumGray hover:bg-brand-red hover:border-brand-red py-2.5 text-xs font-bold text-white transition-all cursor-pointer text-center"
+            className="w-full rounded-lg bg-brand-bg border border-brand-mediumGray hover:bg-brand-red hover:border-brand-red py-2 text-xs font-bold text-white transition-all cursor-pointer text-center"
           >
             Sair do Painel
           </button>
@@ -110,7 +116,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 <span className="font-serif text-lg font-bold text-brand-red">AllDelivery Control</span>
                 <button onClick={() => setMobileOpen(false)} className="text-brand-lightGray hover:text-white">✕</button>
               </div>
-              <nav className="flex-1 space-y-1 px-4 py-6">
+              <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
                 {navItems
                   .filter((item) => item.roles.includes(userRole))
                   .map((item) => (
@@ -118,13 +124,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                       key={item.href}
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
-                      className={`group flex items-center px-4 py-3 text-sm font-semibold rounded-lg transition-colors ${
+                      className={`group flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all ${
                         pathname === item.href
-                          ? "bg-brand-red text-white"
+                          ? "bg-brand-red text-white shadow-lg shadow-brand-red/20 font-bold"
                           : "text-brand-lightGray hover:bg-brand-bg hover:text-white"
                       }`}
                     >
-                      {item.name}
+                      <span className="text-sm">{item.icon}</span>
+                      <span>{item.name}</span>
                     </Link>
                   ))}
               </nav>
