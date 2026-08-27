@@ -88,14 +88,18 @@ export default function DashboardMetrics() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   // Filtros de Data Formatados no Fuso Local
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
 
-  // Inicializa datas locais (30 dias atrás até hoje)
+  // Inicializa datas locais (30 dias atrás até hoje) e estado montado
   useEffect(() => {
+    setMounted(true);
+    setLastUpdated(new Date());
+
     const now = new Date();
     const endStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
       now.getDate()
@@ -197,8 +201,8 @@ export default function DashboardMetrics() {
               <span>Tempo Real</span>
             </div>
           </div>
-          <span className="text-xxs text-slate-400 block mt-0.5">
-            Última atualização: {lastUpdated.toLocaleTimeString("pt-BR")}
+          <span className="text-xxs text-slate-400 block mt-0.5" suppressHydrationWarning>
+            Última atualização: {mounted && lastUpdated ? lastUpdated.toLocaleTimeString("pt-BR") : "--:--:--"}
           </span>
         </div>
 
