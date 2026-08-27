@@ -16,8 +16,14 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Por favor, preencha email e senha.");
         }
 
-        const user = await prisma.adminUser.findUnique({
-          where: { email: credentials.email },
+        const trimmedEmail = credentials.email.trim();
+        const user = await prisma.adminUser.findFirst({
+          where: {
+            email: {
+              equals: trimmedEmail,
+              mode: "insensitive",
+            },
+          },
         });
 
         if (!user) {

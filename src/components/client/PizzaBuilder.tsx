@@ -1,12 +1,23 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCartStore } from "@/stores/cartStore";
 import { calcPizzaItemTotal, calcSingleToppingPrice, FlavorInput, CrustInput, SelectedToppingItem } from "@/lib/pricing";
+import { getOptimizedImageUrl } from "@/lib/imageHelper";
 import PizzaSvg from "./PizzaSvg";
 import FlavorDistribution from "./FlavorDistribution";
-import ToppingSelector, { ToppingCategory } from "./ToppingSelector";
+import type { ToppingCategory } from "./ToppingSelector";
+
+const ToppingSelector = dynamic(() => import("./ToppingSelector"), {
+  loading: () => (
+    <div className="py-12 text-center text-xs text-brand-lightGray animate-pulse flex flex-col items-center justify-center gap-3">
+      <div className="w-8 h-8 rounded-full border-2 border-brand-red border-t-transparent animate-spin" />
+      <span>Carregando adicionais...</span>
+    </div>
+  ),
+});
 
 interface PizzaFlavor {
   id: string;
@@ -756,9 +767,10 @@ export default function PizzaBuilder({ flavors, crusts, standardCategories, topp
                               {prod.imageUrl && (
                                 <div className="w-16 h-16 rounded-lg bg-brand-darkGray border border-brand-mediumGray overflow-hidden flex-shrink-0">
                                   <img
-                                    src={prod.imageUrl}
+                                    src={getOptimizedImageUrl(prod.imageUrl)}
                                     alt={prod.name}
                                     className="w-full h-full object-cover"
+                                    loading="lazy"
                                     onError={(e) => {
                                       (e.target as HTMLImageElement).src = "/images/pizza-placeholder.png";
                                     }}
@@ -969,15 +981,16 @@ export default function PizzaBuilder({ flavors, crusts, standardCategories, topp
                             <div
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setLightboxImage(flavor.imageUrl || "/images/pizza-placeholder.png");
+                                setLightboxImage(getOptimizedImageUrl(flavor.imageUrl));
                               }}
                               className="absolute -left-8 sm:-left-10 top-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-brand-mediumGray bg-brand-darkGray shadow-lg overflow-hidden flex-shrink-0 cursor-pointer group/img"
                               title="Visualizar pizza grande"
                             >
                               <img
-                                src={flavor.imageUrl || "/images/pizza-placeholder.png"}
+                                src={getOptimizedImageUrl(flavor.imageUrl)}
                                 alt={flavor.name}
                                 className="w-full h-full object-cover group-hover/img:scale-105 group-hover:rotate-6 transition-transform duration-500"
+                                loading="lazy"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = "/images/pizza-placeholder.png";
                                 }}
@@ -1012,7 +1025,7 @@ export default function PizzaBuilder({ flavors, crusts, standardCategories, topp
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      setLightboxImage(flavor.imageUrl || "/images/pizza-placeholder.png");
+                                      setLightboxImage(getOptimizedImageUrl(flavor.imageUrl));
                                     }}
                                     className="p-1 rounded-lg bg-brand-bg hover:bg-brand-mediumGray border border-brand-mediumGray/50 text-brand-lightGray hover:text-white transition-colors cursor-pointer"
                                     title="Visualizar pizza grande"

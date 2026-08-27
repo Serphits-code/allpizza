@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useCartStore } from "@/stores/cartStore";
+import { getOptimizedImageUrl } from "@/lib/imageHelper";
 
 interface PizzaCategory {
   id: string;
@@ -213,14 +214,15 @@ export default function MenuPage({ pizzaCategories, standardCategories }: MenuPa
               >
                 {/* Pizza Image - Left side overlapping, clickable to view large */}
                 <div
-                  onClick={() => setLightboxImage(flavor.imageUrl || "/images/pizza-placeholder.png")}
+                  onClick={() => setLightboxImage(getOptimizedImageUrl(flavor.imageUrl))}
                   className="absolute -left-10 sm:-left-12 top-1/2 -translate-y-1/2 w-28 h-28 sm:w-32 sm:h-32 rounded-full border border-brand-mediumGray bg-brand-bg shadow-xl overflow-hidden flex-shrink-0 cursor-pointer group/img"
                   title="Visualizar pizza grande"
                 >
                   <img
-                    src={flavor.imageUrl || "/images/pizza-placeholder.png"}
+                    src={getOptimizedImageUrl(flavor.imageUrl)}
                     alt={flavor.name}
                     className="w-full h-full object-cover group-hover/img:scale-105 group-hover:rotate-6 transition-transform duration-500"
+                    loading="lazy"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = "/images/pizza-placeholder.png";
                     }}
@@ -252,7 +254,7 @@ export default function MenuPage({ pizzaCategories, standardCategories }: MenuPa
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          setLightboxImage(flavor.imageUrl || "/images/pizza-placeholder.png");
+                          setLightboxImage(getOptimizedImageUrl(flavor.imageUrl));
                         }}
                         className="p-1.5 rounded-lg bg-brand-bg/60 hover:bg-brand-mediumGray border border-brand-mediumGray/50 text-brand-lightGray hover:text-white transition-colors cursor-pointer flex-shrink-0"
                         title="Visualizar pizza grande"

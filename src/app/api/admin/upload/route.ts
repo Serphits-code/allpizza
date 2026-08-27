@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { promises as fs } from "fs";
 import path from "path";
+import sharp from "sharp";
 
 export async function POST(request: Request) {
   // 1. Autenticação e Autorização
@@ -19,33 +20,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Nenhum arquivo enviado" }, { status: 400 });
     }
 
-    // Validações de Tamanho (Max 5MB)
-    const MAX_SIZE = 5 * 1024 * 1024;
+    // Validações de Tamanho (Max 10MB)
+    const MAX_SIZE = 10 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: "Arquivo muito grande (máximo 5MB)" }, { status: 400 });
+      return NextResponse.json({ error: "Arquivo muito grande (máximo 10MB)" }, { status: 400 });
     }
 
-    // Validações de Tipo de Mídia (jpg, jpeg, png)
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+    // Validações de Tipo de Mídia (jpg, jpeg, png, webp)
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: "Tipo de arquivo inválido (apenas JPG, JPEG, PNG)" }, { status: 400 });
+      return NextResponse.json({ error: "Tipo de arquivo inválido (apenas JPG, PNG, WEBP)" }, { status: 400 });
     }
 
-    // Sanitiza nome do arquivo para evitar path traversal ou caracteres estranhos
-    const ext = path.extname(file.name);
-    const sanitizedBase = path.basename(file.name, ext).replace(/[^a-zA-Z0-9_-]/g, "");
-    const fileName = `${sanitizedBase}-${Date.now()}${ext}`;
+    // Sanitiza nome do arquivo para salvar como .png otimizado
+    const sanitizedBase = path.basename(file.name, path.extname(file.name)).replace(/[^a-zA-Z0-9_-]/g, "");
+    const fileName = `${sanitizedBase}-${Date.now()}.png`;
 
-    // Define diretório de destino local no VPS (/public/uploads)
+    // Define diretório de destino local (/public/uploads)
     const uploadDir = path.join(process.cwd(), "public", "uploads");
 
     // Garante que o diretório existe
     await fs.mkdir(uploadDir, { recursive: true });
 
-    // Salva o arquivo no disco
+    // Salva o arquivo no disco otimizado via Sharp (Redimensiona para no máx 800x800 e comprime)
     const filePath = path.join(uploadDir, fileName);
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(filePath, buffer);
+    const inputBuffer = Buffer.from(await file.arrayBuffer());
+    
+    const optimizedBuffer = await sharp(inputBuffer)
+      .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+      .png({ quality: 80, compressionLevel: 9, palette: true })
+      .toBuffer();
+
+    await fs.writeFile(filePath, optimizedBuffer);
 
     const relativeUrl = `/uploads/${fileName}`;
 
@@ -55,3 +61,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Erro ao processar upload do arquivo" }, { status: 500 });
   }
 }
+

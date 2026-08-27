@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { animate } from "framer-motion";
+import { getOptimizedImageUrl } from "@/lib/imageHelper";
 
 interface PizzaFlavor {
   id: string;
@@ -222,7 +223,7 @@ export default function PizzaSvg({
                   {/* Se houver imagem do sabor, renderizamos com clip-path */}
                   {flavor.imageUrl && (
                     <image
-                      href={flavor.imageUrl}
+                      href={getOptimizedImageUrl(flavor.imageUrl)}
                       x={cx - radius}
                       y={cy - radius}
                       width={radius * 2}
