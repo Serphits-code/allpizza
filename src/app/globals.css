@@ -3,6 +3,13 @@
 @tailwind utilities;
 
 @layer base {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+    position: relative;
+  }
+
   body {
     @apply bg-brand-bg text-white font-sans antialiased selection:bg-brand-red selection:text-white;
   }

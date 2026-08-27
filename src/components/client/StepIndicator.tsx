@@ -135,7 +135,8 @@ export default function StepIndicator({
                     : "text-neutral-500 group-hover:text-neutral-400"
                 }`}
               >
-                {step.label}
+                <span className="sm:hidden">{step.shortLabel}</span>
+                <span className="hidden sm:inline">{step.label}</span>
               </span>
             </div>
           );

@@ -26,55 +26,45 @@ export default function ClientHeader() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-brand-mediumGray bg-brand-bg/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl h-20 items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center space-x-4">
-          <Link href="/" className="flex items-center space-x-2">
-            {companyLogo ? (
-              <img src={companyLogo} alt={companyName} className="h-10 w-auto object-contain" />
-            ) : (
-              <>
-                <span className="font-serif text-2xl font-bold tracking-wider text-brand-red">
-                  {companyName}
+    <header className="sticky top-0 z-40 w-full bg-brand-bg/95 backdrop-blur-md border-b border-brand-mediumGray/60 select-none">
+      {/* Barra Principal do Header */}
+      <div className="mx-auto flex max-w-6xl h-14 sm:h-16 items-center justify-between px-3 sm:px-6">
+        {/* Lado Esquerdo: Logo e Nome */}
+        <Link href="/" className="flex items-center gap-2 group min-w-0">
+          {companyLogo ? (
+            <img src={companyLogo} alt={companyName} className="h-8 sm:h-10 w-auto object-contain shrink-0" />
+          ) : (
+            <div className="flex items-baseline gap-2 truncate">
+              <span className="font-serif text-lg sm:text-2xl font-bold tracking-wider text-brand-red group-hover:text-brand-redHover transition-colors truncate max-w-[135px] xs:max-w-[170px] sm:max-w-none">
+                {companyName}
+              </span>
+              {companyName === "Artisanal" && (
+                <span className="hidden md:inline font-sans text-xs tracking-widest text-brand-lightGray uppercase border-l border-brand-mediumGray pl-2">
+                  Crust & Ember
                 </span>
-                {companyName === "Artisanal" && (
-                  <span className="hidden sm:inline font-sans text-xs tracking-widest text-brand-lightGray uppercase border-l border-brand-mediumGray pl-2">
-                    Crust & Ember
-                  </span>
-                )}
-              </>
-            )}
-          </Link>
-
-          {mounted && (
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xxs font-bold border transition-colors ${
-              storeOpen
-                ? "bg-green-600/10 border-green-500/20 text-green-400"
-                : "bg-brand-red/10 border-brand-red/20 text-brand-red"
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${storeOpen ? "bg-green-400 animate-pulse" : "bg-brand-red"}`} />
-              Delivery: {storeOpen ? "Aberto" : "Fechado"}
+              )}
             </div>
           )}
-        </div>
+        </Link>
 
-        <nav className="flex items-center space-x-6">
+        {/* Lado Direito: Navegação + Carrinho */}
+        <nav className="flex items-center space-x-2.5 xs:space-x-4 sm:space-x-6 shrink-0">
           <Link
             href="/"
-            className="text-sm font-medium text-brand-lightGray hover:text-white transition-colors"
+            className="text-xs sm:text-sm font-medium text-brand-lightGray hover:text-white transition-colors"
           >
             Cardápio
           </Link>
           <Link
             href="/monte-sua-pizza"
-            className="text-sm font-medium text-brand-lightGray hover:text-brand-red transition-colors"
+            className="text-xs sm:text-sm font-medium text-brand-lightGray hover:text-brand-red transition-colors whitespace-nowrap"
           >
             Monte sua Pizza
           </Link>
 
           <Link
             href="/carrinho"
-            className="relative flex items-center justify-center p-2 text-brand-lightGray hover:text-white transition-colors"
+            className="relative flex items-center justify-center p-1.5 sm:p-2 text-brand-lightGray hover:text-white transition-colors"
             aria-label="Carrinho de compras"
           >
             {/* SVG Ícone do Carrinho */}
@@ -84,10 +74,7 @@ export default function ClientHeader() {
               viewBox="0 0 24 24"
               strokeWidth={1.5}
               stroke="currentColor"
-              width={24}
-              height={24}
-              style={{ width: "24px", height: "24px", minWidth: "24px", minHeight: "24px" }}
-              className="w-6 h-6 shrink-0"
+              className="w-5 h-5 sm:w-6 sm:h-6 shrink-0"
             >
               <path
                 strokeLinecap="round"
@@ -97,13 +84,36 @@ export default function ClientHeader() {
             </svg>
 
             {mounted && itemsCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-red text-xxs font-bold text-white ring-2 ring-brand-bg">
+              <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 flex h-4.5 w-4.5 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-brand-red text-[10px] sm:text-xxs font-bold text-white ring-2 ring-brand-bg shadow-sm">
                 {itemsCount}
               </span>
             )}
           </Link>
         </nav>
       </div>
+
+      {/* Barra Discreta de Status do Delivery (De borda a borda abaixo do header) */}
+      {mounted && (
+        <div
+          className={`w-full py-1 px-3 text-center text-xs font-semibold flex items-center justify-center gap-2 border-t transition-colors select-none ${
+            storeOpen
+              ? "bg-emerald-950/80 border-emerald-500/20 text-emerald-300 shadow-inner"
+              : "bg-red-950/80 border-red-500/20 text-red-300 shadow-inner"
+          }`}
+        >
+          <span
+            className={`w-2 h-2 rounded-full shrink-0 ${
+              storeOpen ? "bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400/80" : "bg-brand-red"
+            }`}
+          />
+          <span className="text-[11px] sm:text-xs">
+            Delivery: <strong className="font-bold">{storeOpen ? "Aberto" : "Fechado"}</strong>
+          </span>
+          <span className="text-[10px] sm:text-[11px] opacity-75 hidden xs:inline">
+            {storeOpen ? "• Faça seu pedido online agora!" : "• No momento não estamos recebendo pedidos online"}
+          </span>
+        </div>
+      )}
     </header>
   );
 }
