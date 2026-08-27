@@ -132,7 +132,7 @@ export default function PizzaSvg({
   }, [safeSlices, totalSlices]);
 
   return (
-    <div className={`relative w-72 h-72 sm:w-88 sm:h-88 rounded-full bg-brand-bg shadow-2xl flex items-center justify-center transition-all ${
+    <div className={`relative w-56 h-56 xs:w-64 xs:h-64 sm:w-80 sm:h-80 md:w-88 md:h-88 rounded-full bg-brand-bg shadow-2xl flex items-center justify-center transition-all ${
       isFullPizzaSelected ? "ring-4 ring-emerald-500/70 shadow-emerald-500/20" : ""
     }`}>
       {/* SVG da Pizza */}
@@ -343,15 +343,19 @@ export default function PizzaSvg({
             key={`btn-${sector.idx}`}
             onClick={() => onSectorClick(sector.idx)}
             style={sector.centroid}
-            className={`absolute z-30 -translate-x-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-xl border transition-all text-[10px] sm:text-xs font-bold tracking-wider shadow-lg cursor-pointer max-w-[140px] flex items-center gap-1.5 ${
+            className={`absolute z-30 -translate-x-1/2 -translate-y-1/2 px-3 py-1.5 rounded-full border transition-all text-xs font-semibold tracking-wide shadow-xl cursor-pointer max-w-[130px] flex items-center justify-center gap-1.5 ${
               isActive
-                ? "bg-emerald-950/95 border-emerald-400 text-emerald-300 ring-2 ring-emerald-500 scale-105 shadow-emerald-950/80 font-extrabold"
-                : "bg-brand-bg/95 border-brand-red/40 hover:border-brand-red hover:bg-brand-red hover:text-white text-brand-red"
+                ? "bg-emerald-950/95 border-emerald-400 text-emerald-300 ring-2 ring-emerald-500 scale-105 shadow-emerald-950/80 font-bold"
+                : flavor
+                ? "bg-black/75 backdrop-blur-md border-brand-red/50 hover:border-brand-red text-white hover:bg-brand-red font-medium"
+                : "bg-black/70 backdrop-blur-md border-white/20 text-neutral-200 hover:border-white hover:bg-brand-red hover:text-white"
             }`}
           >
-            <span className="truncate">{flavor ? flavor.name : `Sabor ${sector.idx + 1}`}</span>
+            <span className="truncate">
+              {flavor ? flavor.name : "Selecionar"}
+            </span>
             {toppingsCount > 0 && (
-              <span className="bg-emerald-500 text-black text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-black flex-shrink-0">
+              <span className="bg-emerald-500 text-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black flex-shrink-0">
                 +{toppingsCount}
               </span>
             )}
