@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -80,8 +80,11 @@ export default function PizzaBuilder({
   const searchParams = useSearchParams();
   const addItem = useCartStore((state) => state.addItem);
 
-  // Estados do fluxo multi-etapa: "pizza" | "toppings" | "drinks"
-  const [step, setStep] = useState<StepType>("pizza");
+  // Ref para rolagem suave automática até a distribuição de fatias
+  const sliceDistributionRef = useRef<HTMLDivElement>(null);
+
+  // Estados do fluxo multi-etapa: "size" | "flavors" | "toppings" | "drinks"
+  const [step, setStep] = useState<StepType>("size");
   const [toppingTarget, setToppingTarget] = useState<"FULL" | number>("FULL");
   const [selectedToppings, setSelectedToppings] = useState<SelectedToppingItem[]>([]);
   const [selectedDrinks, setSelectedDrinks] = useState<{ [productId: string]: number }>({});
@@ -120,10 +123,9 @@ export default function PizzaBuilder({
       const half = Math.floor(total / 2);
       return [half, total - half];
     }
-    // count === 3
     if (total === 6) return [2, 2, 2];
     if (total === 8) return [3, 3, 2];
-    return [4, 3, 3]; // total === 10
+    return [4, 3, 3];
   };
 
   // Sincroniza e reseta a distribuição quando o tamanho ou a quantidade de sabores muda
@@ -225,11 +227,33 @@ export default function PizzaBuilder({
     return calcPizzaItemTotal(size, pricingFlavorsInput, pricingCrustInput, caracolRequested);
   }, [size, pricingFlavorsInput, pricingCrustInput, caracolRequested]);
 
-  // Abre a planilha de seleção para um determinado setor
+  // Abre a planilha de seleção para um determinado setor e reseta o scroll para o topo
   const handleOpenSheet = (index: number) => {
     setActiveSectorIndex(index);
     setIsSheetOpen(true);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
+
+  // Trava a rolagem da página quando o modal estiver aberto para a pizza ficar 100% fixa e estável no topo
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (isSheetOpen) {
+      window.scrollTo(0, 0);
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [isSheetOpen]);
 
   // Seleciona um sabor e avança suavemente para o próximo setor vazio se houver, ou fecha ao completar
   const handleSelectFlavor = (flavor: PizzaFlavor) => {
@@ -255,15 +279,27 @@ export default function PizzaBuilder({
           setIsSheetOpen(false);
           setActiveSectorIndex(null);
           setSearchQuery("");
+
+          // Rola suavemente a tela para a distribuição de fatias / personalização da pizza
+          setTimeout(() => {
+            sliceDistributionRef.current?.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+          }, 350);
         }, 300);
       }
     }
   };
 
-  // Validação para avançar para a etapa 2: Adicionais Extra
+  // Validações de navegação
   const canProceedToToppings = useMemo(() => {
     return selectedFlavors.slice(0, flavorCount).every(Boolean);
   }, [selectedFlavors, flavorCount]);
+
+  const handleProceedToFlavors = () => {
+    setStep("flavors");
+  };
 
   const handleProceedToToppings = () => {
     for (let i = 0; i < flavorCount; i++) {
@@ -296,7 +332,6 @@ export default function PizzaBuilder({
     setStep("toppings");
   };
 
-  // Avançar para a etapa 3: Bebidas & Acompanhamentos
   const handleProceedToDrinks = () => {
     setStep("drinks");
   };
@@ -360,7 +395,6 @@ export default function PizzaBuilder({
       displayName = `Pizza Customizada ${size} (${activeFlavors[0]?.name || "Sabores"})`;
     }
 
-    // 1. Adicionar pizza ao carrinho
     addItem({
       name: displayName,
       isPizza: true,
@@ -406,7 +440,6 @@ export default function PizzaBuilder({
       notes,
     });
 
-    // 2. Adicionar bebidas selecionadas ao carrinho
     Object.entries(selectedDrinks).forEach(([productId, qty]) => {
       if (qty > 0) {
         let foundProduct: StandardProduct | undefined = undefined;
@@ -432,7 +465,6 @@ export default function PizzaBuilder({
     router.push("/carrinho");
   };
 
-  // Helper para o nome do setor ativo
   const getSectorLabel = (idx: number | null) => {
     if (idx === null) return "";
     if (flavorCount === 1) return "PIZZA INTEIRA";
@@ -442,272 +474,345 @@ export default function PizzaBuilder({
 
   return (
     <main className="mx-auto max-w-5xl px-3 sm:px-6 py-3 sm:py-6 relative pb-28">
-      {/* 1. SEÇÃO DO TOPO (STEPPER + SELETOR DE SABORES) - DESMONTA COM SUAVE FADE QUANDO O MODAL ABRE */}
-      <AnimatePresence>
-        {!isSheetOpen && (
-          <motion.div
-            key="top-header-section"
-            initial={{ opacity: 0, y: -20, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: "auto" }}
-            exit={{ opacity: 0, y: -20, height: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden"
+      {/* 1. STEPPER HORIZONTAL (NO TOPO) */}
+      <div
+        className={`transition-opacity duration-300 mb-2 sm:mb-4 ${
+          isSheetOpen ? "opacity-0 pointer-events-none h-0 overflow-hidden" : "opacity-100"
+        }`}
+      >
+        <StepIndicator
+          currentStep={step}
+          onStepClick={(targetStep) => {
+            if (targetStep === "size") {
+              setStep("size");
+            } else if (targetStep === "flavors") {
+              setStep("flavors");
+            } else if (targetStep === "toppings") {
+              handleProceedToToppings();
+            } else if (targetStep === "drinks") {
+              if (canProceedToToppings) {
+                setStep("drinks");
+              } else {
+                handleProceedToToppings();
+              }
+            }
+          }}
+          toppingsCount={selectedToppings.length}
+          drinksCount={drinksCount}
+          canNavigateFlavors={true}
+          canNavigateToppings={canProceedToToppings}
+          canNavigateDrinks={canProceedToToppings}
+        />
+      </div>
+
+      {/* ========================================================================= */}
+      {/* PASSO 1: SELEÇÃO DO TAMANHO DA PIZZA */}
+      {/* ========================================================================= */}
+      {step === "size" && (
+        <div className="space-y-6 max-w-2xl mx-auto rounded-3xl border border-brand-mediumGray bg-brand-darkGray/90 p-5 sm:p-7 shadow-2xl backdrop-blur">
+          <div className="text-center space-y-1 border-b border-brand-mediumGray/40 pb-4">
+            <h2 className="font-serif text-xl sm:text-2xl font-bold text-white flex items-center justify-center gap-2">
+              <span>📏</span> Escolha o tamanho da sua pizza
+            </h2>
+            <p className="text-xs sm:text-sm text-brand-lightGray">
+              Selecione a proporção ideal para você ou para compartilhar!
+            </p>
+          </div>
+
+          {/* Cards Interativos de Tamanhos */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              {
+                id: "P",
+                title: "Pequena (P)",
+                slices: "4 fatias",
+                desc: "Até 2 sabores",
+                popular: false,
+              },
+              {
+                id: "M",
+                title: "Média (M)",
+                slices: "6 fatias",
+                desc: "Até 3 sabores",
+                popular: false,
+              },
+              {
+                id: "G",
+                title: "Grande (G)",
+                slices: "8 fatias",
+                desc: "Até 3 sabores",
+                popular: true,
+              },
+              {
+                id: "GG",
+                title: "Família (GG)",
+                slices: "10 fatias",
+                desc: "Até 3 sabores",
+                popular: false,
+              },
+            ].map((s) => {
+              const isSelected = size === s.id;
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => setSize(s.id)}
+                  className={`relative flex flex-col justify-between rounded-2xl p-4 border transition-all cursor-pointer select-none text-center shadow-lg active:scale-95 ${
+                    isSelected
+                      ? "bg-brand-red/15 border-2 border-brand-red ring-2 ring-brand-red/30 text-white"
+                      : "bg-[#181818] border-brand-mediumGray text-brand-lightGray hover:text-white hover:border-neutral-700"
+                  }`}
+                >
+                  {s.popular && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-neutral-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md shadow-amber-500/30 border border-amber-200 flex items-center gap-1 whitespace-nowrap z-10">
+                      <span>★</span> Mais Pedida
+                    </span>
+                  )}
+                  <div className="py-2">
+                    <span className="text-2xl sm:text-3xl font-black block font-serif text-white">
+                      {s.id}
+                    </span>
+                    <span className="text-xs font-bold block text-white mt-1">
+                      {s.slices}
+                    </span>
+                    <span className="text-[10px] text-neutral-400 block mt-0.5">
+                      {s.desc}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-neutral-800 flex items-center justify-center">
+                    <span
+                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                        isSelected
+                          ? "bg-brand-red text-white"
+                          : "bg-neutral-800 text-neutral-400"
+                      }`}
+                    >
+                      {isSelected ? "✓" : ""}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Botão para Avançar para Sabores */}
+          <div className="border-t border-brand-mediumGray/50 pt-5 flex items-center justify-end">
+            <button
+              type="button"
+              onClick={handleProceedToFlavors}
+              className="w-full sm:w-auto rounded-2xl bg-brand-red hover:bg-brand-redHover px-7 py-3.5 font-bold text-xs sm:text-sm text-white transition-all cursor-pointer shadow-lg shadow-brand-red/25 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <span>Avançar para Sabores (Passo 2)</span>
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* PASSO 2: SELEÇÃO DE SABORES & CONFIGURAÇÃO DA PIZZA */}
+      {/* ========================================================================= */}
+      {step === "flavors" && (
+        <>
+          {/* Seletor de Quantidade de Sabores */}
+          <div
+            className={`transition-opacity duration-300 flex flex-col items-center justify-center mb-2 sm:mb-4 ${
+              isSheetOpen ? "opacity-0 pointer-events-none h-0 overflow-hidden" : "opacity-100"
+            }`}
           >
-            {/* Stepper Horizontal */}
-            <div className="mb-4 sm:mb-6">
-              <StepIndicator
-                currentStep={step}
-                onStepClick={(targetStep) => {
-                  if (targetStep === "toppings") {
-                    handleProceedToToppings();
-                  } else if (targetStep === "drinks") {
-                    if (canProceedToToppings) {
-                      setStep("drinks");
-                    } else {
-                      handleProceedToToppings();
-                    }
-                  } else {
-                    setStep("pizza");
-                  }
-                }}
-                toppingsCount={selectedToppings.length}
-                drinksCount={drinksCount}
-                canNavigateToppings={canProceedToToppings}
-                canNavigateDrinks={canProceedToToppings}
+            <span className="text-[11px] font-semibold tracking-wider text-neutral-400 mb-1.5 uppercase">
+              Selecione a quantidade de sabores
+            </span>
+            <div className="inline-flex items-center bg-neutral-900/90 border border-neutral-800 p-1 rounded-full shadow-lg gap-1">
+              {[1, 2, 3].map((count) => {
+                const isDisabled = count === 3 && size === "P";
+                const isActive = flavorCount === count;
+
+                return (
+                  <button
+                    key={count}
+                    type="button"
+                    disabled={isDisabled}
+                    onClick={() => !isDisabled && setFlavorCount(count)}
+                    className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? "bg-neutral-800 text-white shadow-md ring-1 ring-white/10"
+                        : isDisabled
+                        ? "text-neutral-600 opacity-40 cursor-not-allowed"
+                        : "text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    {count} {count === 1 ? "Sabor" : "Sabores"}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Visualização Dinâmica da Pizza (no fluxo normal) */}
+          <div
+            className={`flex flex-col items-center justify-center mb-1 sm:mb-4 transition-opacity duration-200 ${
+              isSheetOpen ? "opacity-0 pointer-events-none" : "opacity-100 pointer-events-auto"
+            }`}
+          >
+            <div className="relative flex items-center justify-center">
+              <PizzaSvg
+                size={size}
+                flavorCount={flavorCount}
+                selectedFlavors={selectedFlavors}
+                slicesDistribution={slicesDistribution}
+                onSectorClick={handleOpenSheet}
+                activeSectorIndex={activeSectorIndex}
+                isFullPizzaSelected={false}
+                toppingsCountBySector={toppingsCountBySector}
               />
             </div>
 
-            {/* Seletor de Quantidade de Sabores */}
-            {step === "pizza" && (
-              <div className="flex flex-col items-center justify-center mb-3 sm:mb-5">
-                <span className="text-[11px] font-semibold tracking-wider text-neutral-400 mb-1.5 uppercase">
-                  Selecione a quantidade de sabores
-                </span>
-                <div className="inline-flex items-center bg-neutral-900/90 border border-neutral-800 p-1 rounded-full shadow-lg gap-1">
-                  {[1, 2, 3].map((count) => {
-                    const isDisabled = count === 3 && size === "P";
-                    const isActive = flavorCount === count;
+            <p className="mt-2 text-xxs sm:text-xs text-neutral-400 text-center max-w-xs">
+              Toque nos botões ou fatias da pizza para escolher o sabor
+            </p>
+          </div>
 
-                    return (
-                      <button
-                        key={count}
-                        type="button"
-                        disabled={isDisabled}
-                        onClick={() => !isDisabled && setFlavorCount(count)}
-                        className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
-                          isActive
-                            ? "bg-neutral-800 text-white shadow-md ring-1 ring-white/10"
-                            : isDisabled
-                            ? "text-neutral-600 opacity-40 cursor-not-allowed"
-                            : "text-neutral-400 hover:text-white"
-                        }`}
-                      >
-                        {count} {count === 1 ? "Sabor" : "Sabores"}
-                      </button>
-                    );
-                  })}
+          {/* Painel Inferior: Distribuição de Fatias, Borda, Observações & Avançar */}
+          <AnimatePresence>
+            {!isSheetOpen && (
+              <motion.div
+                key="flavors-config-panel"
+                ref={sliceDistributionRef}
+                initial={{ opacity: 0, y: 30, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, y: 30, height: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="space-y-6 max-w-2xl mx-auto rounded-3xl border border-brand-mediumGray bg-brand-darkGray/90 p-5 sm:p-7 shadow-2xl backdrop-blur overflow-hidden scroll-mt-6"
+              >
+                {/* Distribuição Dinâmica de Fatias (se >1 sabor e != P) */}
+                <FlavorDistribution
+                  size={size}
+                  flavorCount={flavorCount}
+                  selectedFlavors={selectedFlavors}
+                  slicesDistribution={slicesDistribution}
+                  onChangeSlices={(idx, newVal) => {
+                    setSlicesDistribution((prev) => {
+                      const copy = [...prev];
+                      copy[idx] = newVal;
+                      return copy;
+                    });
+                  }}
+                />
+
+                {/* Seletor de Bordas Recheadas */}
+                <div className="space-y-3 border-t border-brand-mediumGray/50 pt-5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-brand-lightGray">
+                    Borda Recheada
+                  </label>
+                  <select
+                    value={selectedCrust?.id || ""}
+                    onChange={(e) => {
+                      const found = crusts.find((c) => c.id === e.target.value);
+                      setSelectedCrust(found || null);
+                    }}
+                    className="w-full rounded-xl border border-brand-mediumGray bg-brand-bg px-4 py-3 text-xs sm:text-sm text-white focus:border-brand-red focus:outline-none transition-colors"
+                  >
+                    <option value="">Sem borda recheada (Tradicional)</option>
+                    {crusts.map((crust) => (
+                      <option key={crust.id} value={crust.id}>
+                        {crust.name} (+R${" "}
+                        {size === "P" || size === "M"
+                          ? crust.pricePM.toFixed(2)
+                          : crust.priceGGG.toFixed(2)}
+                        )
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Adicional de Borda Caracol */}
+                  {selectedCrust && selectedCrust.caracol && (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-brand-bg border border-brand-mediumGray">
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-white block">Opção Caracol</span>
+                        <span className="text-xxs text-brand-lightGray block">
+                          Preparo em espiral com recheio extra (+ R$ 5,00)
+                        </span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={caracolRequested}
+                        onChange={(e) => setCaracolRequested(e.target.checked)}
+                        className="w-4 h-4 rounded text-brand-red focus:ring-brand-red bg-brand-darkGray border-brand-mediumGray cursor-pointer"
+                      />
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* 2. VISUALIZAÇÃO DINÂMICA DA PIZZA (GANHA DESTAQUE E AMPLIAÇÃO NO TOPO QUANDO O MODAL ABRE) */}
-      <motion.div
-        layout
-        animate={{
-          y: isSheetOpen ? 8 : 0,
-          scale: isSheetOpen ? 1.08 : 1,
-        }}
-        transition={{ type: "spring", damping: 25, stiffness: 280 }}
-        className="relative z-50 pointer-events-auto flex flex-col items-center justify-center mb-4 sm:mb-6 origin-center"
-      >
-        <div className="relative flex items-center justify-center">
-          <PizzaSvg
-            size={size}
-            flavorCount={flavorCount}
-            selectedFlavors={selectedFlavors}
-            slicesDistribution={slicesDistribution}
-            onSectorClick={
-              step === "pizza"
-                ? handleOpenSheet
-                : (idx) => setToppingTarget(idx)
-            }
-            activeSectorIndex={
-              step === "pizza"
-                ? activeSectorIndex
-                : typeof toppingTarget === "number"
-                ? toppingTarget
-                : null
-            }
-            isFullPizzaSelected={step === "toppings" && toppingTarget === "FULL"}
-            toppingsCountBySector={toppingsCountBySector}
-          />
-        </div>
+                {/* Campo de Observações */}
+                <div className="space-y-2 border-t border-brand-mediumGray/50 pt-5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-brand-lightGray">
+                    Observações do Pedido
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Ex: Sem cebola, massa bem assada, etc."
+                    rows={2}
+                    className="w-full rounded-xl border border-brand-mediumGray bg-brand-bg px-4 py-2.5 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-brand-red focus:outline-none transition-colors"
+                  />
+                </div>
 
-        {/* Dica interativa abaixo do disco */}
-        <AnimatePresence>
-          {!isSheetOpen && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="mt-2 text-xxs sm:text-xs text-neutral-400 text-center max-w-xs"
-            >
-              {step === "pizza"
-                ? "Toque nos botões ou fatias da pizza para escolher o sabor"
-                : "Toque nas fatias da pizza para selecionar onde aplicar adicionais"}
-            </motion.p>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {/* 3. CONTEÚDO DAS ETAPAS - DESCONSTRÓI QUANDO O MODAL ABRE E REMONTA AO FECHAR */}
-      {/* ETAPA 1: CONFIGURAÇÃO DE TAMANHO, BORDAS & OBSERVAÇÕES */}
-      <AnimatePresence>
-        {!isSheetOpen && step === "pizza" && (
-          <motion.div
-            key="pizza-config-panel"
-            initial={{ opacity: 0, y: 30, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: "auto" }}
-            exit={{ opacity: 0, y: 30, height: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="space-y-6 max-w-2xl mx-auto rounded-3xl border border-brand-mediumGray bg-brand-darkGray/90 p-5 sm:p-7 shadow-2xl backdrop-blur overflow-hidden"
-          >
-            {/* Seletor de Tamanhos */}
-            <div className="space-y-2.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-brand-lightGray">
-                Tamanho da Pizza
-              </label>
-              <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                {[
-                  { size: "P", desc: "4 fatias" },
-                  { size: "M", desc: "6 fatias" },
-                  { size: "G", desc: "8 fatias" },
-                  { size: "GG", desc: "10 fatias" },
-                ].map((s) => {
-                  const isSelected = size === s.size;
-                  return (
+                {/* Painel de Preço & Ações */}
+                <div className="flex flex-col sm:flex-row items-center justify-between border-t border-brand-mediumGray/50 pt-5 gap-4">
+                  <div className="flex items-center justify-between w-full sm:w-auto gap-4">
                     <button
-                      key={s.size}
                       type="button"
-                      onClick={() => setSize(s.size)}
-                      className={`flex flex-col items-center justify-center rounded-2xl py-2.5 sm:py-3 border transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-brand-red/15 border-brand-red text-brand-red ring-1 ring-brand-red/30 shadow-md"
-                          : "bg-brand-bg border-brand-mediumGray text-brand-lightGray hover:text-white hover:border-neutral-700"
-                      }`}
+                      onClick={() => setStep("size")}
+                      className="rounded-2xl border border-brand-mediumGray bg-brand-bg hover:bg-brand-mediumGray px-4 py-3 font-semibold text-xs text-brand-lightGray hover:text-white transition-colors cursor-pointer"
                     >
-                      <span className="text-sm sm:text-base font-bold">{s.size}</span>
-                      <span className="text-[10px] sm:text-xxs opacity-70">{s.desc}</span>
+                      ← Mudar Tamanho
                     </button>
-                  );
-                })}
-              </div>
-            </div>
 
-            {/* Distribuição Dinâmica de Fatias (quando aplicável) */}
-            <FlavorDistribution
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider text-brand-lightGray block">
+                        Subtotal da Pizza
+                      </span>
+                      <div className="text-xl font-bold font-mono text-brand-red">
+                        R$ {currentTotal.toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleProceedToToppings}
+                    className="w-full sm:w-auto rounded-2xl bg-brand-red hover:bg-brand-redHover px-6 py-3.5 font-bold text-xs sm:text-sm text-white transition-all cursor-pointer shadow-lg shadow-brand-red/25 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <span>Avançar para Adicionais</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* PASSO 3: ADICIONAIS EXTRA ("QUE TAL TURBINAR SUA PIZZA?") */}
+      {/* ========================================================================= */}
+      {step === "toppings" && (
+        <div className="space-y-6 max-w-2xl mx-auto rounded-3xl border border-brand-mediumGray bg-brand-darkGray/90 p-5 sm:p-7 shadow-2xl backdrop-blur">
+          {/* Visualização da Pizza com Destaque dos Adicionais */}
+          <div className="flex flex-col items-center justify-center pb-2">
+            <PizzaSvg
               size={size}
               flavorCount={flavorCount}
               selectedFlavors={selectedFlavors}
               slicesDistribution={slicesDistribution}
-              onChangeSlices={(idx, newVal) => {
-                setSlicesDistribution((prev) => {
-                  const copy = [...prev];
-                  copy[idx] = newVal;
-                  return copy;
-                });
-              }}
+              onSectorClick={(idx) => setToppingTarget(idx)}
+              activeSectorIndex={typeof toppingTarget === "number" ? toppingTarget : null}
+              isFullPizzaSelected={toppingTarget === "FULL"}
+              toppingsCountBySector={toppingsCountBySector}
             />
+          </div>
 
-            {/* Seletor de Bordas Recheadas */}
-            <div className="space-y-3 border-t border-brand-mediumGray/50 pt-5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-brand-lightGray">
-                Borda Recheada
-              </label>
-              <select
-                value={selectedCrust?.id || ""}
-                onChange={(e) => {
-                  const found = crusts.find((c) => c.id === e.target.value);
-                  setSelectedCrust(found || null);
-                }}
-                className="w-full rounded-xl border border-brand-mediumGray bg-brand-bg px-4 py-3 text-xs sm:text-sm text-white focus:border-brand-red focus:outline-none transition-colors"
-              >
-                <option value="">Sem borda recheada (Tradicional)</option>
-                {crusts.map((crust) => (
-                  <option key={crust.id} value={crust.id}>
-                    {crust.name} (+R${" "}
-                    {size === "P" || size === "M"
-                      ? crust.pricePM.toFixed(2)
-                      : crust.priceGGG.toFixed(2)}
-                    )
-                  </option>
-                ))}
-              </select>
-
-              {/* Adicional de Borda Caracol */}
-              {selectedCrust && selectedCrust.caracol && (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-brand-bg border border-brand-mediumGray">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-white block">Opção Caracol</span>
-                    <span className="text-xxs text-brand-lightGray block">
-                      Preparo em espiral com recheio extra (+ R$ 5,00)
-                    </span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={caracolRequested}
-                    onChange={(e) => setCaracolRequested(e.target.checked)}
-                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red bg-brand-darkGray border-brand-mediumGray cursor-pointer"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Campo de Observações */}
-            <div className="space-y-2 border-t border-brand-mediumGray/50 pt-5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-brand-lightGray">
-                Observações do Pedido
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ex: Sem cebola, massa bem assada, etc."
-                rows={2}
-                className="w-full rounded-xl border border-brand-mediumGray bg-brand-bg px-4 py-2.5 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-brand-red focus:outline-none transition-colors"
-              />
-            </div>
-
-            {/* Painel de Preço & Avançar */}
-            <div className="border-t border-brand-mediumGray/50 pt-5 flex items-center justify-between gap-4">
-              <div>
-                <span className="text-[10px] uppercase tracking-wider text-brand-lightGray block">
-                  Subtotal da Pizza
-                </span>
-                <div className="text-xl sm:text-2xl font-bold font-mono text-brand-red">
-                  R$ {currentTotal.toFixed(2)}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleProceedToToppings}
-                className="rounded-2xl bg-brand-red hover:bg-brand-redHover px-6 py-3.5 font-bold text-xs sm:text-sm text-white transition-all cursor-pointer shadow-lg shadow-brand-red/25 flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <span>Avançar (Adicionais)</span>
-                <span>→</span>
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ETAPA 2: ADICIONAIS EXTRA ("QUE TAL TURBINAR SUA PIZZA?") */}
-      {step === "toppings" && (
-        <div className="space-y-6 max-w-2xl mx-auto rounded-3xl border border-brand-mediumGray bg-brand-darkGray/90 p-5 sm:p-7 shadow-2xl backdrop-blur">
-          {/* Mensagem Chamativa Requisitada */}
+          {/* Mensagem Chamativa */}
           <div className="text-center space-y-1.5 border-b border-brand-mediumGray/40 pb-4">
             <h2 className="font-serif text-xl sm:text-2xl font-bold text-white flex items-center justify-center gap-2">
               <span>✨</span> Que tal turbinar sua pizza?
@@ -776,7 +881,7 @@ export default function PizzaBuilder({
             </div>
           </div>
 
-          {/* Componente ToppingSelector com Adicionais */}
+          {/* Componente ToppingSelector */}
           <ToppingSelector
             size={size}
             totalSlices={size === "P" ? 4 : size === "M" ? 6 : size === "G" ? 8 : 10}
@@ -802,7 +907,7 @@ export default function PizzaBuilder({
           <div className="flex flex-col sm:flex-row items-center justify-between border-t border-brand-mediumGray/50 pt-5 gap-3">
             <button
               type="button"
-              onClick={() => setStep("pizza")}
+              onClick={() => setStep("flavors")}
               className="w-full sm:w-auto rounded-2xl border border-brand-mediumGray bg-brand-bg hover:bg-brand-mediumGray px-5 py-3 font-semibold text-xs sm:text-sm text-brand-lightGray hover:text-white transition-colors cursor-pointer text-center"
             >
               ← Voltar para Sabores
@@ -813,16 +918,17 @@ export default function PizzaBuilder({
               onClick={handleProceedToDrinks}
               className="w-full sm:w-auto rounded-2xl bg-brand-red hover:bg-brand-redHover px-6 py-3.5 font-bold text-xs sm:text-sm text-white transition-all cursor-pointer text-center shadow-lg shadow-brand-red/20"
             >
-              Avançar (Bebidas) →
+              Avançar para Bebidas →
             </button>
           </div>
         </div>
       )}
 
-      {/* ETAPA 3: BEBIDAS & RESUMO FINAL */}
+      {/* ========================================================================= */}
+      {/* PASSO 4: BEBIDAS & RESUMO FINAL */}
+      {/* ========================================================================= */}
       {step === "drinks" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start max-w-5xl mx-auto">
-          {/* Listagem de Bebidas */}
           <div className="lg:col-span-8 space-y-6 rounded-3xl border border-brand-mediumGray bg-brand-darkGray/90 p-5 sm:p-7 shadow-2xl backdrop-blur">
             <div className="space-y-1 border-b border-brand-mediumGray/30 pb-4">
               <h2 className="font-serif text-xl sm:text-2xl font-bold text-white">
@@ -1005,19 +1111,44 @@ export default function PizzaBuilder({
         </div>
       )}
 
+      {/* ========================================================================= */}
       {/* 5. MODAL / BOTTOM SHEET SOBREPOSTO DE SELEÇÃO DE SABORES (SLIDE-UP) */}
-      {/* A PIZZA CONTINUA 100% NÍTIDA, INTERATIVA E VISÍVEL NO TOPO (SEM BLUR) */}
+      {/* ========================================================================= */}
       <AnimatePresence>
         {isSheetOpen && activeSectorIndex !== null && (
-          <div className="fixed inset-0 z-40 flex items-end justify-center pointer-events-none">
-            {/* Fechamento transparente apenas clicando no fundo fora da pizza e do modal */}
-            <div
+          <div className="fixed inset-0 z-50 flex flex-col justify-between items-center pointer-events-none pb-0 pt-3 sm:pt-6">
+            {/* Fundo escuro premium que oculta o header e foca 100% na montagem da pizza */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
               onClick={() => {
                 setIsSheetOpen(false);
                 setSearchQuery("");
               }}
-              className="fixed inset-0 z-30 pointer-events-auto"
+              className="fixed inset-0 z-30 pointer-events-auto bg-[#0c0c0c]/95 backdrop-blur-md"
             />
+
+            {/* Pizza no topo (Centralizada, com espaço limpo e sem interferência do header) */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 0.96, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative z-40 flex-1 flex flex-col items-center justify-center pointer-events-auto max-h-[44dvh] sm:max-h-[42dvh] w-full px-2 pt-2 sm:pt-4"
+            >
+              <PizzaSvg
+                size={size}
+                flavorCount={flavorCount}
+                selectedFlavors={selectedFlavors}
+                slicesDistribution={slicesDistribution}
+                onSectorClick={handleOpenSheet}
+                activeSectorIndex={activeSectorIndex}
+                isFullPizzaSelected={false}
+                toppingsCountBySector={toppingsCountBySector}
+              />
+            </motion.div>
 
             {/* Container do Drawer / Bottom Sheet */}
             <motion.div
@@ -1034,19 +1165,16 @@ export default function PizzaBuilder({
                   setSearchQuery("");
                 }
               }}
-              className="relative z-50 w-full max-w-2xl h-[46vh] max-h-[48vh] sm:max-h-[52vh] bg-[#141414] border-t border-neutral-800 rounded-t-[28px] p-3.5 sm:p-5 shadow-2xl flex flex-col pointer-events-auto overflow-hidden touch-pan-y"
+              className="relative z-50 w-full max-w-2xl h-[50dvh] max-h-[52dvh] bg-[#141414] border-t border-neutral-800 rounded-t-[28px] px-3.5 pt-3 pb-5 sm:px-5 sm:pt-4 sm:pb-6 shadow-2xl flex flex-col pointer-events-auto overflow-hidden touch-pan-y"
             >
-              {/* Barra de Arrasto / Drag Indicator */}
               <div className="w-10 h-1 bg-neutral-600 rounded-full mx-auto mb-2 flex-shrink-0 cursor-grab active:cursor-grabbing" />
 
-              {/* Cabeçalho do Modal com Seletor de Metades/Setores */}
               <div className="flex items-center justify-between pb-2 border-b border-neutral-800/80 flex-shrink-0">
                 <h3 className="font-serif text-sm sm:text-base font-bold text-white">
                   Selecione o sabor
                 </h3>
 
                 <div className="flex items-center gap-1.5">
-                  {/* Seletor de Metades / Setores Ativos */}
                   {flavorCount > 1 && (
                     <div className="flex items-center gap-1 bg-neutral-900 border border-neutral-800 p-0.5 rounded-full">
                       {Array.from({ length: flavorCount }).map((_, idx) => {
@@ -1098,7 +1226,6 @@ export default function PizzaBuilder({
                 </div>
               </div>
 
-              {/* Campo de Busca */}
               <div className="relative my-2 flex-shrink-0">
                 <div className="relative flex items-center bg-neutral-950 border border-neutral-800 rounded-full px-3 py-1.5">
                   <span className="text-neutral-500 mr-2 text-xs">🔍</span>
@@ -1121,8 +1248,7 @@ export default function PizzaBuilder({
                 </div>
               </div>
 
-              {/* Abas de Categorias de Sabores */}
-              <div className="flex gap-1.5 overflow-x-auto pb-1.5 mb-1 flex-shrink-0 scrollbar-none">
+              <div className="flex gap-1.5 overflow-x-auto pb-1.5 mb-1.5 flex-shrink-0 scrollbar-none">
                 <button
                   type="button"
                   onClick={() => setSelectedCategoryTab("ALL")}
@@ -1150,8 +1276,8 @@ export default function PizzaBuilder({
                 ))}
               </div>
 
-              {/* Lista Horizontal de Cards de Sabores (Conforme Imagem de Referência) */}
-              <div className="flex-1 overflow-x-auto overflow-y-hidden pb-1 pt-1 flex items-center gap-2.5 scrollbar-none snap-x snap-mandatory">
+              {/* Grid Scrollável de Sabores (2 Colunas no Mobile / 3 no Desktop) */}
+              <div className="flex-1 overflow-y-auto pr-0.5 pb-2 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 overscroll-contain touch-pan-y">
                 {filteredFlavors.map((flavor) => {
                   let flavorPrice = 0;
                   if (size === "P") flavorPrice = flavor.category.priceP;
@@ -1159,46 +1285,82 @@ export default function PizzaBuilder({
                   else if (size === "G") flavorPrice = flavor.category.priceG;
                   else if (size === "GG") flavorPrice = flavor.category.priceGG;
 
-                  const isCurrentlySelected =
+                  const isSelectedForCurrentSector =
+                    activeSectorIndex !== null &&
                     selectedFlavors[activeSectorIndex]?.id === flavor.id;
+
+                  const otherSectorIdx = selectedFlavors.findIndex(
+                    (f, idx) =>
+                      idx !== activeSectorIndex &&
+                      idx < flavorCount &&
+                      f?.id === flavor.id
+                  );
+                  const isSelectedForOtherSector = otherSectorIdx !== -1;
+
+                  const otherSectorLabel =
+                    otherSectorIdx !== -1
+                      ? flavorCount === 2
+                        ? otherSectorIdx === 0
+                          ? "Metade Esq."
+                          : "Metade Dir."
+                        : `Sabor ${otherSectorIdx + 1}`
+                      : null;
 
                   return (
                     <div
                       key={flavor.id}
                       onClick={() => handleSelectFlavor(flavor)}
-                      className={`flex-shrink-0 w-32 sm:w-36 h-[140px] sm:h-[150px] rounded-2xl p-3 flex flex-col justify-between items-start transition-all cursor-pointer select-none snap-start shadow-md group ${
-                        isCurrentlySelected
-                          ? "bg-brand-red/20 border-2 border-brand-red ring-1 ring-brand-red/40"
+                      className={`relative rounded-2xl p-2.5 sm:p-3 flex flex-col justify-between items-start transition-all cursor-pointer select-none shadow-md group ${
+                        isSelectedForCurrentSector
+                          ? "bg-emerald-950/40 border-2 border-emerald-500 ring-2 ring-emerald-500/40 shadow-emerald-950/80"
+                          : isSelectedForOtherSector
+                          ? "bg-neutral-900 border-2 border-emerald-600/70 ring-1 ring-emerald-600/30"
                           : "bg-[#1c1c1c] border border-neutral-800 hover:border-brand-red/70 hover:bg-neutral-800 active:scale-95"
                       }`}
                     >
-                      {/* Imagem Circular no Topo/Esquerda */}
-                      <div
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLightboxImage(getOptimizedImageUrl(flavor.imageUrl));
-                        }}
-                        className="w-10 h-10 rounded-full overflow-hidden border border-neutral-700 bg-neutral-900 flex-shrink-0 shadow-inner group/img"
-                        title="Clique para ampliar"
-                      >
-                        <img
-                          src={getOptimizedImageUrl(flavor.imageUrl)}
-                          alt={flavor.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              "/images/pizza-placeholder.png";
+                      {/* Topo do Card com Imagem e Badges de Seleção */}
+                      <div className="flex items-center justify-between w-full mb-1.5">
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLightboxImage(getOptimizedImageUrl(flavor.imageUrl));
                           }}
-                        />
+                          className="w-10 h-10 rounded-full overflow-hidden border border-neutral-700 bg-neutral-900 flex-shrink-0 shadow-inner group/img"
+                          title="Clique para ampliar"
+                        >
+                          <img
+                            src={getOptimizedImageUrl(flavor.imageUrl)}
+                            alt={flavor.name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                "/images/pizza-placeholder.png";
+                            }}
+                          />
+                        </div>
+
+                        {/* Badge de Feedback de Seleção */}
+                        {isSelectedForCurrentSector ? (
+                          <span className="bg-emerald-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow">
+                            <span>✓</span> Ativo
+                          </span>
+                        ) : isSelectedForOtherSector ? (
+                          <span className="bg-emerald-950 border border-emerald-500/70 text-emerald-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                            <span>✓</span> {otherSectorLabel}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-neutral-400 font-medium truncate max-w-[70px]">
+                            {flavor.category.name}
+                          </span>
+                        )}
                       </div>
 
-                      {/* Nome do Sabor e Preço */}
                       <div className="w-full">
-                        <h4 className="font-bold text-xs sm:text-sm text-white group-hover:text-brand-red transition-colors line-clamp-2 leading-tight">
+                        <h4 className="font-bold text-xs sm:text-sm text-white group-hover:text-brand-red transition-colors line-clamp-1 leading-tight">
                           {flavor.name}
                         </h4>
-                        <span className="text-[11px] sm:text-xs font-mono font-semibold text-neutral-300 block mt-0.5">
+                        <span className="text-[11px] sm:text-xs font-mono font-semibold text-brand-gold block mt-0.5">
                           + R$ {flavorPrice.toFixed(2)}
                         </span>
                       </div>
@@ -1207,7 +1369,7 @@ export default function PizzaBuilder({
                 })}
 
                 {filteredFlavors.length === 0 && (
-                  <div className="w-full py-6 text-center text-neutral-400 text-xs">
+                  <div className="col-span-full py-8 text-center text-neutral-400 text-xs">
                     Nenhum sabor encontrado para &quot;{searchQuery}&quot;.
                   </div>
                 )}
