@@ -63,10 +63,11 @@ function formatThermalReceipt(order: any): string {
   out += "           ARTISANAL CRUST & EMBER              \n";
   out += "          AllDelivery Print Service             \n";
   out += doubleLine;
-  out += `Pedido: #${order.orderNumber}   Data: ${new Date(order.createdAt).toLocaleString("pt-BR")}\n`;
+  const dateStr = new Date(order.createdAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  out += `Pedido: #${order.orderNumber}   Data: ${dateStr}\n`;
   out += `Tipo: ${order.type}   Pagamento: ${order.paymentMethod}\n`;
-  if (order.changeFor) {
-    out += `Troco para: R$ ${order.changeFor.toFixed(2)}\n`;
+  if (order.changeFor && parseFloat(order.changeFor) > 0) {
+    out += `Troco para: R$ ${parseFloat(order.changeFor).toFixed(2)}\n`;
   }
   out += line;
   out += `Cliente: ${order.customerName}\n`;

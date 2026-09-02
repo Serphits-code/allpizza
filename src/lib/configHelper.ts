@@ -8,17 +8,45 @@ export interface StoreConfig {
   primaryColorHover: string;
 }
 
+const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
+
+function sanitizeHexColor(color: string | undefined, defaultColor: string): string {
+  if (!color || !HEX_COLOR_REGEX.test(color)) {
+    return defaultColor;
+  }
+  return color;
+}
+
+// In-memory cache para configurações da loja (TTL de 60 segundos)
+let cachedConfig: StoreConfig | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 60_000;
+
+export function invalidateStoreConfigCache(): void {
+  cachedConfig = null;
+  cacheTimestamp = 0;
+}
+
 export async function getStoreConfig(): Promise<StoreConfig> {
+  const now = Date.now();
+  if (cachedConfig && now - cacheTimestamp < CACHE_TTL_MS) {
+    return cachedConfig;
+  }
+
   try {
     const configs = await prisma.systemConfig.findMany();
     const configMap = new Map(configs.map((c) => [c.key, c.value]));
 
-    const primaryColor = configMap.get("primary_color") || "#e31837";
+    const rawPrimaryColor = configMap.get("primary_color");
+    const primaryColor = sanitizeHexColor(rawPrimaryColor, "#e31837");
     const companyName = configMap.get("company_name") || "Artisanal";
     const companyLogo = configMap.get("company_logo") || "";
-    
+
     const deliveryCitiesRaw = configMap.get("delivery_cities") || "Cachoeirinha";
-    const deliveryCities = deliveryCitiesRaw.split(",").map((c) => c.trim()).filter(Boolean);
+    const deliveryCities = deliveryCitiesRaw
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
 
     // Calcula hover a partir da cor padrão (escurece 15%)
     const calculateHoverColor = (hex: string) => {
@@ -35,14 +63,20 @@ export async function getStoreConfig(): Promise<StoreConfig> {
       return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
     };
 
-    return {
+    const config: StoreConfig = {
       companyName,
       companyLogo,
       deliveryCities,
       primaryColor,
       primaryColorHover: calculateHoverColor(primaryColor),
     };
+
+    cachedConfig = config;
+    cacheTimestamp = now;
+
+    return config;
   } catch (err) {
+    console.error("[ConfigHelper] Erro ao carregar configurações do banco de dados:", err);
     return {
       companyName: "Artisanal",
       companyLogo: "",

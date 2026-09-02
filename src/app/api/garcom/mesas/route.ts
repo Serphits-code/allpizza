@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { roundCurrency } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/garcom/mesas - Lista todas as comandas/mesas e pedidos prontos
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!session || (session.user.role !== "GARCOM" && session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
@@ -39,9 +40,11 @@ export async function GET() {
         (o) => o.status !== "ENTREGUE" && (o.status as string) !== "CANCELADO"
       );
       const readyOrders = c.orders.filter((o) => o.status === "PRONTO_RETIRADA");
-      const currentConsumption = c.orders
-        .filter((o) => (o.status as string) !== "CANCELADO")
-        .reduce((sum, o) => sum + o.total, 0);
+      const currentConsumption = roundCurrency(
+        c.orders
+          .filter((o) => (o.status as string) !== "CANCELADO")
+          .reduce((sum, o) => sum + o.total, 0)
+      );
 
       return {
         id: c.id,
@@ -69,8 +72,8 @@ export async function GET() {
 // POST /api/garcom/mesas - Atualiza responsável / abre comanda
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!session || (session.user.role !== "GARCOM" && session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
+    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
   }
 
   try {
@@ -84,7 +87,7 @@ export async function POST(request: Request) {
       const updated = await prisma.comanda.update({
         where: { id: comandaId },
         data: {
-          responsibleName: responsibleName || null,
+          responsibleName: responsibleName ? String(responsibleName).trim() : null,
           status: "OCUPADA",
         },
       });

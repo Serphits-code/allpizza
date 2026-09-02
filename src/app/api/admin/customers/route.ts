@@ -7,7 +7,7 @@ import { normalizeContactPhoneKey } from "@/lib/phone";
 // GET: Busca os dados do cliente por telefone e seu histórico de pedidos
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
 // PUT: Atualiza notas ou nome customizado do perfil de contato
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
@@ -77,11 +77,18 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Chave do telefone obrigatória" }, { status: 400 });
     }
 
-    const updatedProfile = await prisma.customerContactProfile.update({
-      where: { phoneKey },
-      data: {
-        notes,
-        displayNameOverride,
+    const normalizedKey = normalizeContactPhoneKey(phoneKey);
+
+    const updatedProfile = await prisma.customerContactProfile.upsert({
+      where: { phoneKey: normalizedKey },
+      create: {
+        phoneKey: normalizedKey,
+        notes: notes !== undefined ? String(notes).trim() : "",
+        displayNameOverride: displayNameOverride !== undefined ? String(displayNameOverride).trim() : "",
+      },
+      update: {
+        ...(notes !== undefined ? { notes: String(notes).trim() } : {}),
+        ...(displayNameOverride !== undefined ? { displayNameOverride: String(displayNameOverride).trim() } : {}),
       },
     });
 

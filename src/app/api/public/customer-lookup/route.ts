@@ -1,8 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeContactPhoneKey } from "@/lib/phone";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+
+export const dynamic = "force-dynamic";
+
+// Rate limiting restrito para impedir varredura de base de clientes por telefone
+const lookupLimiter = rateLimit({
+  interval: 60_000,
+  uniqueTokenPerInterval: 500,
+});
 
 export async function GET(request: Request) {
+  const ip = getClientIp(request);
+  const rateLimitResult = lookupLimiter.check(6, `lookup_${ip}`);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Limite de consultas excedido. Por favor, tente novamente mais tarde." },
+      { status: 429 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const rawPhone = searchParams.get("phone");
 
@@ -21,7 +39,7 @@ export async function GET(request: Request) {
     const pastOrders = await prisma.order.findMany({
       where: { customerPhone: phoneKey },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 10,
       select: {
         customerName: true,
         customerAddress: true,
@@ -39,11 +57,11 @@ export async function GET(request: Request) {
     // Pega o nome do pedido mais recente
     const name = pastOrders[0].customerName;
 
-    // Agrupa e filtra até 5 endereços únicos
+    // Agrupa e filtra até 3 endereços únicos para auto-completar do próprio cliente
     const addressesMap = new Map<string, any>();
     for (const order of pastOrders) {
       if (!order.customerAddress) continue;
-      
+
       const key = `${order.customerAddress.toLowerCase()}|${(order.addressNumber || "").toLowerCase()}`;
       if (!addressesMap.has(key)) {
         addressesMap.set(key, {
@@ -55,7 +73,7 @@ export async function GET(request: Request) {
         });
       }
 
-      if (addressesMap.size >= 5) {
+      if (addressesMap.size >= 3) {
         break;
       }
     }

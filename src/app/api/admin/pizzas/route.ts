@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // GET: Retorna todas as categorias de pizza
 export async function GET() {
   try {
@@ -26,13 +28,22 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, priceP, priceM, priceG, priceGG } = body;
 
+    const pP = parseFloat(priceP);
+    const pM = parseFloat(priceM);
+    const pG = parseFloat(priceG);
+    const pGG = parseFloat(priceGG);
+
+    if (!name || isNaN(pP) || isNaN(pM) || isNaN(pG) || isNaN(pGG) || pP < 0 || pM < 0 || pG < 0 || pGG < 0) {
+      return NextResponse.json({ error: "Nome e preços válidos (P, M, G, GG) são obrigatórios" }, { status: 400 });
+    }
+
     const category = await prisma.pizzaCategory.create({
       data: {
-        name,
-        priceP: parseFloat(priceP),
-        priceM: parseFloat(priceM),
-        priceG: parseFloat(priceG),
-        priceGG: parseFloat(priceGG),
+        name: String(name).trim(),
+        priceP: pP,
+        priceM: pM,
+        priceG: pG,
+        priceGG: pGG,
       },
     });
 
@@ -53,14 +64,32 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const { id, name, priceP, priceM, priceG, priceGG } = body;
 
+    if (!id) {
+      return NextResponse.json({ error: "ID da categoria obrigatório" }, { status: 400 });
+    }
+
+    const pP = priceP !== undefined ? parseFloat(priceP) : undefined;
+    const pM = priceM !== undefined ? parseFloat(priceM) : undefined;
+    const pG = priceG !== undefined ? parseFloat(priceG) : undefined;
+    const pGG = priceGG !== undefined ? parseFloat(priceGG) : undefined;
+
+    if (
+      (pP !== undefined && (isNaN(pP) || pP < 0)) ||
+      (pM !== undefined && (isNaN(pM) || pM < 0)) ||
+      (pG !== undefined && (isNaN(pG) || pG < 0)) ||
+      (pGG !== undefined && (isNaN(pGG) || pGG < 0))
+    ) {
+      return NextResponse.json({ error: "Preços inválidos" }, { status: 400 });
+    }
+
     const category = await prisma.pizzaCategory.update({
       where: { id },
       data: {
-        name,
-        priceP: parseFloat(priceP),
-        priceM: parseFloat(priceM),
-        priceG: parseFloat(priceG),
-        priceGG: parseFloat(priceGG),
+        ...(name ? { name: String(name).trim() } : {}),
+        ...(pP !== undefined ? { priceP: pP } : {}),
+        ...(pM !== undefined ? { priceM: pM } : {}),
+        ...(pG !== undefined ? { priceG: pG } : {}),
+        ...(pGG !== undefined ? { priceGG: pGG } : {}),
       },
     });
 

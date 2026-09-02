@@ -11,13 +11,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
+  const role = session.user.role;
+  if (role !== "DRIVER" && role !== "ADMIN" && role !== "MANAGER") {
+    return NextResponse.json({ error: "Acesso restrito a entregadores e administradores" }, { status: 403 });
+  }
+
   const driverId = session.user.id;
 
   try {
     const { driverLat, driverLng } = await request.json();
 
-    if (driverLat === undefined || driverLng === undefined) {
-      return NextResponse.json({ error: "Coordenadas do piloto obrigatórias" }, { status: 400 });
+    const parsedDriverLat = parseFloat(driverLat);
+    const parsedDriverLng = parseFloat(driverLng);
+
+    if (isNaN(parsedDriverLat) || isNaN(parsedDriverLng)) {
+      return NextResponse.json({ error: "Coordenadas válidas do piloto são obrigatórias" }, { status: 400 });
     }
 
     // 1. Busca configurações de Depot (sede) e Cidade
@@ -66,7 +74,7 @@ export async function POST(request: Request) {
           {
             id: 1,
             profile: "bike",
-            start: [driverLng, driverLat],
+            start: [parsedDriverLng, parsedDriverLat],
             end: [depotLng, depotLat],
           },
         ],
@@ -102,8 +110,8 @@ export async function POST(request: Request) {
 
     // Fallback Geodésico (Haversine) se o VROOM falhou
     if (!isOptimized) {
-      let currentLat = driverLat;
-      let currentLng = driverLng;
+      let currentLat = parsedDriverLat;
+      let currentLng = parsedDriverLng;
       const unvisited = [...validOrders];
       const sorted: typeof validOrders = [];
 

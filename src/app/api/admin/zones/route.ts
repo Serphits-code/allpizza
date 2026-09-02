@@ -3,8 +3,15 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // GET: Retorna todas as zonas de entrega
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
   try {
     const zones = await prisma.deliveryZone.findMany({
       orderBy: { createdAt: "desc" },
@@ -26,11 +33,16 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { title, geometry, deliveryFee, isActive } = body;
 
+    const parsedFee = parseFloat(deliveryFee);
+    if (!title || isNaN(parsedFee) || parsedFee < 0) {
+      return NextResponse.json({ error: "Título e taxa de entrega válida são obrigatórios" }, { status: 400 });
+    }
+
     const zone = await prisma.deliveryZone.create({
       data: {
-        title,
+        title: String(title).trim(),
         geometry, // Objeto JSON contendo coordenadas do polígono GeoJSON
-        deliveryFee: parseFloat(deliveryFee),
+        deliveryFee: parsedFee,
         isActive: isActive !== undefined ? !!isActive : true,
       },
     });
@@ -53,13 +65,22 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const { id, title, geometry, deliveryFee, isActive } = body;
 
+    if (!id) {
+      return NextResponse.json({ error: "ID da zona obrigatório" }, { status: 400 });
+    }
+
+    const parsedFee = deliveryFee !== undefined ? parseFloat(deliveryFee) : undefined;
+    if (parsedFee !== undefined && (isNaN(parsedFee) || parsedFee < 0)) {
+      return NextResponse.json({ error: "Taxa de entrega inválida" }, { status: 400 });
+    }
+
     const zone = await prisma.deliveryZone.update({
       where: { id },
       data: {
-        title,
-        geometry,
-        deliveryFee: parseFloat(deliveryFee),
-        isActive: isActive !== undefined ? !!isActive : true,
+        ...(title ? { title: String(title).trim() } : {}),
+        ...(geometry !== undefined ? { geometry } : {}),
+        ...(parsedFee !== undefined ? { deliveryFee: parsedFee } : {}),
+        ...(isActive !== undefined ? { isActive: !!isActive } : {}),
       },
     });
 

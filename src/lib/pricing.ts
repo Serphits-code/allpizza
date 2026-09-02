@@ -14,11 +14,11 @@ export interface CrustInput {
   name: string;
   pricePM: number;
   priceGGG: number;
-  caracol: boolean;
+  caracol?: boolean;
 }
 
 export interface ToppingInput {
-  id: string;
+  id?: string;
   name: string;
   pricePM: number;
   priceGGG: number;
@@ -27,27 +27,35 @@ export interface ToppingInput {
 
 export interface SelectedToppingItem {
   topping: ToppingInput;
-  targetType: "FULL" | "FLAVOR";
-  flavorName?: string;
+  targetType: "FULL" | "FLAVOR" | "INTEIRA" | string;
+  flavorName?: string | null;
   slicesCount: number; // Ex: 4 fatias
   totalSlices: number; // Ex: 8 fatias
   quantity?: number;   // Quantidade do adicional (padrão 1)
 }
 
 /**
+ * Arredonda um valor monetário para 2 casas decimais com precisão segura.
+ */
+export function roundCurrency(value: number): number {
+  if (isNaN(value) || !isFinite(value)) return 0;
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+/**
  * Retorna o preço correspondente ao tamanho na categoria de preço.
  */
 export function getCategoryPriceForSize(category: PizzaCategoryPrice, size: string): number {
-  const normSize = size.toUpperCase();
+  const normSize = (size || "").toUpperCase().trim();
   switch (normSize) {
     case "P":
-      return category.priceP;
+      return roundCurrency(category.priceP);
     case "M":
-      return category.priceM;
+      return roundCurrency(category.priceM);
     case "G":
-      return category.priceG;
+      return roundCurrency(category.priceG);
     case "GG":
-      return category.priceGG;
+      return roundCurrency(category.priceGG);
     default:
       throw new Error(`Tamanho de pizza inválido: ${size}`);
   }
@@ -63,15 +71,26 @@ export function calcSingleToppingPrice(
   totalSlices: number,
   quantity: number = 1
 ): number {
-  const normSize = size.toUpperCase();
-  const basePrice = (normSize === "P" || normSize === "M") ? topping.pricePM : topping.priceGGG;
+  const normSize = (size || "").toUpperCase().trim();
+  let basePrice = 0;
 
-  if (topping.isUnit) {
-    return basePrice * quantity;
+  if (normSize === "P" || normSize === "M") {
+    basePrice = topping.pricePM;
+  } else if (normSize === "G" || normSize === "GG") {
+    basePrice = topping.priceGGG;
+  } else {
+    throw new Error(`Tamanho de pizza inválido para cálculo de adicionais: ${size}`);
   }
 
-  const fraction = totalSlices > 0 ? (slicesCount / totalSlices) : 1;
-  return basePrice * fraction * quantity;
+  const validQty = typeof quantity === "number" ? Math.max(0, quantity) : 1;
+  if (validQty === 0) return 0;
+
+  if (topping.isUnit) {
+    return roundCurrency(basePrice * validQty);
+  }
+
+  const fraction = totalSlices > 0 ? slicesCount / totalSlices : 1;
+  return roundCurrency(basePrice * fraction * validQty);
 }
 
 /**
@@ -82,9 +101,11 @@ export function calcAllToppingsTotal(
   size: string
 ): number {
   if (!toppings || toppings.length === 0) return 0;
-  return toppings.reduce((acc, item) => {
-    return acc + calcSingleToppingPrice(item.topping, size, item.slicesCount, item.totalSlices, item.quantity || 1);
+  const total = toppings.reduce((acc, item) => {
+    const qty = typeof item.quantity === "number" ? item.quantity : 1;
+    return acc + calcSingleToppingPrice(item.topping, size, item.slicesCount, item.totalSlices, qty);
   }, 0);
+  return roundCurrency(total);
 }
 
 /**
@@ -106,15 +127,15 @@ export function calcPizzaBasePrice(size: string, flavors: FlavorInput[]): number
       maxPrice = price;
     }
   }
-  return maxPrice;
+  return roundCurrency(maxPrice);
 }
 
 /**
  * Calcula o preço da borda recheada.
  * Regra: Preço por faixa (P/M vs G/GG) + taxa adicional se caracol for solicitado.
  */
-export function calcCrustPrice(size: string, crust: CrustInput, caracolRequested: boolean = false): number {
-  const normSize = size.toUpperCase();
+export function calcCrustPrice(size: string, crust: CrustInput, caracolRequested: boolean = false, caracolFee: number = 5.00): number {
+  const normSize = (size || "").toUpperCase().trim();
   let basePrice = 0;
 
   if (normSize === "P" || normSize === "M") {
@@ -125,12 +146,12 @@ export function calcCrustPrice(size: string, crust: CrustInput, caracolRequested
     throw new Error(`Tamanho de pizza inválido para cálculo de borda: ${size}`);
   }
 
-  // Se a borda caracol for solicitada, adicionamos a taxa de R$ 5.00
+  // Se a borda caracol for solicitada, adicionamos a taxa correspondente
   if (caracolRequested) {
-    basePrice += 5.00;
+    basePrice += caracolFee;
   }
 
-  return basePrice;
+  return roundCurrency(basePrice);
 }
 
 /**
@@ -139,12 +160,13 @@ export function calcCrustPrice(size: string, crust: CrustInput, caracolRequested
 export function calcPizzaItemTotal(
   size: string,
   flavors: FlavorInput[],
-  crust?: CrustInput,
+  crust?: CrustInput | null,
   caracolRequested: boolean = false,
-  toppings: SelectedToppingItem[] = []
+  toppings: SelectedToppingItem[] = [],
+  caracolFee: number = 5.00
 ): number {
   const basePrice = calcPizzaBasePrice(size, flavors);
-  const crustPrice = crust ? calcCrustPrice(size, crust, caracolRequested) : 0;
+  const crustPrice = crust ? calcCrustPrice(size, crust, caracolRequested, caracolFee) : 0;
   const toppingsPrice = calcAllToppingsTotal(toppings, size);
-  return basePrice + crustPrice + toppingsPrice;
+  return roundCurrency(basePrice + crustPrice + toppingsPrice);
 }

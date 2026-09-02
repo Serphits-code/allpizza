@@ -11,32 +11,34 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER" && session.user.role !== "GARCOM")) {
+    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
   }
 
   const { id } = params;
 
   try {
-    // 1. Marca todos os pedidos não-cancelados e não-entregues da comanda como ENTREGUE
-    await prisma.order.updateMany({
-      where: {
-        comandaId: id,
-        status: { notIn: ["ENTREGUE", "CANCELADO"] },
-      },
-      data: {
-        status: "ENTREGUE",
-        deliveredAt: new Date(),
-      },
-    });
+    const updatedComanda = await prisma.$transaction(async (tx) => {
+      // 1. Marca todos os pedidos não-cancelados e não-entregues da comanda como ENTREGUE
+      await tx.order.updateMany({
+        where: {
+          comandaId: id,
+          status: { notIn: ["ENTREGUE", "CANCELADO"] },
+        },
+        data: {
+          status: "ENTREGUE",
+          deliveredAt: new Date(),
+        },
+      });
 
-    // 2. Atualiza a comanda para LIVRE e limpa o nome do responsável
-    const updatedComanda = await prisma.comanda.update({
-      where: { id },
-      data: {
-        status: "LIVRE",
-        responsibleName: null,
-      },
+      // 2. Atualiza a comanda para LIVRE e limpa o nome do responsável
+      return tx.comanda.update({
+        where: { id },
+        data: {
+          status: "LIVRE",
+          responsibleName: null,
+        },
+      });
     });
 
     return NextResponse.json({

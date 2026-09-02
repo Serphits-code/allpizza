@@ -1,11 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { roundCurrency } from "@/lib/pricing";
 
 export interface CartItemTopping {
-  toppingId: string;
+  toppingId?: string;
   toppingName: string;
-  targetType: "FULL" | "FLAVOR";
-  flavorName?: string;
+  targetType: string;
+  flavorName?: string | null;
   slicesCount: number;
   totalSlices: number;
   price: number;
@@ -40,32 +41,47 @@ interface CartState {
   getCartItemsCount: () => number;
 }
 
+function generateSafeCartItemId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      
+
       addItem: (item) => {
         const currentItems = get().items;
-        
+
         // Se for um produto comum (não pizza), agrupamos por productId e notas
         if (!item.isPizza && item.productId) {
           const existingItemIndex = currentItems.findIndex(
-            (i) => i.productId === item.productId && i.notes === item.notes
+            (i) => i.productId === item.productId && (i.notes || "") === (item.notes || "")
           );
 
           if (existingItemIndex > -1) {
-            const updatedItems = [...currentItems];
-            updatedItems[existingItemIndex].quantity += item.quantity;
+            const updatedItems = currentItems.map((existing, idx) =>
+              idx === existingItemIndex
+                ? {
+                    ...existing,
+                    quantity: existing.quantity + item.quantity,
+                    price: item.price, // Atualiza para o preço mais recente caso tenha mudado
+                  }
+                : existing
+            );
             set({ items: updatedItems });
             return;
           }
         }
 
-        // Caso contrário (ou se for pizza), adicionamos como novo item único
+        // Caso contrário (ou se for pizza), adicionamos como novo item único imutável
         const newItem: CartItem = {
           ...item,
-          id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 9),
+          id: generateSafeCartItemId(),
+          price: roundCurrency(item.price),
         };
         set({ items: [...currentItems, newItem] });
       },
@@ -91,7 +107,8 @@ export const useCartStore = create<CartState>()(
       },
 
       getCartSubtotal: () => {
-        return get().items.reduce((total, item) => total + item.price * item.quantity, 0);
+        const total = get().items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        return roundCurrency(total);
       },
 
       getCartItemsCount: () => {
@@ -100,6 +117,13 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "alldelivery-cart-storage",
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        if (version === 0 || !persistedState) {
+          return { items: [] };
+        }
+        return persistedState as CartState;
+      },
     }
   )
 );

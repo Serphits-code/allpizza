@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { roundCurrency } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
 // POST /api/admin/comandas/delete-item - Remove item de um pedido e recalcula totais
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER" && session.user.role !== "GARCOM")) {
+    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
   }
 
   try {
@@ -32,51 +33,54 @@ export async function POST(request: Request) {
     const orderId = item.orderId;
     const comandaId = item.order.comandaId;
 
-    // 1. Exclui o item (as relações flavors e toppings são cascade)
-    await prisma.orderItem.delete({
-      where: { id: itemId },
-    });
-
-    // 2. Busca itens restantes do pedido
-    const remainingItems = await prisma.orderItem.findMany({
-      where: { orderId },
-    });
-
-    if (remainingItems.length === 0) {
-      // Se não sobrou nenhum item, cancela ou remove o pedido
-      await prisma.order.update({
-        where: { id: orderId },
-        data: { status: "CANCELADO", subtotal: 0, total: 0 },
-      });
-    } else {
-      // Recalcula subtotal e total
-      const newSubtotal = remainingItems.reduce((sum, i) => sum + i.totalPrice, 0);
-      const deliveryFee = item.order.deliveryFee || 0;
-      await prisma.order.update({
-        where: { id: orderId },
-        data: {
-          subtotal: newSubtotal,
-          total: newSubtotal + deliveryFee,
-        },
-      });
-    }
-
-    // 3. Se a comanda não tiver mais pedidos ativos, pode ser verificada
-    if (comandaId) {
-      const activeOrdersCount = await prisma.order.count({
-        where: {
-          comandaId,
-          status: { notIn: ["ENTREGUE", "CANCELADO"] },
-        },
+    // Executa exclusão e recálculos em transação atômica
+    await prisma.$transaction(async (tx) => {
+      // 1. Exclui o item
+      await tx.orderItem.delete({
+        where: { id: itemId },
       });
 
-      if (activeOrdersCount === 0) {
-        await prisma.comanda.update({
-          where: { id: comandaId },
-          data: { status: "LIVRE" },
+      // 2. Busca itens restantes do pedido
+      const remainingItems = await tx.orderItem.findMany({
+        where: { orderId },
+      });
+
+      if (remainingItems.length === 0) {
+        // Se não sobrou nenhum item, cancela o pedido
+        await tx.order.update({
+          where: { id: orderId },
+          data: { status: "CANCELADO", subtotal: 0, total: 0 },
+        });
+      } else {
+        // Recalcula subtotal e total
+        const newSubtotal = roundCurrency(remainingItems.reduce((sum, i) => sum + i.totalPrice, 0));
+        const deliveryFee = item.order.deliveryFee || 0;
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            subtotal: newSubtotal,
+            total: roundCurrency(newSubtotal + deliveryFee),
+          },
         });
       }
-    }
+
+      // 3. Se a comanda não tiver mais pedidos ativos, atualiza status para LIVRE
+      if (comandaId) {
+        const activeOrdersCount = await tx.order.count({
+          where: {
+            comandaId,
+            status: { notIn: ["ENTREGUE", "CANCELADO"] },
+          },
+        });
+
+        if (activeOrdersCount === 0) {
+          await tx.comanda.update({
+            where: { id: comandaId },
+            data: { status: "LIVRE" },
+          });
+        }
+      }
+    });
 
     return NextResponse.json({ success: true, message: "Item removido com sucesso!" });
   } catch (error) {

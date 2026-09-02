@@ -9,10 +9,15 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  // Autenticação
+  // Autenticação e Autorização RBAC
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  const userRole = session.user.role;
+  if (!["ADMIN", "MANAGER", "KITCHEN", "GARCOM"].includes(userRole)) {
+    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
   }
 
   try {
@@ -30,6 +35,19 @@ export async function PATCH(
 
     if (!existingOrder) {
       return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
+    }
+
+    // Impede que usuários não-admin revertam pedidos já finalizados/entregues
+    if (
+      (existingOrder.status === OrderStatus.ENTREGUE || existingOrder.status === OrderStatus.CANCELADO) &&
+      status !== existingOrder.status &&
+      userRole !== "ADMIN" &&
+      userRole !== "MANAGER"
+    ) {
+      return NextResponse.json(
+        { error: "Apenas administradores podem reabrir pedidos entregues ou cancelados" },
+        { status: 403 }
+      );
     }
 
     // Define os timestamps de transição de estado

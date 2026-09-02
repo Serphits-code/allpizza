@@ -3,11 +3,12 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sseManager } from "@/lib/sse";
+import { invalidateStoreConfigCache } from "@/lib/configHelper";
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
+    return NextResponse.json({ error: "Apenas administradores e gerentes podem alterar o status da loja" }, { status: 403 });
   }
 
   try {
@@ -24,9 +25,11 @@ export async function POST(request: Request) {
       create: { key: "delivery_open", value: String(open) },
     });
 
+    invalidateStoreConfigCache();
+
     const isOpen = updatedConfig.value === "true";
 
-    // Publica alteração em tempo real para todos os clientes conectados (Kanban e Checkout) via SSE
+    // Publica alteração em tempo real para todos os clientes conectados via SSE
     sseManager.publish("store_status_changed", { open: isOpen });
 
     return NextResponse.json({ success: true, open: isOpen });

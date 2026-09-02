@@ -25,7 +25,8 @@ async function main() {
   console.log("Database cleaned.");
 
   // 2. Seed Admin User
-  const passwordHash = await bcrypt.hash("adminpassword", 10);
+  const defaultPassword = process.env.ADMIN_SEED_PASSWORD || "admin123456";
+  const passwordHash = await bcrypt.hash(defaultPassword, 10);
   const admin = await prisma.adminUser.create({
     data: {
       email: "admin@alldelivery.com",
@@ -35,17 +36,6 @@ async function main() {
     },
   });
   console.log("Admin user created:", admin.email);
-
-  const customPasswordHash = await bcrypt.hash("Cxz963!@", 10);
-  const customAdmin = await prisma.adminUser.create({
-    data: {
-      email: "Almeidaestudios@outlook.com",
-      name: "Almeida Estudios Admin",
-      passwordHash: customPasswordHash,
-      role: UserRole.ADMIN,
-    },
-  });
-  console.log("Custom admin user created:", customAdmin.email);
 
   // 3. Seed Pizza Categories with placeholder prices
   const categoriesData = [

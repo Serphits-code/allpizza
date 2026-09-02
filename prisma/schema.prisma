@@ -81,6 +81,10 @@ model Order {
   comandaId        String?
   comanda          Comanda?      @relation(fields: [comandaId], references: [id])
   items            OrderItem[]
+
+  @@index([customerPhone])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model OrderItem {

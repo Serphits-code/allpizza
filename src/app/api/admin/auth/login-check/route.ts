@@ -1,10 +1,29 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import * as bcrypt from "bcryptjs";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
+// Dummy hash para mitigar timing attacks
+const DUMMY_HASH = "$2a$10$abcdefghijklmnopqrstuvwxyzABCDEF01234567890123456789";
+
+// Rate limiter: 5 tentativas por minuto por IP
+const loginRateLimiter = rateLimit({
+  interval: 60_000,
+  uniqueTokenPerInterval: 500,
+});
+
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rateLimitResult = loginRateLimiter.check(5, `login_${ip}`);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Muitas tentativas de login. Por favor, aguarde um minuto e tente novamente." },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { email, password } = body;
@@ -27,21 +46,15 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
+      await bcrypt.compare(password, DUMMY_HASH).catch(() => {});
       return NextResponse.json(
         { error: "E-mail ou senha incorretos." },
         { status: 401 }
       );
     }
 
-    if (!user.active) {
-      return NextResponse.json(
-        { error: "Esta conta de usuário está desativada. Entre em contato com o administrador." },
-        { status: 403 }
-      );
-    }
-
     const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
+    if (!isMatch || !user.active) {
       return NextResponse.json(
         { error: "E-mail ou senha incorretos." },
         { status: 401 }

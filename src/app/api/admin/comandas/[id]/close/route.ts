@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { roundCurrency } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +12,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER" && session.user.role !== "GARCOM")) {
+    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
   }
 
   const { id } = params;
@@ -39,7 +40,7 @@ export async function POST(
       return NextResponse.json({ error: "Comanda não encontrada" }, { status: 404 });
     }
 
-    const total = comanda.orders.reduce((sum, o) => sum + o.total, 0);
+    const total = roundCurrency(comanda.orders.reduce((sum, o) => sum + (o.total || 0), 0));
     const orderCount = comanda.orders.length;
 
     return NextResponse.json({

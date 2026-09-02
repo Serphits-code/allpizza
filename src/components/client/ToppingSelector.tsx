@@ -87,10 +87,14 @@ export default function ToppingSelector({
     }
   };
 
-  const handleRemoveTopping = (toppingId: string, tType: "FULL" | "FLAVOR", fName?: string) => {
+  const handleRemoveTopping = (toppingId: string | undefined, tType: string, fName?: string | null, toppingName?: string) => {
     const updated = selectedToppings.filter(
       (item) =>
-        !(item.topping.id === toppingId && item.targetType === tType && item.flavorName === fName)
+        !(
+          ((toppingId && item.topping.id === toppingId) || (!toppingId && item.topping.name === toppingName)) &&
+          item.targetType === tType &&
+          (item.flavorName || null) === (fName || null)
+        )
     );
     onChange(updated);
   };

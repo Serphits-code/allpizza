@@ -6,10 +6,10 @@ import path from "path";
 import sharp from "sharp";
 
 export async function POST(request: Request) {
-  // 1. Autenticação e Autorização
+  // 1. Autenticação e Autorização RBAC
   const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
+    return NextResponse.json({ error: "Apenas administradores e gerentes podem fazer upload de arquivos" }, { status: 403 });
   }
 
   try {

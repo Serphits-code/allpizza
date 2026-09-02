@@ -132,8 +132,8 @@ export default function PizzaSvg({
   }, [safeSlices, totalSlices]);
 
   return (
-    <div className={`relative w-64 h-64 xs:w-72 xs:h-72 sm:w-80 sm:h-80 md:w-88 md:h-88 rounded-full bg-brand-bg shadow-2xl flex items-center justify-center transition-all ${
-      isFullPizzaSelected ? "ring-4 ring-emerald-500/70 shadow-emerald-500/20" : ""
+    <div className={`relative w-full h-full aspect-square max-w-[320px] max-h-[320px] rounded-full flex items-center justify-center transition-all ${
+      isFullPizzaSelected ? "ring-2 ring-brand-red/30 shadow-lg shadow-brand-red/10" : ""
     }`}>
       {/* SVG da Pizza */}
       <svg

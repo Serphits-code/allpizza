@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import QuickOrderPanel from "@/components/quick-order/QuickOrderPanel";
 
 interface ComandaItem {
   id: string;
@@ -95,6 +96,7 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
   const [comandaOrders, setComandaOrders] = useState<OrderDetail[]>([]);
   const [comandaResponsible, setComandaResponsible] = useState("");
   const [savingResponsible, setSavingResponsible] = useState(false);
+  const [quickOrderComanda, setQuickOrderComanda] = useState<ComandaItem | null>(null);
 
   // Catálogo de Produtos e Pizzas para Lançamento
   const [pizzaCategories, setPizzaCategories] = useState<PizzaCategory[]>([]);
@@ -604,6 +606,18 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
                       {c.status}
                     </span>
                   </div>
+
+                  {/* Atalho de Lançamento Rápido (Quick Order) */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setQuickOrderComanda(c);
+                    }}
+                    className="w-full py-1.5 rounded-xl bg-brand-red/15 hover:bg-brand-red text-brand-red hover:text-white border border-brand-red/30 font-bold text-xxs transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1 mt-1"
+                  >
+                    <span>＋</span> Lançar Pedido
+                  </button>
                 </div>
               );
             })}
@@ -646,13 +660,10 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
 
             <div className="flex items-center gap-2.5">
               <button
-                onClick={() => {
-                  loadCatalog();
-                  setStep("catalog");
-                }}
-                className="px-4 py-2 rounded-xl bg-brand-red hover:bg-brand-redHover text-white text-xs font-bold transition-colors cursor-pointer shadow-lg shadow-brand-red/20"
+                onClick={() => setQuickOrderComanda(selectedComanda)}
+                className="px-4 py-2 rounded-xl bg-brand-red hover:bg-brand-redHover text-white text-xs font-bold transition-colors cursor-pointer shadow-lg shadow-brand-red/20 flex items-center gap-1.5"
               >
-                ＋ Adicionar Itens
+                <span>＋</span> Lançar Pedido (Cozinha)
               </button>
               <button
                 onClick={handleCloseConference}
@@ -1363,6 +1374,20 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
             </form>
           </div>
         </div>
+      )}
+
+      {/* QUICK ORDER PANEL PADRONIZADO (Lançamento Rápido na Cozinha) */}
+      {quickOrderComanda && (
+        <QuickOrderPanel
+          comanda={quickOrderComanda}
+          onClose={() => setQuickOrderComanda(null)}
+          onOrderCreated={async (order) => {
+            await loadComandas();
+            if (selectedComandaId && selectedComandaId === quickOrderComanda.id) {
+              handleOpenComanda(quickOrderComanda);
+            }
+          }}
+        />
       )}
     </div>
   );

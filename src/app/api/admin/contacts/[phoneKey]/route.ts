@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeContactPhoneKey } from "@/lib/phone";
 import { ContactAddress, ContactDetail } from "@/lib/admin-contacts";
+import { roundCurrency } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function GET(
   { params }: { params: { phoneKey: string } }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
@@ -21,13 +22,16 @@ export async function GET(
   const phoneKey = normalizeContactPhoneKey(rawPhoneKey);
 
   try {
-    // 1. Busca perfil manual do cliente
-    let profile = await prisma.customerContactProfile.findUnique({
+    // 1. Busca perfil salvo do contato
+    const profile = await prisma.customerContactProfile.findUnique({
       where: { phoneKey },
     });
 
-    // 2. Busca todos os pedidos correspondentes ao telefone (normalizado ou com variações)
-    const allOrders = await prisma.order.findMany({
+    // 2. Busca pedidos correspondentes ao telefone diretamente pelo índice do banco
+    const customerOrders = await prisma.order.findMany({
+      where: {
+        customerPhone: phoneKey,
+      },
       include: {
         items: {
           include: {
@@ -45,11 +49,6 @@ export async function GET(
       orderBy: { createdAt: "desc" },
     });
 
-    // Filtra pedidos cujo telefone normalizado bata com phoneKey
-    const customerOrders = allOrders.filter(
-      (o) => normalizeContactPhoneKey(o.customerPhone) === phoneKey
-    );
-
     if (customerOrders.length === 0 && !profile) {
       return NextResponse.json({ error: "Contato não encontrado" }, { status: 404 });
     }
@@ -59,7 +58,7 @@ export async function GET(
 
     const totalOrders = customerOrders.length;
     const validOrders = billableOrders.length;
-    const totalSpent = billableOrders.reduce((s, o) => s + (o.total || 0), 0);
+    const totalSpent = roundCurrency(billableOrders.reduce((s, o) => s + (o.total || 0), 0));
 
     // Média de tempo de entrega (em minutos)
     const deliveredOrders = customerOrders.filter(
@@ -156,7 +155,7 @@ export async function PATCH(
   { params }: { params: { phoneKey: string } }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
@@ -171,12 +170,12 @@ export async function PATCH(
       where: { phoneKey },
       create: {
         phoneKey,
-        notes: notes !== undefined ? notes : "",
-        displayNameOverride: displayNameOverride !== undefined ? displayNameOverride : "",
+        notes: notes !== undefined ? String(notes).trim() : "",
+        displayNameOverride: displayNameOverride !== undefined ? String(displayNameOverride).trim() : "",
       },
       update: {
-        ...(notes !== undefined ? { notes } : {}),
-        ...(displayNameOverride !== undefined ? { displayNameOverride } : {}),
+        ...(notes !== undefined ? { notes: String(notes).trim() } : {}),
+        ...(displayNameOverride !== undefined ? { displayNameOverride: String(displayNameOverride).trim() } : {}),
       },
     });
 

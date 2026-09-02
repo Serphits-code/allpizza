@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // GET /api/admin/comandas - Lista todas as comandas/mesas
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER" && session.user.role !== "GARCOM")) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
@@ -52,7 +52,7 @@ export async function GET() {
   }
 }
 
-// POST /api/admin/comandas - Cria comandas em lote
+// POST /api/admin/comandas - Cria comandas em lote usando transação
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
@@ -71,24 +71,25 @@ export async function POST(request: Request) {
       );
     }
 
-    const createdComandas = [];
-    for (let i = 0; i < quantity; i++) {
-      const comandaNumber = startNumber + i;
-
-      // Cria ou atualiza se já existir
-      const comanda = await prisma.comanda.upsert({
-        where: { number: comandaNumber },
-        create: {
-          number: comandaNumber,
-          status: "LIVRE",
-          active: true,
-        },
-        update: {
-          active: true,
-        },
-      });
-      createdComandas.push(comanda);
-    }
+    const createdComandas = await prisma.$transaction(async (tx) => {
+      const results = [];
+      for (let i = 0; i < quantity; i++) {
+        const comandaNumber = startNumber + i;
+        const comanda = await tx.comanda.upsert({
+          where: { number: comandaNumber },
+          create: {
+            number: comandaNumber,
+            status: "LIVRE",
+            active: true,
+          },
+          update: {
+            active: true,
+          },
+        });
+        results.push(comanda);
+      }
+      return results;
+    });
 
     return NextResponse.json({
       success: true,

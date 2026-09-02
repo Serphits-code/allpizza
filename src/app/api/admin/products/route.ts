@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // GET: Retorna todos os produtos
 export async function GET() {
   try {
@@ -27,12 +29,17 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, description, price, imageUrl, categoryId } = body;
 
+    const parsedPrice = parseFloat(price);
+    if (!name || isNaN(parsedPrice) || parsedPrice < 0 || !categoryId) {
+      return NextResponse.json({ error: "Nome, preço válido e categoria são obrigatórios" }, { status: 400 });
+    }
+
     const product = await prisma.product.create({
       data: {
-        name,
-        description,
-        price: parseFloat(price),
-        imageUrl,
+        name: String(name).trim(),
+        description: description ? String(description).trim() : "",
+        price: parsedPrice,
+        imageUrl: imageUrl ? String(imageUrl).trim() : "",
         categoryId,
       },
     });
@@ -54,14 +61,23 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const { id, name, description, price, imageUrl, categoryId } = body;
 
+    if (!id) {
+      return NextResponse.json({ error: "ID do produto obrigatório" }, { status: 400 });
+    }
+
+    const parsedPrice = price !== undefined ? parseFloat(price) : undefined;
+    if (parsedPrice !== undefined && (isNaN(parsedPrice) || parsedPrice < 0)) {
+      return NextResponse.json({ error: "Preço inválido" }, { status: 400 });
+    }
+
     const product = await prisma.product.update({
       where: { id },
       data: {
-        name,
-        description,
-        price: parseFloat(price),
-        imageUrl,
-        categoryId,
+        ...(name ? { name: String(name).trim() } : {}),
+        ...(description !== undefined ? { description: String(description).trim() } : {}),
+        ...(parsedPrice !== undefined ? { price: parsedPrice } : {}),
+        ...(imageUrl !== undefined ? { imageUrl: String(imageUrl).trim() } : {}),
+        ...(categoryId ? { categoryId } : {}),
       },
     });
 

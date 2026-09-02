@@ -90,7 +90,7 @@ export function aggregateContacts(orders: any[], profiles: any[]): AggregatedCon
     const totalOrders = customerOrders.length;
     const billableOrders = customerOrders.filter((o) => o.status !== "CANCELADO");
     const validOrders = billableOrders.length;
-    const totalSpent = billableOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalSpent = Math.round(billableOrders.reduce((sum, o) => sum + (o.total || 0), 0) * 100) / 100;
 
     let lastOrderAt: string | null = null;
     let daysSinceLastOrder = 9999;

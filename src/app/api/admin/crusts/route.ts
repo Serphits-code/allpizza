@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // GET: Retorna todos os tipos de borda
 export async function GET() {
   try {
@@ -26,11 +28,18 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, pricePM, priceGGG, caracol } = body;
 
+    const parsedPricePM = parseFloat(pricePM);
+    const parsedPriceGGG = parseFloat(priceGGG);
+
+    if (!name || isNaN(parsedPricePM) || isNaN(parsedPriceGGG) || parsedPricePM < 0 || parsedPriceGGG < 0) {
+      return NextResponse.json({ error: "Nome e preços válidos são obrigatórios" }, { status: 400 });
+    }
+
     const crust = await prisma.crustType.create({
       data: {
-        name,
-        pricePM: parseFloat(pricePM),
-        priceGGG: parseFloat(priceGGG),
+        name: String(name).trim(),
+        pricePM: parsedPricePM,
+        priceGGG: parsedPriceGGG,
         caracol: !!caracol,
       },
     });
@@ -52,13 +61,27 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const { id, name, pricePM, priceGGG, caracol } = body;
 
+    if (!id) {
+      return NextResponse.json({ error: "ID da borda é obrigatório" }, { status: 400 });
+    }
+
+    const parsedPricePM = pricePM !== undefined ? parseFloat(pricePM) : undefined;
+    const parsedPriceGGG = priceGGG !== undefined ? parseFloat(priceGGG) : undefined;
+
+    if (
+      (parsedPricePM !== undefined && (isNaN(parsedPricePM) || parsedPricePM < 0)) ||
+      (parsedPriceGGG !== undefined && (isNaN(parsedPriceGGG) || parsedPriceGGG < 0))
+    ) {
+      return NextResponse.json({ error: "Preço inválido" }, { status: 400 });
+    }
+
     const crust = await prisma.crustType.update({
       where: { id },
       data: {
-        name,
-        pricePM: parseFloat(pricePM),
-        priceGGG: parseFloat(priceGGG),
-        caracol: !!caracol,
+        ...(name ? { name: String(name).trim() } : {}),
+        ...(parsedPricePM !== undefined ? { pricePM: parsedPricePM } : {}),
+        ...(parsedPriceGGG !== undefined ? { priceGGG: parsedPriceGGG } : {}),
+        ...(caracol !== undefined ? { caracol: !!caracol } : {}),
       },
     });
 

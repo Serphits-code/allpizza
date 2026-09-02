@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sseManager } from "@/lib/sse";
+import { normalizeContactPhoneKey } from "@/lib/phone";
+import { roundCurrency } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,11 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  const role = session.user.role;
+  if (!["ADMIN", "MANAGER", "GARCOM", "KITCHEN"].includes(role)) {
+    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
   }
 
   try {
@@ -34,47 +41,53 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "O pedido precisa conter ao menos um item" }, { status: 400 });
     }
 
-    // Calcula subtotal e total
+    // Calcula subtotal e total com arredondamento seguro
     let subtotal = 0;
     const itemsData = items.map((item: any) => {
-      const itemTotal = (item.basePrice || item.price || 0) * (item.quantity || 1) + (item.crustPrice || 0) * (item.quantity || 1);
+      const quantity = Math.max(1, parseInt(item.quantity || "1", 10) || 1);
+      const basePrice = Math.max(0, parseFloat(item.basePrice || item.price || "0") || 0);
+      const crustPrice = Math.max(0, parseFloat(item.crustPrice || "0") || 0);
+
       const toppingsTotal = (item.toppings || []).reduce(
-        (sum: number, t: any) => sum + (t.price || 0) * (item.quantity || 1),
+        (sum: number, t: any) => sum + Math.max(0, parseFloat(t.price || "0") || 0),
         0
       );
-      const finalItemTotal = itemTotal + toppingsTotal;
+
+      const unitTotal = roundCurrency(basePrice + crustPrice + toppingsTotal);
+      const finalItemTotal = roundCurrency(unitTotal * quantity);
       subtotal += finalItemTotal;
 
       return {
-        name: item.name,
-        quantity: item.quantity || 1,
-        basePrice: item.basePrice || item.price || 0,
+        name: item.name || "Item",
+        quantity,
+        basePrice: unitTotal,
         totalPrice: finalItemTotal,
         isPizza: Boolean(item.isPizza),
         pizzaSize: item.pizzaSize || null,
         crustType: item.crustType || null,
-        crustPrice: item.crustPrice || 0,
+        crustPrice,
         flavors: {
           create: (item.flavors || []).map((f: any) => ({
-            flavorName: typeof f === "string" ? f : f.flavorName || f.name,
+            flavorName: typeof f === "string" ? f : f.flavorName || f.name || "Sabor",
             categoryName: f.categoryName || "Pizza",
           })),
         },
         toppings: {
           create: (item.toppings || []).map((t: any) => ({
-            toppingName: t.toppingName || t.name,
+            toppingName: t.toppingName || t.name || "Adicional",
             targetType: t.targetType || "INTEIRA",
             flavorName: t.flavorName || null,
             slicesCount: t.slicesCount || 1,
             totalSlices: t.totalSlices || 1,
-            price: t.price || 0,
+            price: Math.max(0, parseFloat(t.price || "0") || 0),
           })),
         },
       };
     });
 
-    const parsedDeliveryFee = parseFloat(deliveryFee) || 0;
-    const total = subtotal + parsedDeliveryFee;
+    subtotal = roundCurrency(subtotal);
+    const parsedDeliveryFee = Math.max(0, parseFloat(deliveryFee) || 0);
+    const total = roundCurrency(subtotal + parsedDeliveryFee);
 
     // Determina o status inicial (padrão NOVO para passar pelas etapas Novos > Na Cozinha > Comanda de Mesa)
     const isComanda = type === "COMANDA" || Boolean(comandaId);
@@ -93,46 +106,52 @@ export async function POST(request: Request) {
       }
     }
 
-    // Cria o Pedido
-    const order = await prisma.order.create({
-      data: {
-        type: isComanda ? "COMANDA" : type,
-        status: initialStatus,
-        customerName: effectiveCustomerName,
-        customerPhone: customerPhone || "00000000000",
-        customerAddress: customerAddress || null,
-        addressNumber: addressNumber || null,
-        reference: reference || null,
-        paymentMethod,
-        changeFor: changeFor ? parseFloat(changeFor) : null,
-        subtotal,
-        deliveryFee: parsedDeliveryFee,
-        total,
-        notes: notes || null,
-        comandaId: comandaId || null,
-        preparedAt: initialStatus === "EM_PREPARO" ? new Date() : null,
-        items: {
-          create: itemsData,
-        },
-      },
-      include: {
-        comanda: true,
-        items: {
-          include: {
-            flavors: true,
-            toppings: true,
+    const phoneKey = customerPhone ? normalizeContactPhoneKey(customerPhone) : "00000000000";
+
+    // Cria o Pedido em transação atômica
+    const order = await prisma.$transaction(async (tx) => {
+      const created = await tx.order.create({
+        data: {
+          type: isComanda ? "COMANDA" : type,
+          status: initialStatus,
+          customerName: effectiveCustomerName,
+          customerPhone: phoneKey,
+          customerAddress: customerAddress || null,
+          addressNumber: addressNumber || null,
+          reference: reference || null,
+          paymentMethod,
+          changeFor: changeFor ? parseFloat(changeFor) : null,
+          subtotal,
+          deliveryFee: parsedDeliveryFee,
+          total,
+          notes: notes || null,
+          comandaId: comandaId || null,
+          preparedAt: initialStatus === "EM_PREPARO" ? new Date() : null,
+          items: {
+            create: itemsData,
           },
         },
-      },
-    });
-
-    // Se vinculado a comanda, marca comanda como OCUPADA
-    if (comandaId) {
-      await prisma.comanda.update({
-        where: { id: comandaId },
-        data: { status: "OCUPADA" },
+        include: {
+          comanda: true,
+          items: {
+            include: {
+              flavors: true,
+              toppings: true,
+            },
+          },
+        },
       });
-    }
+
+      // Se vinculado a comanda, marca comanda como OCUPADA
+      if (comandaId) {
+        await tx.comanda.update({
+          where: { id: comandaId },
+          data: { status: "OCUPADA" },
+        });
+      }
+
+      return created;
+    });
 
     // Publica no barramento SSE para Kanban e Impressora Desktop
     sseManager.publish("order_created", order);

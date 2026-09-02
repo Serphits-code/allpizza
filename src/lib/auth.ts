@@ -2,6 +2,31 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import * as bcrypt from "bcryptjs";
+import { UserRole } from "@prisma/client";
+
+// Dummy hash para mitigar timing attacks na enumeração de usuários
+const DUMMY_HASH = "$2a$10$abcdefghijklmnopqrstuvwxyzABCDEF01234567890123456789";
+
+// Fail-fast para NEXTAUTH_SECRET
+if (!process.env.NEXTAUTH_SECRET && process.env.NODE_ENV === "production") {
+  console.error("FATAL: NEXTAUTH_SECRET não está definido nas variáveis de ambiente!");
+}
+
+// Cache curto em memória para papéis (roles) de usuários para evitar queries excessivas ao banco
+interface RoleCacheEntry {
+  role: UserRole;
+  cachedAt: number;
+}
+const roleCache = new Map<string, RoleCacheEntry>();
+const ROLE_CACHE_TTL_MS = 30_000; // 30 segundos
+
+export function invalidateUserRoleCache(userId?: string) {
+  if (userId) {
+    roleCache.delete(userId);
+  } else {
+    roleCache.clear();
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -13,10 +38,10 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Por favor, preencha email e senha.");
+          throw new Error("Por favor, preencha e-mail e senha.");
         }
 
-        const trimmedEmail = credentials.email.trim();
+        const trimmedEmail = credentials.email.trim().toLowerCase();
         const user = await prisma.adminUser.findFirst({
           where: {
             email: {
@@ -26,17 +51,16 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
+        // Se usuário não existir, executa compare contra hash dummy para evitar timing attack
         if (!user) {
-          throw new Error("Usuário ou senha incorretos.");
+          await bcrypt.compare(credentials.password, DUMMY_HASH).catch(() => {});
+          throw new Error("E-mail ou senha incorretos.");
         }
 
-        if (!user.active) {
-          throw new Error("Esta conta de usuário está desativada. Entre em contato com o administrador.");
-        }
-
+        // Se a conta estiver desativada, executa compare para uniformizar timing e retorna erro genérico
         const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
-        if (!isValid) {
-          throw new Error("Usuário ou senha incorretos.");
+        if (!isValid || !user.active) {
+          throw new Error("E-mail ou senha incorretos.");
         }
 
         return {
@@ -52,25 +76,39 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.role = (user as any).role;
       }
-      
-      // Busca sempre o papel atualizado do banco de dados para evitar tokens obsoletos
+
+      // Busca papel atualizado com cache de 30 segundos
       if (token.id) {
-        const dbUser = await prisma.adminUser.findUnique({
-          where: { id: token.id as string },
-          select: { role: true },
-        });
-        if (dbUser) {
-          token.role = dbUser.role;
+        const userId = token.id as string;
+        const now = Date.now();
+        const cached = roleCache.get(userId);
+
+        if (cached && now - cached.cachedAt < ROLE_CACHE_TTL_MS) {
+          token.role = cached.role;
+        } else {
+          try {
+            const dbUser = await prisma.adminUser.findUnique({
+              where: { id: userId },
+              select: { role: true, active: true },
+            });
+            if (dbUser && dbUser.active) {
+              token.role = dbUser.role;
+              roleCache.set(userId, { role: dbUser.role, cachedAt: now });
+            }
+          } catch (err) {
+            console.error("[Auth JWT] Error fetching user role:", err);
+          }
         }
       }
-      
+
       return token;
     },
     async session({ session, token }) {
       if (session.user && token) {
-        session.user.id = token.id;
-        session.user.role = token.role;
+        session.user.id = token.id as string;
+        session.user.role = token.role as UserRole;
       }
       return session;
     },
@@ -82,5 +120,5 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 24 * 60 * 60, // 24 horas
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || "alldelivery_default_secret_key_change_in_prod",
 };

@@ -3,10 +3,17 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  const role = session.user.role;
+  if (role !== "DRIVER" && role !== "ADMIN" && role !== "MANAGER") {
+    return NextResponse.json({ error: "Acesso restrito a entregadores e administradores" }, { status: 403 });
   }
 
   const driverId = session.user.id;
@@ -14,16 +21,19 @@ export async function POST(request: Request) {
   try {
     const { lat, lng } = await request.json();
 
-    if (lat === undefined || lng === undefined) {
-      return NextResponse.json({ error: "Parâmetros 'lat' e 'lng' obrigatórios" }, { status: 400 });
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+
+    if (isNaN(parsedLat) || isNaN(parsedLng)) {
+      return NextResponse.json({ error: "Coordenadas lat e lng válidas são obrigatórias" }, { status: 400 });
     }
 
     // Atualiza localização e carimbo de data/hora no banco
     const updatedUser = await prisma.adminUser.update({
       where: { id: driverId },
       data: {
-        driverLat: parseFloat(lat),
-        driverLng: parseFloat(lng),
+        driverLat: parsedLat,
+        driverLng: parsedLng,
         driverUpdatedAt: new Date(),
       },
     });

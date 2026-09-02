@@ -4,10 +4,12 @@ import { findDeliveryZone, ZoneInput } from "@/lib/geo";
 
 export async function POST(request: Request) {
   try {
-    const { lat, lng } = await request.json();
+    const body = await request.json();
+    const parsedLat = parseFloat(body.lat);
+    const parsedLng = parseFloat(body.lng);
 
-    if (lat === undefined || lng === undefined) {
-      return NextResponse.json({ error: "Coordenadas lat e lng são obrigatórias" }, { status: 400 });
+    if (isNaN(parsedLat) || isNaN(parsedLng)) {
+      return NextResponse.json({ error: "Coordenadas lat e lng válidas são obrigatórias" }, { status: 400 });
     }
 
     // Busca todas as zonas de entrega ativas
@@ -24,7 +26,7 @@ export async function POST(request: Request) {
       isActive: z.isActive,
     }));
 
-    const matchedZone = findDeliveryZone(lat, lng, zones);
+    const matchedZone = findDeliveryZone(parsedLat, parsedLng, zones);
 
     if (matchedZone) {
       return NextResponse.json({
