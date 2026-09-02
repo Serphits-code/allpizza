@@ -5,8 +5,16 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// GET: Retorna todas as categorias de pizza
+// GET: Retorna todas as categorias de pizza (autenticado)
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (
+    !session ||
+    !["ADMIN", "MANAGER", "GARCOM", "KITCHEN"].includes(session.user.role)
+  ) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
   try {
     const categories = await prisma.pizzaCategory.findMany({
       orderBy: { priceP: "asc" },

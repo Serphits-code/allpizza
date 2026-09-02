@@ -3,8 +3,16 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// GET: Retorna todos os sabores de pizza
+// GET: Retorna todos os sabores de pizza (autenticado)
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (
+    !session ||
+    !["ADMIN", "MANAGER", "GARCOM", "KITCHEN"].includes(session.user.role)
+  ) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
   try {
     const flavors = await prisma.pizzaFlavor.findMany({
       include: { category: true },

@@ -8,8 +8,12 @@ import { UserRole } from "@prisma/client";
 const DUMMY_HASH = "$2a$10$abcdefghijklmnopqrstuvwxyzABCDEF01234567890123456789";
 
 // Fail-fast para NEXTAUTH_SECRET
-if (!process.env.NEXTAUTH_SECRET && process.env.NODE_ENV === "production") {
-  console.error("FATAL: NEXTAUTH_SECRET não está definido nas variáveis de ambiente!");
+if (!process.env.NEXTAUTH_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("FATAL: NEXTAUTH_SECRET não está definido nas variáveis de ambiente! Defina uma chave secreta segura para produção.");
+  } else {
+    console.warn("AVISO DE SEGURANÇA: NEXTAUTH_SECRET não definido em ambiente de desenvolvimento. Usando segredo temporário local.");
+  }
 }
 
 // Cache curto em memória para papéis (roles) de usuários para evitar queries excessivas ao banco

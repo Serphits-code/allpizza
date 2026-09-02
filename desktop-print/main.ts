@@ -3,7 +3,8 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Porta/URL de Conexão com o Servidor Local
-const SERVER_URL = "http://localhost:3000/api/print/events";
+const SERVER_URL = process.env.PRINT_SERVER_URL || "http://localhost:3000/api/print/events";
+const PRINT_SECRET = process.env.PRINT_SERVICE_SECRET || "alldelivery_internal_print_secret";
 const SPOOL_FILE = path.join(process.cwd(), "..", "scratch", "receipt_spool.txt");
 
 console.log("[Electron Daemon] Inicializando daemon de impressão...");
@@ -12,7 +13,12 @@ console.log(`[Electron Daemon] Escutando rota SSE: ${SERVER_URL}`);
 let es: EventSource;
 
 function connectSSE() {
-  es = new EventSource(SERVER_URL);
+  const urlWithToken = `${SERVER_URL}?token=${encodeURIComponent(PRINT_SECRET)}`;
+  es = new EventSource(urlWithToken, {
+    headers: {
+      "x-print-auth": PRINT_SECRET,
+    },
+  });
 
   es.onopen = () => {
     console.log("[Electron Daemon] Conectado com sucesso ao barramento SSE.");

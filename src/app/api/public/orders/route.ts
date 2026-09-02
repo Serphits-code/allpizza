@@ -22,6 +22,44 @@ const orderRateLimiter = rateLimit({
   uniqueTokenPerInterval: 1000,
 });
 
+// Cache em memória de curta duração para tabelas de precificação do cardápio
+interface CatalogCache {
+  dbProducts: any[];
+  dbFlavors: any[];
+  dbCrusts: any[];
+  dbToppings: any[];
+  dbZones: any[];
+  cachedAt: number;
+}
+let catalogCache: CatalogCache | null = null;
+const CATALOG_CACHE_TTL_MS = 60_000; // 60 segundos
+
+async function getCachedCatalog() {
+  const now = Date.now();
+  if (catalogCache && now - catalogCache.cachedAt < CATALOG_CACHE_TTL_MS) {
+    return catalogCache;
+  }
+
+  const [dbProducts, dbFlavors, dbCrusts, dbToppings, dbZones] = await Promise.all([
+    prisma.product.findMany(),
+    prisma.pizzaFlavor.findMany({ include: { category: true } }),
+    prisma.crustType.findMany(),
+    prisma.pizzaTopping.findMany(),
+    prisma.deliveryZone.findMany({ where: { isActive: true } }),
+  ]);
+
+  catalogCache = {
+    dbProducts,
+    dbFlavors,
+    dbCrusts,
+    dbToppings,
+    dbZones,
+    cachedAt: now,
+  };
+
+  return catalogCache;
+}
+
 // Validador Zod do payload do pedido
 const orderItemToppingSchema = z.object({
   toppingName: z.string(),
@@ -109,14 +147,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Telefone do cliente inválido" }, { status: 400 });
     }
 
-    // 3. Carrega base de precificação do banco para recálculo server-side
-    const [dbProducts, dbFlavors, dbCrusts, dbToppings, dbZones] = await Promise.all([
-      prisma.product.findMany(),
-      prisma.pizzaFlavor.findMany({ include: { category: true } }),
-      prisma.crustType.findMany(),
-      prisma.pizzaTopping.findMany(),
-      prisma.deliveryZone.findMany({ where: { isActive: true } }),
-    ]);
+    // 3. Carrega base de precificação em cache para recálculo server-side de alta performance
+    const { dbProducts, dbFlavors, dbCrusts, dbToppings, dbZones } = await getCachedCatalog();
 
     const productMap = new Map(dbProducts.map((p) => [p.name.toLowerCase().trim(), p]));
     const flavorMap = new Map(dbFlavors.map((f) => [f.name.toLowerCase().trim(), f]));

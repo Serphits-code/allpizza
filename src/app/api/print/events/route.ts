@@ -8,10 +8,16 @@ export async function GET(request: Request) {
   // Autenticação obrigatória: apenas usuários autenticados da equipe (ou token interno) podem escutar o barramento SSE
   const session = await getServerSession(authOptions);
   
-  // Permite autenticação via header secreto para daemon desktop rodando localmente
+  // Permite autenticação via header secreto ou query param para daemon desktop
+  const { searchParams } = new URL(request.url);
+  const queryToken = searchParams.get("token");
   const secretHeader = request.headers.get("x-print-auth");
   const internalSecret = process.env.PRINT_SERVICE_SECRET || "alldelivery_internal_print_secret";
-  const isSecretValid = secretHeader && secretHeader === internalSecret;
+
+  const isSecretValid =
+    Boolean(internalSecret) &&
+    ((secretHeader && secretHeader === internalSecret) ||
+      (queryToken && queryToken === internalSecret));
 
   if (!session && !isSecretValid) {
     return new Response(JSON.stringify({ error: "Não autorizado" }), {

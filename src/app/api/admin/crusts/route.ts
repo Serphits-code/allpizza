@@ -5,8 +5,16 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// GET: Retorna todos os tipos de borda
+// GET: Retorna todos os tipos de borda (autenticado)
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (
+    !session ||
+    !["ADMIN", "MANAGER", "GARCOM", "KITCHEN"].includes(session.user.role)
+  ) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
   try {
     const crusts = await prisma.crustType.findMany({
       orderBy: { name: "asc" },

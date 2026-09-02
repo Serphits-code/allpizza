@@ -107,8 +107,12 @@ export function findDeliveryZone(lat: number, lng: number, zones: ZoneInput[]): 
     .sort((a, b) => a.deliveryFee - b.deliveryFee);
 
   for (const zone of activeZones) {
-    if (isPointInPolygon(lat, lng, zone.geometry)) {
-      return zone;
+    try {
+      if (isPointInPolygon(lat, lng, zone.geometry)) {
+        return zone;
+      }
+    } catch (err) {
+      console.warn(`[Geo] Falha ao verificar ponto na zona ${zone.title || zone.id}:`, err);
     }
   }
 

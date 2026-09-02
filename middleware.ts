@@ -37,6 +37,25 @@ export default withAuth(
           return NextResponse.redirect(new URL("/admin/login", req.url));
         }
       }
+
+      // 4. Controle centralizado de APIs (/api/admin, /api/entregador, /api/garcom)
+      if (path.startsWith("/api/admin")) {
+        const allowedRoles = ["ADMIN", "MANAGER", "GARCOM", "KITCHEN"];
+        if (!allowedRoles.includes(role)) {
+          return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+        }
+      } else if (path.startsWith("/api/entregador")) {
+        if (role !== "DRIVER" && role !== "ADMIN" && role !== "MANAGER") {
+          return NextResponse.json({ error: "Acesso restrito a entregadores" }, { status: 403 });
+        }
+      } else if (path.startsWith("/api/garcom")) {
+        if (role !== "GARCOM" && role !== "ADMIN" && role !== "MANAGER") {
+          return NextResponse.json({ error: "Acesso restrito a garçons" }, { status: 403 });
+        }
+      }
+    } else if (path.startsWith("/api/")) {
+      // Rejeita requisições para APIs protegidas sem token de autenticação
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
   },
   {
@@ -49,7 +68,12 @@ export default withAuth(
           return true;
         }
 
-        // Para qualquer outra rota protegida (/admin, /entregador, /garcom), exige token existente
+        // Permite que requisições de API passem para o handler do middleware responder JSON (em vez de redirect HTML)
+        if (path.startsWith("/api/")) {
+          return true;
+        }
+
+        // Para qualquer outra página protegida (/admin, /entregador, /garcom), exige token existente
         return !!token;
       },
     },
@@ -60,5 +84,12 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/admin/:path*", "/entregador/:path*", "/garcom/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/entregador/:path*",
+    "/garcom/:path*",
+    "/api/admin/:path*",
+    "/api/entregador/:path*",
+    "/api/garcom/:path*",
+  ],
 };

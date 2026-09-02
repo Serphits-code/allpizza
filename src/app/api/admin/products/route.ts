@@ -5,8 +5,16 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// GET: Retorna todos os produtos
+// GET: Retorna todos os produtos (autenticado)
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (
+    !session ||
+    !["ADMIN", "MANAGER", "GARCOM", "KITCHEN"].includes(session.user.role)
+  ) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
   try {
     const products = await prisma.product.findMany({
       include: { category: true },
