@@ -49,6 +49,17 @@ interface Order {
 
 type FilterTab = "TODOS" | "EM_ANDAMENTO" | "FINALIZADOS" | "CANCELADOS";
 
+const formatDisplayPhone = (p: string) => {
+  const clean = p.replace(/\D/g, "");
+  if (clean.length === 11) {
+    return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+  }
+  if (clean.length === 10) {
+    return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+  }
+  return p;
+};
+
 export default function MeusPedidosPage() {
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
@@ -57,6 +68,7 @@ export default function MeusPedidosPage() {
   const [phoneInput, setPhoneInput] = useState<string>("");
   const [isEditingPhone, setIsEditingPhone] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [hasCheckedStorage, setHasCheckedStorage] = useState<boolean>(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [customerName, setCustomerName] = useState<string>("Cliente");
   const [favoriteCategory, setFavoriteCategory] = useState<string>("Pizzas");
@@ -77,9 +89,19 @@ export default function MeusPedidosPage() {
         if (savedName) {
           setCustomerName(savedName);
         }
+        setHasCheckedStorage(true);
+
+        if (!savedPhone) {
+          const savedIds = JSON.parse(localStorage.getItem("alldelivery_customer_orders") || "[]");
+          if (savedIds.length === 0) {
+            setLoading(false);
+          }
+        }
       }
     } catch (e) {
       console.warn("Error reading localStorage:", e);
+      setHasCheckedStorage(true);
+      setLoading(false);
     }
   }, []);
 
@@ -122,7 +144,9 @@ export default function MeusPedidosPage() {
   };
 
   useEffect(() => {
-    fetchCustomerOrders();
+    if (phone) {
+      fetchCustomerOrders();
+    }
   }, [phone]);
 
   const handleSavePhone = (e: React.FormEvent) => {
@@ -212,6 +236,118 @@ export default function MeusPedidosPage() {
     }
   };
 
+  // 1. Loader de verificação do storage
+  if (!hasCheckedStorage || loading) {
+    return (
+      <div className="min-h-screen bg-brand-bg text-white py-16 px-4 sm:px-6 flex flex-col items-center justify-center selection:bg-brand-red selection:text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-brand-red border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs font-semibold text-brand-lightGray">Verificando seus pedidos...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const hasOrdersOrPhone = Boolean((phone && phone.trim().length >= 8) || orders.length > 0);
+
+  // 2. SE NÃO TIVER COMPRA SALVA NO LOCALSTORAGE: Mostra aviso amigável + botão para o cardápio
+  if (!hasOrdersOrPhone) {
+    return (
+      <div className="min-h-screen bg-brand-bg text-white py-10 px-4 sm:px-6 flex flex-col items-center selection:bg-brand-red selection:text-white">
+        <div className="w-full max-w-2xl space-y-6">
+          {/* Barra superior de navegação */}
+          <div className="flex items-center justify-between">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-lightGray hover:text-white transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              <span>Voltar ao Cardápio</span>
+            </Link>
+          </div>
+
+          {/* Card Principal: Aviso de Nenhum Pedido + Botão de Primeiro Pedido */}
+          <div className="bg-brand-darkGray border border-brand-mediumGray rounded-3xl p-8 sm:p-12 text-center space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-brand-red/10 border border-brand-red/30 flex items-center justify-center text-4xl shadow-lg shadow-brand-red/10">
+              🍕
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                Você ainda não realizou nenhum pedido
+              </h1>
+              <p className="text-sm text-brand-lightGray max-w-md mx-auto leading-relaxed">
+                Navegue pelo nosso cardápio, monte sua pizza do seu jeito ou escolha suas delícias favoritas para fazer sua primeira compra!
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 px-8 py-3.5 bg-brand-red hover:bg-brand-redHover text-white font-extrabold text-sm rounded-2xl shadow-xl shadow-brand-red/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <span>Ver Cardápio & Fazer Primeiro Pedido</span>
+              </Link>
+            </div>
+
+            {/* Opção secundária discreta para consultar por WhatsApp caso tenha comprado em outro celular */}
+            <div className="pt-6 border-t border-brand-mediumGray/40">
+              {!isEditingPhone ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingPhone(true)}
+                  className="text-xs text-brand-lightGray hover:text-white transition underline cursor-pointer"
+                >
+                  Já comprou conosco antes? Clique aqui para informar seu WhatsApp
+                </button>
+              ) : (
+                <form
+                  onSubmit={handleSavePhone}
+                  className="max-w-md mx-auto bg-brand-bg/90 border border-brand-red/30 rounded-2xl p-4 shadow-xl space-y-3 mt-2 text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                      <span>📱</span> Digite seu WhatsApp para buscar pedidos
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingPhone(false)}
+                      className="text-brand-lightGray hover:text-white text-xs cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="tel"
+                      placeholder="(DDD) 99999-9999"
+                      value={phoneInput}
+                      onChange={(e) => setPhoneInput(e.target.value)}
+                      className="flex-1 px-4 py-2.5 bg-brand-darkGray border border-brand-mediumGray rounded-xl text-xs text-white placeholder-brand-lightGray/40 focus:outline-none focus:border-brand-red"
+                      autoFocus
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2.5 bg-brand-red hover:bg-brand-redHover text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+                    >
+                      Buscar
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. SE O CLIENTE JÁ TEM COMPRAS SALVAS: Exibe histórico completo
   return (
     <div className="min-h-screen bg-brand-bg text-white py-10 px-4 sm:px-6 flex flex-col items-center selection:bg-brand-red selection:text-white">
       <div className="w-full max-w-2xl space-y-6">
@@ -233,13 +369,13 @@ export default function MeusPedidosPage() {
               onClick={() => setIsEditingPhone(!isEditingPhone)}
               className="text-xs text-brand-lightGray hover:text-brand-red transition cursor-pointer"
             >
-              {isEditingPhone ? "Cancelar" : `WhatsApp: ${phone} (Alterar)`}
+              {isEditingPhone ? "Cancelar" : `WhatsApp: ${formatDisplayPhone(phone)} (Alterar)`}
             </button>
           )}
         </div>
 
-        {/* Modal/Input para alterar telefone */}
-        {(isEditingPhone || (!phone && !loading && orders.length === 0)) && (
+        {/* Form para alterar telefone (apenas se clicou explicitamente em Alterar) */}
+        {isEditingPhone && (
           <form
             onSubmit={handleSavePhone}
             className="bg-brand-darkGray border border-brand-red/30 rounded-2xl p-5 shadow-xl space-y-3"
