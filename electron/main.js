@@ -12,7 +12,7 @@ let mainWindow;
 // Helper to load settings
 function loadSettings() {
   const defaultSettings = {
-    serverUrl: "http://localhost:3000",
+    serverUrl: "http://localhost:3001",
     apiKey: "alldelivery_internal_print_secret",
     soundEnabled: true,
     configs: {
@@ -899,7 +899,7 @@ const localServer = http.createServer((req, res) => {
     // Usa o IP real da requisição (ex: 10.0.0.186) em vez de localhost
     // para que funcione quando acessado pelo celular na mesma rede
     const reqHost = (req.headers.host || "").split(":")[0] || "localhost";
-    const target = `http://${reqHost}:3000/mesa/${tableId}`;
+    const target = `http://${reqHost}:3001/mesa/${tableId}`;
     res.writeHead(302, { Location: target });
     res.end();
     return;
