@@ -250,8 +250,12 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
         fallbackGroup.addTo(map);
       });
 
+      const brandColor = typeof window !== "undefined"
+        ? getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() || "#e31837"
+        : "#e31837";
+
       const clientIcon = L.divIcon({
-        html: `<div class="w-8 h-8 rounded-full bg-amber-500 border-2 border-white flex items-center justify-center shadow-lg">🏠</div>`,
+        html: `<div class="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center shadow-lg" style="background-color: ${brandColor};">🏠</div>`,
         className: "client-home-pin",
         iconSize: [32, 32],
         iconAnchor: [16, 16],
@@ -269,8 +273,12 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
     }
 
     if (routeGeometry && routeGeometry.length > 0) {
+      const brandColor = typeof window !== "undefined"
+        ? getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() || "#e31837"
+        : "#e31837";
+
       polylineRef.current = L.polyline(routeGeometry, {
-        color: "#fbbf24",
+        color: brandColor,
         weight: 5,
         opacity: 0.9,
         lineJoin: "round",
@@ -349,10 +357,10 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#090c13]">
+      <div className="flex h-screen items-center justify-center bg-brand-bg">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-3 border-amber-400 border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs text-neutral-400 font-sans tracking-wide">Carregando status do pedido...</span>
+          <div className="w-10 h-10 border-3 border-brand-red border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-brand-lightGray font-sans tracking-wide">Carregando status do pedido...</span>
         </div>
       </div>
     );
@@ -360,15 +368,15 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
 
   if (errorMsg || !order) {
     return (
-      <div className="mx-auto max-w-md px-4 py-16 text-center space-y-5 bg-[#090c13] min-h-screen flex flex-col justify-center">
+      <div className="mx-auto max-w-md px-4 py-16 text-center space-y-5 bg-brand-bg min-h-screen flex flex-col justify-center">
         <span className="text-4xl">⚠️</span>
         <h2 className="text-xl font-bold text-white">Pedido não encontrado</h2>
-        <p className="text-xs text-neutral-400">{errorMsg || "Não localizamos os dados deste pedido."}</p>
+        <p className="text-xs text-brand-lightGray">{errorMsg || "Não localizamos os dados deste pedido."}</p>
         <div className="flex gap-3 justify-center pt-2">
-          <Link href="/meus-pedidos" className="px-5 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-xl text-xs font-bold text-white border border-neutral-700 transition">
+          <Link href="/meus-pedidos" className="px-5 py-2.5 bg-brand-darkGray hover:bg-brand-mediumGray rounded-xl text-xs font-bold text-white border border-brand-mediumGray transition">
             Meus Pedidos
           </Link>
-          <Link href="/" className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 rounded-xl text-xs font-bold text-black transition">
+          <Link href="/" className="px-5 py-2.5 bg-brand-red hover:bg-brand-redHover rounded-xl text-xs font-bold text-white shadow-md shadow-brand-red/20 transition">
             Voltar ao Cardápio
           </Link>
         </div>
@@ -472,18 +480,18 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
   });
 
   return (
-    <div className="min-h-screen bg-[#090c13] text-neutral-100 py-8 px-4 sm:px-6 flex flex-col items-center selection:bg-amber-400 selection:text-black">
+    <div className="min-h-screen bg-brand-bg text-white py-8 px-4 sm:px-6 flex flex-col items-center selection:bg-brand-red selection:text-white">
       <div className="w-full max-w-xl space-y-6">
 
-        {/* 1. CARD SUPERIOR DE STATUS E STEPPER (IDÊNTICO AO PRINT 2) */}
-        <div className="bg-[#111622] border border-neutral-800/80 rounded-2xl p-6 sm:p-7 shadow-2xl relative overflow-hidden">
+        {/* 1. CARD SUPERIOR DE STATUS E STEPPER COM AS CORES DO ADMIN */}
+        <div className="bg-brand-darkGray border border-brand-mediumGray rounded-2xl p-6 sm:p-7 shadow-2xl relative overflow-hidden">
           {/* Header com Pedido # e Badge */}
           <div className="flex items-start justify-between gap-4 mb-8">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
                 Pedido #{order.orderNumber}
               </h1>
-              <p className="text-xs text-neutral-400 mt-1 font-medium">
+              <p className="text-xs text-brand-lightGray mt-1 font-medium">
                 {formattedDate}
               </p>
             </div>
@@ -493,15 +501,15 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
             </span>
           </div>
 
-          {/* Stepper Horizontal com Linhas e Ícones Amarelos */}
+          {/* Stepper Horizontal Dinâmico com Linhas e Ícones da Cor do Admin */}
           {order.status !== "CANCELADO" ? (
             <div className="relative px-2 sm:px-4">
-              {/* Linha conectora de fundo cinza */}
-              <div className="absolute top-5 left-8 right-8 h-[2px] bg-neutral-800 -z-0" />
+              {/* Linha conectora de fundo */}
+              <div className="absolute top-5 left-8 right-8 h-[2px] bg-brand-mediumGray -z-0" />
 
-              {/* Linha conectora ativa amarela */}
+              {/* Linha conectora ativa na cor da marca */}
               <div
-                className="absolute top-5 left-8 h-[2px] bg-amber-400 transition-all duration-700 -z-0"
+                className="absolute top-5 left-8 h-[2px] bg-brand-red transition-all duration-700 -z-0"
                 style={{
                   width: `${Math.min(100, Math.max(0, (activeIndex / (steps.length - 1)) * 100))}%`,
                   maxWidth: "calc(100% - 4rem)",
@@ -518,16 +526,16 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
                       <div
                         className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                           isDone
-                            ? "bg-amber-400 text-black shadow-lg shadow-amber-400/20"
-                            : "bg-[#161c2b] text-neutral-500 border border-neutral-700/60"
-                        } ${isCurrent ? "ring-4 ring-amber-400/20 scale-105" : ""}`}
+                            ? "bg-brand-red text-white shadow-lg shadow-brand-red/25"
+                            : "bg-brand-mediumGray/50 text-neutral-500 border border-brand-mediumGray"
+                        } ${isCurrent ? "ring-4 ring-brand-red/25 scale-105" : ""}`}
                       >
                         {step.icon}
                       </div>
 
                       <span
                         className={`text-xs mt-2.5 font-medium transition-colors ${
-                          isDone ? "text-amber-400 font-bold" : "text-neutral-500"
+                          isDone ? "text-brand-red font-bold" : "text-neutral-500"
                         }`}
                       >
                         {step.label}
@@ -546,10 +554,10 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
 
         {/* 2. CARD DO MAPA DE ENTREGA (ATIVO APENAS SE EM ROTA) */}
         {order.status === OrderStatus.EM_ROTA && (
-          <div className="bg-[#111622] border border-neutral-800/80 rounded-2xl p-5 shadow-2xl space-y-3">
+          <div className="bg-brand-darkGray border border-brand-mediumGray rounded-2xl p-5 shadow-2xl space-y-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-2 font-bold text-amber-400">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+              <span className="flex items-center gap-2 font-bold text-brand-red">
+                <span className="w-2 h-2 rounded-full bg-brand-red animate-ping" />
                 Entrega em tempo real
               </span>
               {driverActive && (
@@ -557,12 +565,12 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
               )}
             </div>
 
-            <div className="relative overflow-hidden rounded-xl border border-neutral-800">
-              <div ref={mapContainerRef} className="w-full h-56 bg-neutral-900" />
+            <div className="relative overflow-hidden rounded-xl border border-brand-mediumGray">
+              <div ref={mapContainerRef} className="w-full h-56 bg-neutral-950" />
             </div>
 
             {!driverActive && (
-              <div className="p-2.5 bg-neutral-900/80 rounded-lg text-xxs text-neutral-400 text-center italic">
+              <div className="p-2.5 bg-brand-bg rounded-lg text-xxs text-brand-lightGray text-center italic border border-brand-mediumGray/50">
                 {staleGPS
                   ? "📍 Entregador em trânsito. (Sincronizando sinal de GPS...)"
                   : "🛵 O entregador iniciará o trajeto até o seu endereço em instantes."}
@@ -571,13 +579,13 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
           </div>
         )}
 
-        {/* 3. CARD DE ITENS DO PEDIDO (IDÊNTICO AO PRINT 2) */}
-        <div className="bg-[#111622] border border-neutral-800/80 rounded-2xl p-6 sm:p-7 shadow-2xl space-y-5">
+        {/* 3. CARD DE ITENS DO PEDIDO */}
+        <div className="bg-brand-darkGray border border-brand-mediumGray rounded-2xl p-6 sm:p-7 shadow-2xl space-y-5">
           <h2 className="text-sm font-bold text-white tracking-wide">
             Itens do Pedido
           </h2>
 
-          <div className="divide-y divide-neutral-800/60">
+          <div className="divide-y divide-brand-mediumGray/50">
             {items.map((item, idx) => (
               <div key={item.id || idx} className="py-3.5 first:pt-0 last:pb-0 space-y-1">
                 <div className="flex justify-between items-baseline text-sm">
@@ -591,7 +599,7 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
 
                 {/* Discriminação de Borda Recheada */}
                 {item.crustType && item.crustType !== "Tradicional" && (
-                  <p className="text-xs text-neutral-400 pl-4">
+                  <p className="text-xs text-brand-lightGray pl-4">
                     + Borda: {item.crustType} {item.caracolRequested ? "(Caracol)" : ""}
                   </p>
                 )}
@@ -600,7 +608,7 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
                 {item.toppings && item.toppings.length > 0 && (
                   <div className="pl-4 space-y-0.5 pt-0.5">
                     {item.toppings.map((top, tIdx) => (
-                      <p key={tIdx} className="text-xs text-neutral-400">
+                      <p key={tIdx} className="text-xs text-brand-lightGray">
                         + {top.slicesCount > 1 ? `${top.slicesCount}x ` : "1x "}{top.toppingName}
                         {top.targetType === "FLAVOR" && top.flavorName ? ` (${top.flavorName})` : ""}
                       </p>
@@ -612,8 +620,8 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
           </div>
 
           {/* Resumo Financeiro */}
-          <div className="border-t border-neutral-800/80 pt-4 space-y-2 text-sm">
-            <div className="flex justify-between text-neutral-400">
+          <div className="border-t border-brand-mediumGray/80 pt-4 space-y-2 text-sm">
+            <div className="flex justify-between text-brand-lightGray">
               <span>Subtotal</span>
               <span className="font-mono text-neutral-200">
                 R$ {Number(order.subtotal || 0).toFixed(2).replace(".", ",")}
@@ -621,7 +629,7 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
             </div>
 
             {Number(order.deliveryFee || 0) > 0 && (
-              <div className="flex justify-between text-neutral-400">
+              <div className="flex justify-between text-brand-lightGray">
                 <span>Taxa de entrega</span>
                 <span className="font-mono text-neutral-200">
                   R$ {Number(order.deliveryFee || 0).toFixed(2).replace(".", ",")}
@@ -629,22 +637,22 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
               </div>
             )}
 
-            <div className="flex justify-between items-baseline pt-2 border-t border-neutral-800 text-base font-bold">
+            <div className="flex justify-between items-baseline pt-2 border-t border-brand-mediumGray text-base font-bold">
               <span className="text-white">Total</span>
-              <span className="font-mono text-lg font-extrabold text-amber-400">
+              <span className="font-mono text-lg font-extrabold text-brand-red">
                 R$ {Number(order.total || 0).toFixed(2).replace(".", ",")}
               </span>
             </div>
           </div>
         </div>
 
-        {/* 4. BOTÕES DE AÇÃO INFERIORES (IDÊNTICO AO PRINT 2) */}
+        {/* 4. BOTÕES DE AÇÃO INFERIORES */}
         <div className="flex flex-col sm:flex-row gap-3 pt-1">
-          {/* Botão Amarelo de Pedir Novamente */}
+          {/* Botão com Cor da Marca de Pedir Novamente */}
           <button
             onClick={handleReorder}
             disabled={reordering}
-            className="flex-1 py-3.5 px-6 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-400/20 transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50"
+            className="flex-1 py-3.5 px-6 rounded-xl bg-brand-red hover:bg-brand-redHover text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-brand-red/25 transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -655,9 +663,9 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
           {/* Botão Meus Pedidos */}
           <Link
             href="/meus-pedidos"
-            className="py-3.5 px-5 rounded-xl bg-[#141925] hover:bg-[#1a2133] text-white font-semibold text-sm border border-neutral-800 flex items-center justify-center gap-2 transition cursor-pointer"
+            className="py-3.5 px-5 rounded-xl bg-brand-mediumGray/70 hover:bg-brand-mediumGray text-white font-semibold text-sm border border-brand-mediumGray flex items-center justify-center gap-2 transition cursor-pointer"
           >
-            <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-brand-lightGray" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
             <span>Meus Pedidos</span>
@@ -666,9 +674,9 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
           {/* Botão Cardápio */}
           <Link
             href="/"
-            className="py-3.5 px-5 rounded-xl bg-[#141925] hover:bg-[#1a2133] text-white font-semibold text-sm border border-neutral-800 flex items-center justify-center gap-2 transition cursor-pointer"
+            className="py-3.5 px-5 rounded-xl bg-brand-mediumGray/70 hover:bg-brand-mediumGray text-white font-semibold text-sm border border-brand-mediumGray flex items-center justify-center gap-2 transition cursor-pointer"
           >
-            <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-brand-lightGray" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
             <span>Cardápio</span>
