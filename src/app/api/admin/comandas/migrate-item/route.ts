@@ -1,27 +1,104 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { roundCurrency } from "@/lib/pricing";
+import { authenticateApiRequest } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
 
-// POST /api/admin/comandas/migrate-item - Move item de uma comanda para outra
+// POST /api/admin/comandas/migrate-item - Move item ou mesa inteira para outra comanda
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER" && session.user.role !== "GARCOM")) {
-    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
+  const auth = await authenticateApiRequest(request, ["ADMIN", "MANAGER", "GARCOM"]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Acesso não autorizado para esta função" }, { status: 403 });
   }
 
   try {
     const body = await request.json();
-    const { itemId, targetComandaId } = body;
+    const { itemId, sourceComandaId, targetComandaId } = body;
 
-    if (!itemId || !targetComandaId) {
+    if (!targetComandaId) {
       return NextResponse.json(
-        { error: "ID do item e ID da comanda de destino são obrigatórios" },
+        { error: "Comanda de destino é obrigatória" },
         { status: 400 }
       );
+    }
+
+    const targetComanda = await prisma.comanda.findUnique({
+      where: { id: targetComandaId },
+    });
+
+    if (!targetComanda) {
+      return NextResponse.json({ error: "Comanda de destino não encontrada" }, { status: 404 });
+    }
+
+    // CASO 1: TRANSFERÊNCIA DA MESA INTEIRA (Sem itemId, mas com sourceComandaId)
+    if (!itemId && sourceComandaId) {
+      const sourceComanda = await prisma.comanda.findUnique({
+        where: { id: sourceComandaId },
+      });
+
+      if (!sourceComanda) {
+        return NextResponse.json({ error: "Comanda de origem não encontrada" }, { status: 404 });
+      }
+
+      await prisma.$transaction(async (tx) => {
+        // 1. Transfere todos os pedidos não cancelados/entregues para a mesa de destino
+        await tx.order.updateMany({
+          where: {
+            comandaId: sourceComandaId,
+            status: { notIn: ["ENTREGUE", "CANCELADO"] },
+          },
+          data: { comandaId: targetComandaId },
+        });
+
+        // 2. Destino fica OCUPADA e herda o responsável se o destino não tiver
+        await tx.comanda.update({
+          where: { id: targetComandaId },
+          data: {
+            status: "OCUPADA",
+            responsibleName: targetComanda.responsibleName || sourceComanda.responsibleName || null,
+          },
+        });
+
+        // 3. Origem fica LIVRE
+        await tx.comanda.update({
+          where: { id: sourceComandaId },
+          data: { status: "LIVRE", responsibleName: null },
+        });
+
+        // 4. Transfere histórico de pagamentos parciais no SystemConfig
+        const sourcePayConfig = await tx.systemConfig.findUnique({
+          where: { key: `comanda_payments_${sourceComandaId}` },
+        });
+        if (sourcePayConfig) {
+          const targetPayConfig = await tx.systemConfig.findUnique({
+            where: { key: `comanda_payments_${targetComandaId}` },
+          });
+          const sourcePays = JSON.parse(sourcePayConfig.value || "[]");
+          const targetPays = targetPayConfig ? JSON.parse(targetPayConfig.value || "[]") : [];
+          const mergedPays = [...targetPays, ...sourcePays];
+
+          await tx.systemConfig.upsert({
+            where: { key: `comanda_payments_${targetComandaId}` },
+            create: { key: `comanda_payments_${targetComandaId}`, value: JSON.stringify(mergedPays) },
+            update: { value: JSON.stringify(mergedPays) },
+          });
+
+          await tx.systemConfig.delete({
+            where: { key: `comanda_payments_${sourceComandaId}` },
+          }).catch(() => {});
+        }
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Mesa #${sourceComanda.number} transferida inteiramente para a Mesa #${targetComanda.number}!`,
+      });
+    }
+
+    // CASO 2: MIGRAÇÃO DE UM ITEM ESPECÍFICO
+    if (!itemId) {
+      return NextResponse.json({ error: "ID do item é obrigatório para migração de item" }, { status: 400 });
     }
 
     const item = await prisma.orderItem.findUnique({
@@ -33,20 +110,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Item não encontrado" }, { status: 404 });
     }
 
-    const sourceOrderId = item.orderId;
-    const sourceComandaId = item.order.comandaId;
-
-    const targetComanda = await prisma.comanda.findUnique({
-      where: { id: targetComandaId },
-    });
-
-    if (!targetComanda) {
-      return NextResponse.json({ error: "Comanda de destino não encontrada" }, { status: 404 });
-    }
+    const itemSourceOrderId = item.orderId;
+    const itemSourceComandaId = item.order.comandaId;
 
     // Executa migração inteira dentro de transação atômica
     await prisma.$transaction(async (tx) => {
-      // 1. Busca pedido ativo na comanda de destino ou cria um novo herdando o telefone/contato real
+      // 1. Busca pedido ativo na comanda de destino ou cria um novo
       let targetOrder = await tx.order.findFirst({
         where: {
           comandaId: targetComandaId,
@@ -79,18 +148,18 @@ export async function POST(request: Request) {
 
       // 3. Recalcula totais do pedido de origem
       const remainingSourceItems = await tx.orderItem.findMany({
-        where: { orderId: sourceOrderId },
+        where: { orderId: itemSourceOrderId },
       });
 
       if (remainingSourceItems.length === 0) {
         await tx.order.update({
-          where: { id: sourceOrderId },
+          where: { id: itemSourceOrderId },
           data: { status: "CANCELADO", subtotal: 0, total: 0 },
         });
       } else {
         const sourceSubtotal = roundCurrency(remainingSourceItems.reduce((sum, i) => sum + i.totalPrice, 0));
         await tx.order.update({
-          where: { id: sourceOrderId },
+          where: { id: itemSourceOrderId },
           data: {
             subtotal: sourceSubtotal,
             total: roundCurrency(sourceSubtotal + (item.order.deliveryFee || 0)),
@@ -118,16 +187,16 @@ export async function POST(request: Request) {
       });
 
       // 6. Verifica comanda de origem
-      if (sourceComandaId) {
+      if (itemSourceComandaId) {
         const activeSourceOrders = await tx.order.count({
           where: {
-            comandaId: sourceComandaId,
+            comandaId: itemSourceComandaId,
             status: { notIn: ["ENTREGUE", "CANCELADO"] },
           },
         });
         if (activeSourceOrders === 0) {
           await tx.comanda.update({
-            where: { id: sourceComandaId },
+            where: { id: itemSourceComandaId },
             data: { status: "LIVRE" },
           });
         }

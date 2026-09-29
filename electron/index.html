@@ -814,6 +814,42 @@
       border-color: #555;
     }
 
+    /* GESTÃO DE COMANDAS & BAIXAS */
+    .manage-pay-method-btn {
+      background-color: #202020;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+
+    .manage-pay-method-btn:hover {
+      border-color: #555;
+      color: #fff;
+    }
+
+    .manage-pay-method-btn.active {
+      background-color: var(--red);
+      color: #fff;
+      border-color: var(--red);
+      box-shadow: 0 2px 6px rgba(227, 24, 55, 0.3);
+    }
+
+    .manage-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #202020;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
     /* CONFIGURAÇÕES TAB */
     .config-container {
       max-width: 900px;
@@ -2327,12 +2363,19 @@
                 Novo Pedido
               </button>
             </div>
+            <div id="pdv-comanda-banner" style="display: none; background: rgba(227,24,55,0.15); border: 1px solid var(--red); padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; color: #fff; justify-content: space-between; align-items: center; margin: 8px 0;">
+              <span id="pdv-comanda-banner-text">🍽️ Lançando Pedido na Mesa #--</span>
+              <button type="button" class="btn-action" style="padding: 2px 8px; font-size: 10px;" onclick="cancelPdvComandaMode()">Voltar ao Delivery</button>
+            </div>
             <div class="pdv-type-selector">
               <button type="button" id="pdv-type-delivery" class="pdv-type-btn active" onclick="setPdvOrderType('DELIVERY')">
                 🛵 Delivery
               </button>
               <button type="button" id="pdv-type-retirada" class="pdv-type-btn" onclick="setPdvOrderType('RETIRADA')">
                 🛍️ Retirada
+              </button>
+              <button type="button" id="pdv-type-comanda" class="pdv-type-btn" style="display: none;" onclick="setPdvOrderType('COMANDA')">
+                🍽️ Mesa
               </button>
             </div>
           </div>
@@ -2854,6 +2897,164 @@
       </div>
       <div class="modal-body" id="modal-order-body"></div>
       <div class="modal-footer" id="modal-order-footer"></div>
+    </div>
+  <!-- MODAL: GERENCIAMENTO COMPLETO DE COMANDA / MESA -->
+  <div id="modal-manage-comanda" class="modal-overlay">
+    <div class="modal-box" style="max-width: 680px; width: 95%; max-height: 92vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <span id="manage-comanda-title">Mesa #--</span>
+          <span id="manage-comanda-status" class="table-status-pill status-livre">LIVRE</span>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('modal-manage-comanda')">✕</button>
+      </div>
+
+      <div class="modal-body" style="overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 16px;">
+        <!-- 1. IDENTIFICAÇÃO DO RESPONSÁVEL -->
+        <div style="background: #1e1e1e; border: 1px solid var(--border); border-radius: 12px; padding: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+              👤 Titular / Responsável da Mesa
+            </label>
+            <span id="manage-resp-saved-hint" style="font-size: 10px; color: var(--green); display: none;">Salvo!</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="manage-comanda-responsible" placeholder="Ex: João Silva / Família Almeida" style="flex: 1; padding: 8px 12px; font-size: 12px; background: #141414; border: 1px solid var(--border); border-radius: 8px; color: #fff;" />
+            <button id="btn-save-manage-resp" class="btn-action" style="padding: 8px 14px; font-size: 12px;" onclick="handleSaveManageResponsible()">Salvar</button>
+          </div>
+        </div>
+
+        <!-- 2. RESUMO FINANCEIRO (3 CARDS) -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+          <div style="background: #1e1e1e; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px;">
+            <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Consumo Total</span>
+            <span id="manage-stat-consumption" style="font-size: 18px; font-weight: 900; color: var(--yellow); font-family: monospace; display: block; margin: 4px 0;">R$ 0,00</span>
+            <span id="manage-stat-orders-count" style="font-size: 10px; color: var(--text-muted);">0 pedido(s)</span>
+          </div>
+
+          <div style="background: #1e1e1e; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px;">
+            <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Total Pago (Baixas)</span>
+            <span id="manage-stat-paid" style="font-size: 18px; font-weight: 900; color: var(--green); font-family: monospace; display: block; margin: 4px 0;">R$ 0,00</span>
+            <span id="manage-stat-payments-count" style="font-size: 10px; color: var(--text-muted);">0 baixa(s)</span>
+          </div>
+
+          <div id="manage-stat-card-balance" style="background: #1e1e1e; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Saldo Restante</span>
+              <span id="manage-badge-quitado" style="display: none; font-size: 9px; background: rgba(16,185,129,0.2); color: var(--green); padding: 1px 6px; border-radius: 10px; font-weight: 800;">QUITADO</span>
+            </div>
+            <span id="manage-stat-balance" style="font-size: 18px; font-weight: 900; color: var(--red); font-family: monospace; display: block; margin: 4px 0;">R$ 0,00</span>
+            <span id="manage-stat-balance-desc" style="font-size: 10px; color: var(--text-muted);">Aguardando baixa</span>
+          </div>
+        </div>
+
+        <!-- 3. BARRA DE AÇÕES RÁPIDAS -->
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <button id="btn-manage-add-order" class="btn-action primary" style="flex: 1; padding: 9px 12px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="handleAddOrderFromComandaModal()">
+            <span>＋</span> Adicionar Pedido na Mesa
+          </button>
+          <button id="btn-manage-print-bill" class="btn-action" style="padding: 9px 12px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; border-color: var(--yellow); color: var(--yellow);" onclick="handlePrintManageComanda()">
+            <span>🖨️</span> Imprimir Pré-Conta
+          </button>
+          <button id="btn-manage-transfer-table" class="btn-action" style="padding: 9px 12px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; border-color: var(--purple); color: var(--purple);" onclick="openTransferTableModal()">
+            <span>🔄</span> Transferir Mesa
+          </button>
+          <button id="btn-manage-release" class="btn-action" style="padding: 9px 12px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; border-color: var(--green); color: var(--green);" onclick="handleReleaseComanda()">
+            <span>🏁</span> Liberar Mesa
+          </button>
+        </div>
+
+        <!-- 4. PAINEL DE MÚLTIPLAS BAIXAS NA CONTA -->
+        <div style="background: #181818; border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            <div>
+              <span style="font-size: 12px; font-weight: 800; color: #fff;">💳 Baixas na Conta (Múltiplos Pagamentos)</span>
+              <span style="font-size: 10px; color: var(--text-muted); display: block;">Abata pagamentos em PIX, Dinheiro, Débito ou Crédito até zerar</span>
+            </div>
+            <button id="btn-manage-fill-remaining" class="btn-action" style="font-size: 10px; padding: 4px 8px; color: var(--yellow); border-color: var(--yellow);" onclick="handleFillRemainingBalance()">
+              ⚡ Quitar Saldo
+            </button>
+          </div>
+
+          <!-- Métodos de Pagamento -->
+          <div>
+            <label style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">
+              Forma de Pagamento:
+            </label>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;" id="manage-pay-methods-group">
+              <button type="button" class="manage-pay-method-btn active" data-method="PIX" onclick="setManagePayMethod('PIX')">⚡ PIX</button>
+              <button type="button" class="manage-pay-method-btn" data-method="DINHEIRO" onclick="setManagePayMethod('DINHEIRO')">💵 Dinheiro</button>
+              <button type="button" class="manage-pay-method-btn" data-method="DEBITO" onclick="setManagePayMethod('DEBITO')">💳 Débito</button>
+              <button type="button" class="manage-pay-method-btn" data-method="CREDITO" onclick="setManagePayMethod('CREDITO')">💳 Crédito</button>
+            </div>
+          </div>
+
+          <!-- Inputs de Valor e Troco -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">
+                Valor a Abater / Baixar (R$):
+              </label>
+              <input type="number" id="manage-pay-amount" step="0.01" min="0.01" placeholder="0.00" style="width: 100%; padding: 8px 10px; font-size: 14px; font-weight: 800; font-family: monospace; background: #121212; border: 1px solid var(--border); border-radius: 8px; color: #fff;" oninput="updateManageTrocoDisplay()" />
+            </div>
+
+            <div id="manage-change-box" style="display: none;">
+              <label style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">
+                Valor Entregue pelo Cliente (R$):
+              </label>
+              <input type="number" id="manage-pay-change-for" step="0.01" placeholder="Ex: 50.00" style="width: 100%; padding: 8px 10px; font-size: 14px; font-weight: 800; font-family: monospace; background: #121212; border: 1px solid var(--border); border-radius: 8px; color: #fff;" oninput="updateManageTrocoDisplay()" />
+              <div id="manage-troco-badge" style="margin-top: 4px; font-size: 11px; font-weight: 800; color: var(--green); font-family: monospace; display: none;"></div>
+            </div>
+          </div>
+
+          <button id="btn-submit-comanda-payment" class="btn-action primary" style="width: 100%; padding: 10px; font-size: 12px; font-weight: 800; background: var(--green); border-color: var(--green);" onclick="handleComandaAddPayment()">
+            ✔ Confirmar Baixa na Conta
+          </button>
+
+          <!-- Lista de Baixas Já Efetuadas -->
+          <div>
+            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; display: block;">
+              Histórico de Baixas Desta Mesa
+            </span>
+            <div id="manage-payments-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 130px; overflow-y: auto;">
+              <!-- Itens preenchidos via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. ITENS CONSUMIDOS NA MESA -->
+        <div style="background: #181818; border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; font-weight: 800; color: #fff;">📋 Itens Lançados na Cozinha</span>
+            <span id="manage-items-count-badge" style="font-size: 10px; color: var(--text-muted);">0 item(ns)</span>
+          </div>
+          <div id="manage-items-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
+            <!-- Itens de consumo -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: TRANSFERÊNCIA DE MESA / ITEM -->
+  <div id="modal-transfer-comanda" class="modal-overlay">
+    <div class="modal-box" style="max-width: 400px;">
+      <div class="modal-header">
+        <div class="modal-title" id="transfer-modal-title">Transferir para Outra Mesa</div>
+        <button class="btn-close-modal" onclick="closeModal('modal-transfer-comanda')">✕</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+        <p id="transfer-modal-desc" style="font-size: 12px; color: var(--text-muted);">
+          Selecione a mesa de destino:
+        </p>
+        <select id="transfer-modal-target-select" class="form-control" style="width: 100%; padding: 8px; font-size: 12px; background: #1a1a1a; color: #fff; border: 1px solid #333; border-radius: 8px;"></select>
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end; gap: 8px;">
+        <button class="btn-action" onclick="closeModal('modal-transfer-comanda')">Cancelar</button>
+        <button id="btn-confirm-transfer" class="btn-action primary" style="background: var(--purple); border-color: var(--purple);" onclick="handleConfirmTransfer()">
+          Confirmar Transferência
+        </button>
+      </div>
     </div>
   </div>
 
@@ -3958,6 +4159,8 @@
 
         const card = document.createElement("div");
         card.className = `table-card ${isOcupada ? "ocupada" : ""}`;
+        card.style.cursor = "pointer";
+        card.onclick = () => openManageComandaModal(c.id);
         card.innerHTML = `
           <div class="table-header">
             <span class="table-badge-num">Mesa ${c.number}</span>
@@ -3968,12 +4171,17 @@
 
           <div>
             <div class="table-consumption">R$ ${parseFloat(c.currentConsumption || 0).toFixed(2)}</div>
-            <div class="table-details-text">${c.activeOrdersCount || 0} pedido(s) em aberto</div>
+            <div class="table-details-text">${c.responsibleName ? `👤 ${c.responsibleName}` : `${c.activeOrdersCount || 0} pedido(s) em aberto`}</div>
           </div>
 
-          <button class="btn-qr-card" onclick="event.stopPropagation(); openQrModal(${c.number})">
-            📱 QR Code da Mesa
-          </button>
+          <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
+            <button class="btn-action" style="flex:1; padding:6px; font-size:11px; font-weight:700; background:rgba(227,24,55,0.15); border-color:rgba(227,24,55,0.3); color:var(--red);" onclick="event.stopPropagation(); openManageComandaModal('${c.id}')">
+              ⚙️ Gerenciar
+            </button>
+            <button class="btn-qr-card" style="padding:6px 10px;" onclick="event.stopPropagation(); openQrModal(${c.number})" title="QR Code da Mesa">
+              📱 QR
+            </button>
+          </div>
         `;
 
         grid.appendChild(card);
@@ -3987,6 +4195,612 @@
 
     document.getElementById("search-comanda").addEventListener("input", renderComandas);
     document.getElementById("btn-sync-comandas").addEventListener("click", fetchComandas);
+
+    // ==========================================
+    // GERENCIAMENTO COMPLETO DE COMANDA / MESA
+    // ==========================================
+    let currentManageComandaId = null;
+    let currentManageComanda = null;
+    let currentManagePayments = [];
+    let currentManageOrders = [];
+    let currentManageTotalPaid = 0;
+    let currentManageRemaining = 0;
+    let currentManagePayMethod = "PIX";
+    let transferMode = "ITEM"; // "ITEM" ou "TABLE"
+    let transferItemId = null;
+
+    async function openManageComandaModal(comandaId) {
+      currentManageComandaId = comandaId;
+      const comanda = comandasList.find((c) => c.id === comandaId);
+      currentManageComanda = comanda;
+
+      const modal = document.getElementById("modal-manage-comanda");
+      if (!modal) return;
+      modal.classList.add("active");
+
+      const numText = comanda ? comanda.number : "--";
+      document.getElementById("manage-comanda-title").textContent = `Mesa #${String(numText).padStart(2, "0")}`;
+      const statusPill = document.getElementById("manage-comanda-status");
+      const isOcupada = comanda && comanda.status === "OCUPADA";
+      statusPill.textContent = comanda ? comanda.status : "LIVRE";
+      statusPill.className = `table-status-pill ${isOcupada ? "status-ocupada" : "status-livre"}`;
+
+      const respInput = document.getElementById("manage-comanda-responsible");
+      respInput.value = (comanda && comanda.responsibleName) || "";
+
+      document.getElementById("manage-pay-amount").value = "";
+      document.getElementById("manage-pay-change-for").value = "";
+      document.getElementById("manage-troco-badge").style.display = "none";
+      setManagePayMethod("PIX");
+
+      await loadManageComandaData(comandaId);
+    }
+
+    async function loadManageComandaData(comandaId) {
+      if (!appSettings.serverUrl) return;
+      try {
+        const [resOrders, resPayments] = await Promise.all([
+          fetch(`${appSettings.serverUrl}/api/admin/comandas/${comandaId}`, {
+            headers: { "x-print-auth": appSettings.apiKey },
+          }),
+          fetch(`${appSettings.serverUrl}/api/admin/comandas/${comandaId}/payments`, {
+            headers: { "x-print-auth": appSettings.apiKey },
+          }),
+        ]);
+
+        let orders = [];
+        if (resOrders.ok) {
+          const dataOrders = await resOrders.json();
+          orders = dataOrders.comanda?.orders || [];
+          currentManageOrders = orders;
+        }
+
+        let payments = [];
+        let totalPaid = 0;
+        let remaining = 0;
+        let consumption = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+        if (resPayments.ok) {
+          const dataPay = await resPayments.json();
+          if (dataPay.success) {
+            payments = dataPay.payments || [];
+            totalPaid = dataPay.totalPaid || 0;
+            remaining = dataPay.remainingBalance !== undefined ? dataPay.remainingBalance : Math.max(0, consumption - totalPaid);
+          }
+        }
+
+        currentManagePayments = payments;
+        currentManageTotalPaid = totalPaid;
+        currentManageRemaining = remaining;
+
+        document.getElementById("manage-stat-consumption").textContent = `R$ ${consumption.toFixed(2)}`;
+        document.getElementById("manage-stat-orders-count").textContent = `${orders.length} subpedido(s)`;
+        document.getElementById("manage-stat-paid").textContent = `R$ ${totalPaid.toFixed(2)}`;
+        document.getElementById("manage-stat-payments-count").textContent = `${payments.length} baixa(s)`;
+        document.getElementById("manage-stat-balance").textContent = `R$ ${Math.max(0, remaining).toFixed(2)}`;
+
+        const quitadoBadge = document.getElementById("manage-badge-quitado");
+        const balDesc = document.getElementById("manage-stat-balance-desc");
+        const statBal = document.getElementById("manage-stat-balance");
+        if (remaining <= 0.01 && consumption > 0) {
+          quitadoBadge.style.display = "inline-block";
+          balDesc.textContent = "✓ Mesa 100% quitada";
+          statBal.style.color = "var(--green)";
+        } else {
+          quitadoBadge.style.display = "none";
+          balDesc.textContent = remaining > 0 ? "Aguardando baixa" : "Sem consumo pendente";
+          statBal.style.color = remaining > 0 ? "var(--red)" : "var(--text-muted)";
+        }
+
+        if (remaining > 0) {
+          document.getElementById("manage-pay-amount").value = remaining.toFixed(2);
+        } else {
+          document.getElementById("manage-pay-amount").value = "";
+        }
+        updateManageTrocoDisplay();
+
+        renderManagePaymentsList(payments);
+        renderManageItemsList(orders);
+      } catch (err) {
+        console.error("Erro ao carregar dados da mesa:", err);
+      }
+    }
+
+    function renderManagePaymentsList(payments) {
+      const container = document.getElementById("manage-payments-list");
+      if (!container) return;
+      container.innerHTML = "";
+
+      if (!payments || payments.length === 0) {
+        container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 8px;">Nenhuma baixa realizada ainda.</div>';
+        return;
+      }
+
+      payments.forEach((p) => {
+        const row = document.createElement("div");
+        row.className = "manage-item-row";
+        const dateFormatted = new Date(p.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        const methodColor = p.method === "PIX" ? "var(--green)" : p.method === "DINHEIRO" ? "var(--yellow)" : p.method === "DEBITO" ? "var(--blue)" : "var(--purple)";
+        row.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 10px; font-weight: 800; color: ${methodColor}; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;">
+              ${p.method}
+            </span>
+            <span style="font-size: 10px; font-family: monospace; color: var(--text-muted);">${dateFormatted}</span>
+            ${p.change && p.change > 0 ? `<span style="font-size: 10px; color: var(--yellow);">(Entregue R$ ${p.changeFor?.toFixed(2)} • Troco R$ ${p.change.toFixed(2)})</span>` : ""}
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 12px; font-weight: 800; font-family: monospace; color: var(--green);">R$ ${p.amount.toFixed(2)}</span>
+            <button class="btn-action" style="padding: 2px 6px; font-size: 10px; color: var(--red); border-color: rgba(227,24,55,0.3);" onclick="handleDeleteComandaPayment('${p.id}')" title="Estornar baixa">✕</button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function renderManageItemsList(orders) {
+      const container = document.getElementById("manage-items-list");
+      const countBadge = document.getElementById("manage-items-count-badge");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const allItems = orders ? orders.flatMap((o) => o.items || []) : [];
+      if (countBadge) countBadge.textContent = `${allItems.length} item(ns)`;
+
+      if (allItems.length === 0) {
+        container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px;">Nenhum item lançado para esta mesa.</div>';
+        return;
+      }
+
+      allItems.forEach((it) => {
+        const row = document.createElement("div");
+        row.className = "manage-item-row";
+        row.innerHTML = `
+          <div style="display: flex; flex-direction: column; gap: 2px; max-width: 65%;">
+            <span style="font-size: 12px; font-weight: 700; color: #fff;">${it.quantity}x ${it.name}</span>
+            ${it.isPizza && it.flavors && it.flavors.length ? `<span style="font-size: 10px; color: var(--yellow);">Sabores: ${it.flavors.map(f => f.flavorName).join(" / ")}</span>` : ""}
+            ${it.crustType ? `<span style="font-size: 10px; color: var(--text-muted);">Borda: ${it.crustType} (+R$ ${(it.crustPrice || 0).toFixed(2)})</span>` : ""}
+            <span style="font-size: 11px; font-family: monospace; color: #ccc;">R$ ${(it.totalPrice || 0).toFixed(2)}</span>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn-action" style="padding: 4px 8px; font-size: 10px; color: var(--purple); border-color: var(--purple);" onclick="openTransferItemModal('${it.id}')">🔄 Migrar</button>
+            <button class="btn-action" style="padding: 4px 8px; font-size: 10px; color: var(--red); border-color: var(--red);" onclick="handleDeleteComandaItem('${it.id}')">🗑️ Excluir</button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function setManagePayMethod(method) {
+      currentManagePayMethod = method;
+      document.querySelectorAll(".manage-pay-method-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.method === method);
+      });
+      const chgBox = document.getElementById("manage-change-box");
+      if (chgBox) {
+        chgBox.style.display = method === "DINHEIRO" ? "block" : "none";
+      }
+      updateManageTrocoDisplay();
+    }
+
+    function updateManageTrocoDisplay() {
+      const trocoBadge = document.getElementById("manage-troco-badge");
+      if (!trocoBadge) return;
+      if (currentManagePayMethod !== "DINHEIRO") {
+        trocoBadge.style.display = "none";
+        return;
+      }
+      const amt = parseFloat(document.getElementById("manage-pay-amount").value.replace(",", ".")) || 0;
+      const chgFor = parseFloat(document.getElementById("manage-pay-change-for").value.replace(",", ".")) || 0;
+      if (chgFor > 0 && amt > 0) {
+        trocoBadge.style.display = "block";
+        if (chgFor >= amt) {
+          trocoBadge.style.color = "var(--green)";
+          trocoBadge.textContent = `💵 Troco a Devolver: R$ ${(chgFor - amt).toFixed(2)}`;
+        } else {
+          trocoBadge.style.color = "var(--yellow)";
+          trocoBadge.textContent = `⚠️ Valor entregue menor que o valor a abater`;
+        }
+      } else {
+        trocoBadge.style.display = "none";
+      }
+    }
+
+    function handleFillRemainingBalance() {
+      if (currentManageRemaining > 0) {
+        document.getElementById("manage-pay-amount").value = currentManageRemaining.toFixed(2);
+        updateManageTrocoDisplay();
+      }
+    }
+
+    async function handleComandaAddPayment() {
+      if (!currentManageComandaId) return;
+      const amtInput = document.getElementById("manage-pay-amount");
+      const amt = parseFloat(amtInput.value.replace(",", "."));
+      if (isNaN(amt) || amt <= 0) {
+        alert("Informe um valor válido maior que zero para a baixa.");
+        return;
+      }
+
+      let chgFor = null;
+      if (currentManagePayMethod === "DINHEIRO") {
+        const chgInput = document.getElementById("manage-pay-change-for");
+        if (chgInput.value) {
+          chgFor = parseFloat(chgInput.value.replace(",", "."));
+          if (isNaN(chgFor) || chgFor < amt) {
+            alert(`O valor entregue em dinheiro (R$ ${chgFor?.toFixed(2) || "0,00"}) não pode ser menor que o valor a abater (R$ ${amt.toFixed(2)}).`);
+            return;
+          }
+        }
+      }
+
+      const submitBtn = document.getElementById("btn-submit-comanda-payment");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "⏳ Registrando...";
+
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/comandas/${currentManageComandaId}/payments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-print-auth": appSettings.apiKey,
+          },
+          body: JSON.stringify({
+            method: currentManagePayMethod,
+            amount: amt,
+            changeFor: chgFor,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`✓ Baixa de R$ ${amt.toFixed(2)} registrada!`);
+          document.getElementById("manage-pay-change-for").value = "";
+          await loadManageComandaData(currentManageComandaId);
+          await fetchComandas();
+        } else {
+          alert(data.error || "Erro ao registrar baixa na conta.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Erro de conexão ao registrar pagamento.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "✔ Confirmar Baixa na Conta";
+      }
+    }
+
+    async function handleDeleteComandaPayment(paymentId) {
+      if (!currentManageComandaId) return;
+      if (!confirm("Deseja realmente estornar esta baixa de pagamento?")) return;
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/comandas/${currentManageComandaId}/payments?paymentId=${paymentId}`, {
+          method: "DELETE",
+          headers: { "x-print-auth": appSettings.apiKey },
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast("Baixa estornada com sucesso!");
+          await loadManageComandaData(currentManageComandaId);
+          await fetchComandas();
+        } else {
+          alert(data.error || "Erro ao estornar pagamento.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao estornar baixa.");
+      }
+    }
+
+    async function handlePrintManageComanda() {
+      if (!currentManageComanda) return;
+      const comandaNum = currentManageComanda.number;
+      const resp = document.getElementById("manage-comanda-responsible").value.trim() || currentManageComanda.responsibleName || "Não identificado";
+      const consumption = currentManageOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+      const allItems = currentManageOrders.flatMap((o) => o.items || []);
+      const itemsHtml = allItems.map((it) => `
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:12px;">
+          <span style="max-width:210px; line-height: 1.2;">
+            <strong>${it.quantity}x</strong> ${it.name}
+            ${it.flavors?.length ? `<br><small style="color:#555;">Sabores: ${it.flavors.map(f => f.flavorName).join(" / ")}</small>` : ""}
+            ${it.crustType ? `<br><small style="color:#555;">Borda: ${it.crustType}</small>` : ""}
+          </span>
+          <span style="font-weight:bold; font-family: monospace;">R$ ${it.totalPrice.toFixed(2)}</span>
+        </div>
+      `).join("");
+
+      const paymentsHtml = currentManagePayments.length
+        ? currentManagePayments.map((p) => `
+          <div style="display:flex; justify-content:space-between; margin-bottom:3px; font-size:11px; color:#222;">
+            <span>• ${p.method}${p.change && p.change > 0 ? ` (Recebeu R$ ${p.changeFor?.toFixed(2)} | Troco R$ ${p.change.toFixed(2)})` : ""}</span>
+            <span style="font-weight:bold; color:#15803d; font-family: monospace;">- R$ ${p.amount.toFixed(2)}</span>
+          </div>
+        `).join("")
+        : `<div style="font-size:11px; color:#777; font-style:italic;">Nenhum pagamento registrado ainda.</div>`;
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Pré-Conta Mesa #${comandaNum}</title>
+          <style>
+            * { box-sizing: border-box; }
+            body { font-family: 'Courier New', Courier, monospace, sans-serif; margin: 0; padding: 12px; color: #000; font-size: 12px; width: 100%; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .divider { border-top: 1px dashed #333; margin: 8px 0; }
+            .flex { display: flex; justify-content: space-between; }
+            @media print {
+              body { padding: 0; margin: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="center bold" style="font-size: 16px;">🍕 ALLDELIVERY</div>
+          <div class="center bold" style="font-size: 12px; margin-top: 2px;">CONFERÊNCIA DE MESA / PRÉ-CONTA</div>
+          <div class="divider"></div>
+          <div class="flex" style="font-size: 13px;">
+            <span class="bold">Mesa #${String(comandaNum).padStart(2, "0")}</span>
+            <span>${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} - ${new Date().toLocaleDateString("pt-BR")}</span>
+          </div>
+          <div style="font-size: 12px; margin-top: 3px;">
+            Titular: <strong>${resp}</strong>
+          </div>
+          <div class="divider"></div>
+          <div class="bold" style="font-size: 11px; margin-bottom: 6px;">ITENS DO CONSUMO:</div>
+          ${itemsHtml || '<div style="font-size:11px; color:#666;">Nenhum item consumido.</div>'}
+          <div class="divider"></div>
+          <div class="flex bold" style="font-size: 14px;">
+            <span>TOTAL CONSUMO:</span>
+            <span>R$ ${consumption.toFixed(2)}</span>
+          </div>
+          <div class="divider"></div>
+          <div class="bold" style="font-size: 11px; margin-bottom: 4px;">BAIXAS / PAGAMENTOS:</div>
+          ${paymentsHtml}
+          <div class="divider"></div>
+          <div class="flex bold" style="font-size: 12px; color: #15803d;">
+            <span>TOTAL PAGO:</span>
+            <span>R$ ${currentManageTotalPaid.toFixed(2)}</span>
+          </div>
+          <div class="flex bold" style="font-size: 15px; margin-top: 4px; ${currentManageRemaining <= 0 ? "color: #15803d;" : "color: #b91c1c;"}">
+            <span>SALDO A PAGAR:</span>
+            <span>R$ ${Math.max(0, currentManageRemaining).toFixed(2)}</span>
+          </div>
+          <div class="divider"></div>
+          <div class="center" style="font-size: 10px; margin-top: 10px; color: #555;">
+            * CONFERÊNCIA DE MESA - NÃO É DOCUMENTO FISCAL *<br>
+            Agradecemos a preferência!
+          </div>
+        </body>
+        </html>
+      `;
+
+      const printerName = appSettings.configs?.["PRONTO_RETIRADA"]?.printer || appSettings.configs?.["NOVO"]?.printer || "";
+      if (window.electronAPI && window.electronAPI.printHtmlReceipt) {
+        try {
+          const res = await window.electronAPI.printHtmlReceipt(printerName, html);
+          if (res.success) {
+            showToast("✓ Pré-conta enviada para a impressora!");
+            return;
+          }
+        } catch (e) {
+          console.warn("Falha no printHtmlReceipt, usando window.open fallback:", e);
+        }
+      }
+
+      const pWin = window.open("", "_blank", "width=380,height=600");
+      if (pWin) {
+        pWin.document.open();
+        pWin.document.write(html + '<scr' + 'ipt>window.onload = function() { window.print(); };<' + '/script>');
+        pWin.document.close();
+      }
+    }
+
+    async function handleDeleteComandaItem(itemId) {
+      if (!confirm("Deseja realmente excluir este item lançado na mesa?")) return;
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/comandas/delete-item`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-print-auth": appSettings.apiKey,
+          },
+          body: JSON.stringify({ itemId }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast("Item excluído com sucesso!");
+          await loadManageComandaData(currentManageComandaId);
+          await fetchComandas();
+        } else {
+          alert(data.error || "Erro ao excluir item.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao excluir item.");
+      }
+    }
+
+    function openTransferItemModal(itemId) {
+      transferMode = "ITEM";
+      transferItemId = itemId;
+      document.getElementById("transfer-modal-title").textContent = "Migrar Item para Outra Mesa";
+      document.getElementById("transfer-modal-desc").textContent = "Selecione a mesa de destino para transferir este item:";
+      populateTransferSelect();
+      document.getElementById("modal-transfer-comanda").classList.add("active");
+    }
+
+    function openTransferTableModal() {
+      transferMode = "TABLE";
+      transferItemId = null;
+      document.getElementById("transfer-modal-title").textContent = "Transferir Mesa Inteira";
+      document.getElementById("transfer-modal-desc").textContent = `Selecione a mesa de destino para transferir TODOS os pedidos e pagamentos da Mesa #${currentManageComanda?.number}:`;
+      populateTransferSelect();
+      document.getElementById("modal-transfer-comanda").classList.add("active");
+    }
+
+    function populateTransferSelect() {
+      const sel = document.getElementById("transfer-modal-target-select");
+      sel.innerHTML = '<option value="">Selecione a Mesa de Destino...</option>';
+      comandasList
+        .filter((c) => c.id !== currentManageComandaId && c.active)
+        .forEach((c) => {
+          const opt = document.createElement("option");
+          opt.value = c.id;
+          opt.textContent = `Mesa #${c.number} ${c.responsibleName ? `(${c.responsibleName})` : `(${c.status})`}`;
+          sel.appendChild(opt);
+        });
+    }
+
+    async function handleConfirmTransfer() {
+      const targetId = document.getElementById("transfer-modal-target-select").value;
+      if (!targetId) {
+        alert("Selecione a mesa de destino.");
+        return;
+      }
+
+      const payload = transferMode === "ITEM"
+        ? { itemId: transferItemId, targetComandaId: targetId }
+        : { sourceComandaId: currentManageComandaId, targetComandaId: targetId };
+
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/comandas/migrate-item`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-print-auth": appSettings.apiKey,
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message || "Transferência realizada com sucesso!");
+          closeModal("modal-transfer-comanda");
+          if (transferMode === "TABLE") {
+            closeModal("modal-manage-comanda");
+          } else {
+            await loadManageComandaData(currentManageComandaId);
+          }
+          await fetchComandas();
+        } else {
+          alert(data.error || "Erro na transferência.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Erro de conexão na transferência.");
+      }
+    }
+
+    async function handleReleaseComanda() {
+      if (!currentManageComandaId || !currentManageComanda) return;
+      if (currentManageRemaining > 0.05) {
+        const confirmWithDebt = confirm(
+          `⚠️ ATENÇÃO: A Mesa #${currentManageComanda.number} ainda possui um saldo em aberto de R$ ${currentManageRemaining.toFixed(2)}!\n\nDeseja realmente liberar a mesa mesmo restando valor a pagar?`
+        );
+        if (!confirmWithDebt) return;
+      } else {
+        if (!confirm(`Deseja realmente liberar a Mesa #${currentManageComanda.number}? Todos os pedidos e baixas serão finalizados para permitir um novo consumo.`)) {
+          return;
+        }
+      }
+
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/comandas/${currentManageComandaId}/release`, {
+          method: "POST",
+          headers: { "x-print-auth": appSettings.apiKey },
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`✓ Mesa #${currentManageComanda.number} liberada com sucesso!`);
+          closeModal("modal-manage-comanda");
+          await fetchComandas();
+        } else {
+          alert(data.error || "Erro ao liberar mesa.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao liberar mesa.");
+      }
+    }
+
+    async function handleSaveManageResponsible() {
+      if (!currentManageComandaId) return;
+      const name = document.getElementById("manage-comanda-responsible").value.trim();
+      try {
+        await fetch(`${appSettings.serverUrl}/api/admin/comandas/${currentManageComandaId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-print-auth": appSettings.apiKey,
+          },
+          body: JSON.stringify({ responsibleName: name }),
+        });
+        const hint = document.getElementById("manage-resp-saved-hint");
+        if (hint) {
+          hint.style.display = "inline";
+          setTimeout(() => { hint.style.display = "none"; }, 2500);
+        }
+        await fetchComandas();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function handleAddOrderFromComandaModal() {
+      if (!currentManageComandaId || !currentManageComanda) return;
+      const num = currentManageComanda.number;
+      const resp = document.getElementById("manage-comanda-responsible").value.trim() || currentManageComanda.responsibleName || "";
+      openPdvForComanda(currentManageComandaId, num, resp);
+    }
+
+    function openPdvForComanda(comandaId, comandaNumber, responsibleName) {
+      closeModal("modal-manage-comanda");
+      const waTabBtn = document.querySelector('.tab-btn[data-tab="whatsapp"]');
+      if (waTabBtn) waTabBtn.click();
+
+      pdvComandaId = comandaId;
+      pdvComandaNumber = comandaNumber;
+      setPdvOrderType("COMANDA");
+
+      const banner = document.getElementById("pdv-comanda-banner");
+      const bannerText = document.getElementById("pdv-comanda-banner-text");
+      if (banner && bannerText) {
+        bannerText.textContent = `🍽️ Lançando Pedido na Mesa #${comandaNumber} ${responsibleName ? `(${responsibleName})` : ""}`;
+        banner.style.display = "flex";
+      }
+
+      const btnCom = document.getElementById("pdv-type-comanda");
+      if (btnCom) {
+        btnCom.style.display = "inline-flex";
+        btnCom.classList.add("active");
+      }
+
+      const nameInput = document.getElementById("pdv-cust-name");
+      if (nameInput) {
+        nameInput.value = responsibleName || `Mesa #${comandaNumber}`;
+      }
+
+      const phoneInput = document.getElementById("pdv-cust-phone");
+      if (phoneInput && !phoneInput.value) {
+        phoneInput.value = "11999999999";
+      }
+
+      const submitBtn = document.getElementById("btn-submit-pdv-order");
+      if (submitBtn) {
+        submitBtn.textContent = `🍽️ Lançar Pedido na Mesa #${comandaNumber}`;
+      }
+    }
+
+    function cancelPdvComandaMode() {
+      pdvComandaId = null;
+      pdvComandaNumber = null;
+      setPdvOrderType("DELIVERY");
+      const banner = document.getElementById("pdv-comanda-banner");
+      if (banner) banner.style.display = "none";
+      const btnCom = document.getElementById("pdv-type-comanda");
+      if (btnCom) btnCom.style.display = "none";
+    }
 
     // 5. MODAL DE QR CODE DA MESA
     async function openQrModal(tableNumber) {
@@ -4340,23 +5154,48 @@
       if (pdvBody) pdvBody.scrollTop = 0;
     }
 
-    // Alternar tipo de pedido (Delivery vs Retirada)
+    // Alternar tipo de pedido (Delivery vs Retirada vs Comanda)
     function setPdvOrderType(type) {
       pdvOrderType = type;
       const btnDel = document.getElementById("pdv-type-delivery");
       const btnRet = document.getElementById("pdv-type-retirada");
+      const btnCom = document.getElementById("pdv-type-comanda");
       const delFields = document.getElementById("pdv-delivery-fields");
 
       if (type === "DELIVERY") {
         btnDel.classList.add("active");
         btnRet.classList.remove("active");
+        if (btnCom) btnCom.classList.remove("active");
         if (delFields) delFields.style.display = "flex";
-      } else {
+        const banner = document.getElementById("pdv-comanda-banner");
+        if (banner) banner.style.display = "none";
+        const submitBtn = document.getElementById("btn-submit-pdv-order");
+        if (submitBtn) submitBtn.textContent = "🚀 Finalizar & Enviar WhatsApp";
+      } else if (type === "RETIRADA") {
         btnRet.classList.add("active");
         btnDel.classList.remove("active");
+        if (btnCom) btnCom.classList.remove("active");
         if (delFields) delFields.style.display = "none";
         const feeInput = document.getElementById("pdv-delivery-fee");
         if (feeInput) feeInput.value = "0.00";
+        const banner = document.getElementById("pdv-comanda-banner");
+        if (banner) banner.style.display = "none";
+        const submitBtn = document.getElementById("btn-submit-pdv-order");
+        if (submitBtn) submitBtn.textContent = "🚀 Finalizar & Enviar WhatsApp";
+      } else if (type === "COMANDA") {
+        if (btnCom) {
+          btnCom.style.display = "inline-flex";
+          btnCom.classList.add("active");
+        }
+        btnDel.classList.remove("active");
+        btnRet.classList.remove("active");
+        if (delFields) delFields.style.display = "none";
+        const feeInput = document.getElementById("pdv-delivery-fee");
+        if (feeInput) feeInput.value = "0.00";
+        const banner = document.getElementById("pdv-comanda-banner");
+        if (banner) banner.style.display = "flex";
+        const submitBtn = document.getElementById("btn-submit-pdv-order");
+        if (submitBtn) submitBtn.textContent = `🍽️ Lançar Pedido na Mesa #${pdvComandaNumber || ""}`;
       }
       updatePdvFinalTotal();
     }
@@ -5866,7 +6705,7 @@
       showToast("Formulário reiniciado para novo pedido.");
     }
 
-    // FINALIZAR PEDIDO & ENVIAR PARA O WHATSAPP
+    // FINALIZAR PEDIDO & ENVIAR PARA O WHATSAPP OU MESA
     async function submitPdvOrder() {
       if (pdvItems.length === 0) {
         alert("Adicione ao menos um item ao pedido antes de finalizar.");
@@ -5875,18 +6714,22 @@
       }
 
       const custName = document.getElementById("pdv-cust-name").value.trim();
-      const custPhone = document.getElementById("pdv-cust-phone").value.trim().replace(/\D/g, "");
+      let custPhone = document.getElementById("pdv-cust-phone").value.trim().replace(/\D/g, "");
 
       if (!custName) {
-        alert("Informe o nome do cliente.");
+        alert("Informe o nome do cliente / responsável.");
         document.getElementById("pdv-cust-name").focus();
         return;
       }
 
-      if (!custPhone || custPhone.length < 10) {
-        alert("Informe um telefone de WhatsApp válido com DDD (ex: 11999998888).");
-        document.getElementById("pdv-cust-phone").focus();
-        return;
+      if (pdvOrderType !== "COMANDA") {
+        if (!custPhone || custPhone.length < 10) {
+          alert("Informe um telefone de WhatsApp válido com DDD (ex: 11999998888).");
+          document.getElementById("pdv-cust-phone").focus();
+          return;
+        }
+      } else {
+        if (!custPhone) custPhone = "11999999999";
       }
 
       const street = document.getElementById("pdv-cust-street")?.value.trim() || "";
@@ -5912,13 +6755,14 @@
 
       const payload = {
         type: pdvOrderType,
+        comandaId: pdvOrderType === "COMANDA" ? pdvComandaId : null,
         customerName: custName,
         customerPhone: custPhone,
         customerAddress: fullAddress,
-        addressNumber: number || null,
-        reference: ref || null,
-        customerLat: pdvCustomerLat || null,
-        customerLng: pdvCustomerLng || null,
+        addressNumber: pdvOrderType === "DELIVERY" ? (number || null) : null,
+        reference: pdvOrderType === "DELIVERY" ? (ref || null) : null,
+        customerLat: pdvOrderType === "DELIVERY" ? (pdvCustomerLat || null) : null,
+        customerLng: pdvOrderType === "DELIVERY" ? (pdvCustomerLng || null) : null,
         paymentMethod,
         changeFor: paymentMethod === "DINHEIRO" && changeFor ? parseFloat(changeFor) : null,
         deliveryFee,
@@ -5958,8 +6802,23 @@
         }
 
         const order = data.order;
-        showToast(`✓ Pedido #${order.orderNumber} criado com sucesso!`);
         playAlertSound();
+
+        if (pdvOrderType === "COMANDA") {
+          showToast(`✓ Pedido #${order.orderNumber} lançado na Mesa #${pdvComandaNumber || ""} com sucesso!`);
+          const savedComandaId = pdvComandaId;
+          cancelPdvComandaMode();
+          resetPdvForm();
+          await fetchComandas();
+          const comTabBtn = document.querySelector('.tab-btn[data-tab="comandas"]');
+          if (comTabBtn) comTabBtn.click();
+          if (savedComandaId) {
+            openManageComandaModal(savedComandaId);
+          }
+          return;
+        }
+
+        showToast(`✓ Pedido #${order.orderNumber} criado com sucesso!`);
 
         const itensListFormatted = pdvItems
           .map((it) => `• ${it.quantity}x ${it.name} - R$ ${it.totalPrice.toFixed(2)}`)
@@ -6001,7 +6860,7 @@
         alert(`Erro ao criar pedido: ${err.message}`);
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = "🚀 Finalizar & Enviar WhatsApp";
+        submitBtn.textContent = pdvOrderType === "COMANDA" ? `🍽️ Lançar Pedido na Mesa #${pdvComandaNumber || ""}` : "🚀 Finalizar & Enviar WhatsApp";
       }
     }
 

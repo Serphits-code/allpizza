@@ -80,6 +80,15 @@ interface CartItem {
   notes?: string;
 }
 
+interface ComandaPayment {
+  id: string;
+  method: "PIX" | "DINHEIRO" | "DEBITO" | "CREDITO";
+  amount: number;
+  changeFor?: number;
+  change?: number;
+  createdAt: string;
+}
+
 export default function ComandasManager({ isAdminView = true }: { isAdminView?: boolean }) {
   // Etapas de Navegação: "grid" | "detail" | "catalog" | "cart"
   const [step, setStep] = useState<"grid" | "detail" | "catalog" | "cart">("grid");
@@ -97,6 +106,24 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
   const [comandaResponsible, setComandaResponsible] = useState("");
   const [savingResponsible, setSavingResponsible] = useState(false);
   const [quickOrderComanda, setQuickOrderComanda] = useState<ComandaItem | null>(null);
+
+  // Múltiplas Baixas / Pagamentos na Conta
+  const [payments, setPayments] = useState<ComandaPayment[]>([]);
+  const [totalPaid, setTotalPaid] = useState<number>(0);
+  const [remainingBalance, setRemainingBalance] = useState<number>(0);
+  const [isFullyPaid, setIsFullyPaid] = useState<boolean>(false);
+  const [loadingPayments, setLoadingPayments] = useState<boolean>(false);
+
+  // Formulário de Baixa
+  const [payMethod, setPayMethod] = useState<"PIX" | "DINHEIRO" | "DEBITO" | "CREDITO">("PIX");
+  const [payAmount, setPayAmount] = useState<string>("");
+  const [payChangeFor, setPayChangeFor] = useState<string>("");
+  const [registeringPayment, setRegisteringPayment] = useState<boolean>(false);
+
+  // Modal de Transferência da Mesa Inteira
+  const [isTransferTableModalOpen, setIsTransferTableModalOpen] = useState(false);
+  const [transferTargetId, setTransferTargetId] = useState<string>("");
+  const [transferringTable, setTransferringTable] = useState(false);
 
   // Catálogo de Produtos e Pizzas para Lançamento
   const [pizzaCategories, setPizzaCategories] = useState<PizzaCategory[]>([]);
@@ -188,26 +215,72 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
     }
   };
 
-  // 3. Abre detalhes de uma comanda
+  // 3. Carrega pagamentos / baixas da comanda
+  const loadComandaPayments = async (comandaId: string) => {
+    setLoadingPayments(true);
+    try {
+      const res = await fetch(`/api/admin/comandas/${comandaId}/payments`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setPayments(data.payments || []);
+          setTotalPaid(data.totalPaid || 0);
+          setRemainingBalance(data.remainingBalance || 0);
+          setIsFullyPaid(!!data.isFullyPaid);
+          if (data.remainingBalance > 0) {
+            setPayAmount(data.remainingBalance.toFixed(2));
+          } else {
+            setPayAmount("");
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao carregar pagamentos da comanda:", err);
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  // 4. Abre detalhes de uma comanda
   const handleOpenComanda = async (comanda: ComandaItem) => {
     setSelectedComandaId(comanda.id);
     setSelectedComanda(comanda);
     setComandaResponsible(comanda.responsibleName || "");
     setDraftCart([]);
     setStep("detail");
+    setPayChangeFor("");
 
     try {
-      const res = await fetch(`/api/admin/comandas/${comanda.id}`);
-      if (res.ok) {
-        const data = await res.json();
+      const [resOrders, resPayments] = await Promise.all([
+        fetch(`/api/admin/comandas/${comanda.id}`),
+        fetch(`/api/admin/comandas/${comanda.id}/payments`),
+      ]);
+
+      if (resOrders.ok) {
+        const data = await resOrders.json();
         setComandaOrders(data.comanda?.orders || []);
       }
+
+      if (resPayments.ok) {
+        const payData = await resPayments.json();
+        if (payData.success) {
+          setPayments(payData.payments || []);
+          setTotalPaid(payData.totalPaid || 0);
+          setRemainingBalance(payData.remainingBalance || 0);
+          setIsFullyPaid(!!payData.isFullyPaid);
+          if (payData.remainingBalance > 0) {
+            setPayAmount(payData.remainingBalance.toFixed(2));
+          } else {
+            setPayAmount("");
+          }
+        }
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Erro ao carregar detalhes da comanda:", err);
     }
   };
 
-  // 4. Salva responsável da mesa onBlur
+  // 5. Salva responsável da mesa onBlur
   const handleSaveResponsible = async () => {
     if (!selectedComandaId) return;
     setSavingResponsible(true);
@@ -225,7 +298,7 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
     }
   };
 
-  // 5. Gera comandas em lote
+  // 6. Gera comandas em lote
   const handleGenerateBatch = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -250,11 +323,193 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
     }
   };
 
-  // 6. Libera Comanda
+  // 7. Registra Baixa / Pagamento na Conta
+  const handleRegisterPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedComandaId) return;
+
+    const amt = parseFloat(payAmount.replace(",", "."));
+    if (isNaN(amt) || amt <= 0) {
+      alert("Informe um valor válido maior que zero para a baixa.");
+      return;
+    }
+
+    let chgFor: number | undefined = undefined;
+    if (payMethod === "DINHEIRO") {
+      if (payChangeFor) {
+        chgFor = parseFloat(payChangeFor.replace(",", "."));
+        if (isNaN(chgFor) || chgFor < amt) {
+          alert(`O valor entregue em dinheiro (R$ ${chgFor?.toFixed(2) || "0,00"}) não pode ser menor que o valor a abater (R$ ${amt.toFixed(2)}).`);
+          return;
+        }
+      }
+    }
+
+    setRegisteringPayment(true);
+    try {
+      const res = await fetch(`/api/admin/comandas/${selectedComandaId}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          method: payMethod,
+          amount: amt,
+          changeFor: chgFor,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPayChangeFor("");
+        await loadComandaPayments(selectedComandaId);
+        await loadComandas();
+      } else {
+        alert(data.error || "Erro ao registrar baixa na conta.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro de conexão ao registrar pagamento.");
+    } finally {
+      setRegisteringPayment(false);
+    }
+  };
+
+  // 8. Estorna Pagamento
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!selectedComandaId) return;
+    if (!confirm("Deseja realmente estornar esta baixa de pagamento?")) return;
+
+    try {
+      const res = await fetch(`/api/admin/comandas/${selectedComandaId}/payments?paymentId=${paymentId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadComandaPayments(selectedComandaId);
+      } else {
+        alert(data.error || "Erro ao estornar pagamento.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao estornar pagamento.");
+    }
+  };
+
+  // 9. Imprime Pré-Conta / Conferência de Mesa
+  const handlePrintConferenceReceipt = () => {
+    if (!selectedComanda) return;
+    const printWindow = window.open("", "_blank", "width=380,height=620");
+    if (!printWindow) {
+      alert("Por favor, permita popups neste navegador para imprimir a conferência da mesa.");
+      return;
+    }
+
+    const itemsHtml = comandaOrders
+      .flatMap((ord) => ord.items)
+      .map(
+        (it) => `
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:12px;">
+          <span style="max-width:210px; line-height: 1.2;">
+            <strong>${it.quantity}x</strong> ${it.name}
+            ${it.flavors?.length ? `<br><small style="color:#555;">Sabores: ${it.flavors.map((f) => f.flavorName).join(" / ")}</small>` : ""}
+            ${it.crustType ? `<br><small style="color:#555;">Borda: ${it.crustType}</small>` : ""}
+          </span>
+          <span style="font-weight:bold; font-family: monospace;">R$ ${it.totalPrice.toFixed(2)}</span>
+        </div>`
+      )
+      .join("");
+
+    const paymentsHtml = payments.length
+      ? payments
+          .map(
+            (p) => `
+        <div style="display:flex; justify-content:space-between; margin-bottom:3px; font-size:11px; color:#222;">
+          <span>• ${p.method}${p.change && p.change > 0 ? ` (Entregue R$ ${p.changeFor?.toFixed(2)} | Troco R$ ${p.change.toFixed(2)})` : ""}</span>
+          <span style="font-weight:bold; color:#15803d; font-family: monospace;">- R$ ${p.amount.toFixed(2)}</span>
+        </div>`
+          )
+          .join("")
+      : `<div style="font-size:11px; color:#777; font-style:italic;">Nenhum pagamento registrado ainda.</div>`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Pré-Conta Mesa #${selectedComanda.number}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { font-family: 'Courier New', Courier, monospace, sans-serif; margin: 0; padding: 14px; color: #000; font-size: 12px; }
+          .center { text-align: center; }
+          .bold { font-weight: bold; }
+          .divider { border-top: 1px dashed #444; margin: 8px 0; }
+          .flex { display: flex; justify-content: space-between; }
+          @media print {
+            body { padding: 0; margin: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="center bold" style="font-size: 16px;">🍕 ALLDELIVERY</div>
+        <div class="center bold" style="font-size: 12px; margin-top: 2px;">CONFERÊNCIA DE MESA / PRÉ-CONTA</div>
+        <div class="divider"></div>
+        <div class="flex" style="font-size: 13px;">
+          <span class="bold">Mesa #${String(selectedComanda.number).padStart(2, "0")}</span>
+          <span>${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} - ${new Date().toLocaleDateString("pt-BR")}</span>
+        </div>
+        <div style="font-size: 12px; margin-top: 3px;">
+          Titular: <strong>${comandaResponsible || "Não identificado"}</strong>
+        </div>
+        <div class="divider"></div>
+        <div class="bold" style="font-size: 11px; margin-bottom: 6px;">ITENS DO CONSUMO:</div>
+        ${itemsHtml || '<div style="font-size:11px; color:#666;">Nenhum item consumido.</div>'}
+        <div class="divider"></div>
+        <div class="flex bold" style="font-size: 14px;">
+          <span>TOTAL DO CONSUMO:</span>
+          <span>R$ ${totalComandaConsumption.toFixed(2)}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="bold" style="font-size: 11px; margin-bottom: 4px;">BAIXAS / PAGAMENTOS:</div>
+        ${paymentsHtml}
+        <div class="divider"></div>
+        <div class="flex bold" style="font-size: 12px; color: #15803d;">
+          <span>TOTAL PAGO:</span>
+          <span>R$ ${totalPaid.toFixed(2)}</span>
+        </div>
+        <div class="flex bold" style="font-size: 15px; margin-top: 4px; ${remainingBalance <= 0 ? "color: #15803d;" : "color: #b91c1c;"}">
+          <span>SALDO A PAGAR:</span>
+          <span>R$ ${Math.max(0, remainingBalance).toFixed(2)}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="center" style="font-size: 10px; margin-top: 10px; color: #555;">
+          * CONFERÊNCIA DE MESA - NÃO É DOCUMENTO FISCAL *<br>
+          Agradecemos a preferência!
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  // 10. Libera Comanda para Novo Consumo
   const handleReleaseComanda = async () => {
     if (!selectedComandaId || !selectedComanda) return;
-    if (!confirm(`Deseja realmente liberar a Mesa #${selectedComanda.number}? Todos os pedidos abertos serão finalizados.`)) {
-      return;
+
+    if (remainingBalance > 0.05) {
+      const confirmWithDebt = confirm(
+        `⚠️ ATENÇÃO: A Mesa #${selectedComanda.number} ainda possui um saldo em aberto de R$ ${remainingBalance.toFixed(2)}!\n\nDeseja realmente liberar a mesa mesmo restando valor a pagar?`
+      );
+      if (!confirmWithDebt) return;
+    } else {
+      if (!confirm(`Deseja realmente liberar a Mesa #${selectedComanda.number}? Todos os subpedidos e baixas serão finalizados para permitir um novo consumo.`)) {
+        return;
+      }
     }
 
     try {
@@ -265,6 +520,7 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
       if (data.success) {
         setStep("grid");
         setSelectedComandaId(null);
+        setSelectedComanda(null);
         loadComandas();
       } else {
         alert(data.error || "Erro ao liberar mesa");
@@ -275,7 +531,7 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
     }
   };
 
-  // 7. Consulta Fechamento de Conta
+  // 11. Consulta Fechamento de Conta
   const handleCloseConference = async () => {
     if (!selectedComandaId) return;
     try {
@@ -291,7 +547,7 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
     }
   };
 
-  // 8. Exclui Item de Pedido
+  // 12. Exclui Item de Pedido
   const handleDeleteItem = async (itemId: string) => {
     if (!confirm("Deseja realmente excluir este item lançado?")) return;
     try {
@@ -310,7 +566,7 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
     }
   };
 
-  // 9. Migra Item para outra Comanda
+  // 13. Migra Item Individual para outra Comanda
   const handleMigrateItem = async () => {
     if (!migrateItemId || !migrateTargetId) return;
     try {
@@ -334,6 +590,44 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
     } catch (err) {
       console.error(err);
       alert("Erro de conexão ao migrar item");
+    }
+  };
+
+  // 14. Transfere Mesa Inteira (Todos os pedidos e histórico de pagamentos)
+  const handleTransferTable = async () => {
+    if (!selectedComandaId || !transferTargetId) return;
+    const targetComanda = comandas.find((c) => c.id === transferTargetId);
+    if (!confirm(`Deseja transferir TODOS os pedidos e pagamentos da Mesa #${selectedComanda?.number} para a Mesa #${targetComanda?.number || transferTargetId}?`)) {
+      return;
+    }
+
+    setTransferringTable(true);
+    try {
+      const res = await fetch("/api/admin/comandas/migrate-item", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceComandaId: selectedComandaId,
+          targetComandaId: transferTargetId,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsTransferTableModalOpen(false);
+        setTransferTargetId("");
+        setStep("grid");
+        setSelectedComandaId(null);
+        setSelectedComanda(null);
+        await loadComandas();
+        alert(data.message || "Mesa transferida com sucesso!");
+      } else {
+        alert(data.error || "Erro ao transferir mesa.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erro de conexão ao transferir mesa.");
+    } finally {
+      setTransferringTable(false);
     }
   };
 
@@ -661,44 +955,66 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
                 ◀ Voltar às Mesas
               </button>
               <div>
-                <h3 className="font-serif text-xl font-bold text-white">
-                  Mesa #{String(selectedComanda.number).padStart(2, "0")}
+                <h3 className="font-serif text-xl font-bold text-white flex items-center gap-2">
+                  <span>Mesa #{String(selectedComanda.number).padStart(2, "0")}</span>
+                  <span
+                    className={`text-xxxs font-bold uppercase px-2 py-0.5 rounded-full border ${
+                      selectedComanda.status === "OCUPADA"
+                        ? "bg-brand-red/20 text-brand-red border-brand-red/30"
+                        : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    }`}
+                  >
+                    {selectedComanda.status}
+                  </span>
                 </h3>
                 <span className="text-xxs text-brand-lightGray">
-                  Status atual: <strong className="text-white uppercase">{selectedComanda.status}</strong>
+                  Gerencie itens, lance pedidos na cozinha, controle múltiplas baixas e libere a mesa.
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setQuickOrderComanda(selectedComanda)}
-                className="px-4 py-2 rounded-xl bg-brand-red hover:bg-brand-redHover text-white text-xs font-bold transition-colors cursor-pointer shadow-lg shadow-brand-red/20 flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl bg-brand-red hover:bg-brand-redHover text-white text-xs font-bold transition-colors cursor-pointer shadow-lg shadow-brand-red/20 flex items-center gap-1.5"
               >
                 <span>＋</span> Lançar Pedido (Cozinha)
               </button>
               <button
-                onClick={handleCloseConference}
-                className="px-3.5 py-2 rounded-xl bg-brand-bg border border-brand-mediumGray hover:border-amber-400 text-amber-300 text-xs font-bold transition-colors cursor-pointer"
+                onClick={handlePrintConferenceReceipt}
+                className="px-3.5 py-2 rounded-xl bg-brand-bg border border-brand-mediumGray hover:border-amber-400 text-amber-300 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
               >
-                📄 Fechar Conta
+                <span>🖨️</span> Imprimir Conferência
+              </button>
+              <button
+                onClick={() => {
+                  setTransferTargetId("");
+                  setIsTransferTableModalOpen(true);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-brand-bg border border-brand-mediumGray hover:border-purple-400 text-purple-300 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <span>🔄</span> Transferir Mesa
               </button>
               <button
                 onClick={handleReleaseComanda}
-                className="px-3.5 py-2 rounded-xl bg-brand-bg border border-brand-mediumGray hover:border-emerald-400 text-emerald-400 text-xs font-bold transition-colors cursor-pointer"
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-lg ${
+                  remainingBalance <= 0 && totalComandaConsumption > 0
+                    ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30 animate-pulse"
+                    : "bg-brand-bg border border-brand-mediumGray hover:border-emerald-400 text-emerald-400"
+                }`}
               >
-                🏁 Liberar Mesa
+                <span>🏁</span> Liberar Mesa
               </button>
             </div>
           </div>
 
-          {/* Card de Responsável e Consumo Total */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+          {/* Cards de Resumo e Responsável */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Responsável da Mesa */}
-            <div className="md:col-span-6 rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-5 shadow-xl space-y-3">
+            <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 shadow-xl space-y-2">
               <div className="flex justify-between items-center">
                 <label className="text-xxs font-semibold uppercase text-brand-lightGray">
-                  Identificação do Responsável / Titular
+                  👤 Titular / Responsável
                 </label>
                 {savingResponsible && (
                   <span className="text-xxxs text-amber-400 font-mono animate-pulse">
@@ -708,31 +1024,246 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
               </div>
               <input
                 type="text"
-                placeholder="Ex: João Silva / Mesa da Família"
+                placeholder="Ex: Família Silva"
                 value={comandaResponsible}
                 onChange={(e) => setComandaResponsible(e.target.value)}
                 onBlur={handleSaveResponsible}
-                className="w-full rounded-xl border border-brand-mediumGray bg-brand-bg px-4 py-2.5 text-xs text-white focus:border-brand-red focus:outline-none"
+                className="w-full rounded-xl border border-brand-mediumGray bg-brand-bg px-3 py-2 text-xs text-white focus:border-brand-red focus:outline-none"
               />
-              <span className="text-xxxs text-brand-lightGray/70 block">
-                * O nome é salvo automaticamente ao clicar fora do campo.
+              <span className="text-xxxs text-brand-lightGray/60 block truncate">
+                Salvo automaticamente ao sair do campo.
               </span>
             </div>
 
-            {/* Consumo Acumulado */}
-            <div className="md:col-span-6 rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-5 shadow-xl flex items-center justify-between">
-              <div>
-                <span className="text-xxs font-semibold uppercase text-brand-lightGray block">
-                  Consumo Total da Mesa
+            {/* Consumo Total */}
+            <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 shadow-xl flex flex-col justify-between">
+              <span className="text-xxs font-semibold uppercase text-brand-lightGray">
+                🧾 Consumo Total
+              </span>
+              <span className="text-2xl font-serif font-bold text-amber-400 font-mono my-1">
+                R$ {totalComandaConsumption.toFixed(2)}
+              </span>
+              <span className="text-xxxs text-brand-lightGray">
+                {comandaOrders.length} subpedidos enviados
+              </span>
+            </div>
+
+            {/* Total Pago em Baixas */}
+            <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 shadow-xl flex flex-col justify-between">
+              <span className="text-xxs font-semibold uppercase text-brand-lightGray">
+                💰 Total Pago (Baixas)
+              </span>
+              <span className="text-2xl font-serif font-bold text-emerald-400 font-mono my-1">
+                R$ {totalPaid.toFixed(2)}
+              </span>
+              <span className="text-xxxs text-brand-lightGray">
+                {payments.length} baixa(s) efetuada(s)
+              </span>
+            </div>
+
+            {/* Saldo Restante */}
+            <div
+              className={`rounded-2xl border p-4 shadow-xl flex flex-col justify-between ${
+                remainingBalance <= 0 && totalComandaConsumption > 0
+                  ? "bg-emerald-950/20 border-emerald-500/50"
+                  : remainingBalance > 0
+                  ? "bg-brand-red/10 border-brand-red/40"
+                  : "bg-brand-darkGray border-brand-mediumGray"
+              }`}
+            >
+              <div className="flex justify-between items-center">
+                <span className="text-xxs font-semibold uppercase text-brand-lightGray">
+                  Saldo Restante
                 </span>
-                <span className="text-3xl font-serif font-bold text-amber-400 mt-1 block">
-                  R$ {totalComandaConsumption.toFixed(2)}
-                </span>
-                <span className="text-xxs text-brand-lightGray">
-                  {comandaOrders.length} subpedidos enviados à cozinha
-                </span>
+                {remainingBalance <= 0 && totalComandaConsumption > 0 && (
+                  <span className="text-xxxs bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    QUITADO
+                  </span>
+                )}
               </div>
-              <div className="text-4xl opacity-20">🧾</div>
+              <span
+                className={`text-2xl font-serif font-bold font-mono my-1 ${
+                  remainingBalance <= 0 ? "text-emerald-400" : "text-brand-red"
+                }`}
+              >
+                R$ {Math.max(0, remainingBalance).toFixed(2)}
+              </span>
+              <span className="text-xxxs text-brand-lightGray">
+                {remainingBalance <= 0
+                  ? "Mesa 100% quitada para liberação"
+                  : "Dê baixa nos pagamentos abaixo"}
+              </span>
+            </div>
+          </div>
+
+          {/* PAINEL DE MÚLTIPLAS BAIXAS NA CONTA */}
+          <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-5 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-mediumGray/40 pb-3">
+              <div>
+                <h4 className="font-serif text-base font-bold text-white flex items-center gap-2">
+                  <span>💳</span> Múltiplas Baixas na Conta (PIX, Dinheiro, Débito, Crédito)
+                </h4>
+                <p className="text-xxs text-brand-lightGray">
+                  Registre pagamentos parciais até zerar o valor total da mesa.
+                </p>
+              </div>
+
+              {remainingBalance > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPayAmount(remainingBalance.toFixed(2))}
+                  className="px-3 py-1 rounded-lg bg-brand-bg border border-brand-mediumGray hover:border-amber-400 text-amber-300 text-xxs font-bold transition-all cursor-pointer w-fit"
+                >
+                  ⚡ Baixar Valor Total Restante (R$ {remainingBalance.toFixed(2)})
+                </button>
+              )}
+            </div>
+
+            {/* Formulário de Baixa */}
+            <form onSubmit={handleRegisterPayment} className="space-y-4 bg-brand-bg p-4 rounded-xl border border-brand-mediumGray/60">
+              <div className="space-y-2">
+                <label className="text-xxs font-semibold uppercase text-brand-lightGray block">
+                  1. Forma de Pagamento
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { key: "PIX", label: "⚡ PIX", color: "hover:border-emerald-400" },
+                    { key: "DINHEIRO", label: "💵 Dinheiro", color: "hover:border-yellow-400" },
+                    { key: "DEBITO", label: "💳 Cartão Débito", color: "hover:border-blue-400" },
+                    { key: "CREDITO", label: "💳 Cartão Crédito", color: "hover:border-purple-400" },
+                  ].map((m) => (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => setPayMethod(m.key as any)}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        payMethod === m.key
+                          ? "bg-brand-red text-white border-brand-red shadow-md shadow-brand-red/20"
+                          : `bg-brand-darkGray border-brand-mediumGray text-brand-lightGray hover:text-white ${m.color}`
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                <div>
+                  <label className="text-xxs font-semibold uppercase text-brand-lightGray block mb-1">
+                    2. Valor a Abater / Dar Baixa (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    placeholder="0.00"
+                    value={payAmount}
+                    onChange={(e) => setPayAmount(e.target.value)}
+                    className="w-full rounded-xl border border-brand-mediumGray bg-brand-darkGray px-3.5 py-2 text-sm text-white font-mono font-bold focus:border-brand-red focus:outline-none"
+                  />
+                </div>
+
+                {payMethod === "DINHEIRO" && (
+                  <div>
+                    <label className="text-xxs font-semibold uppercase text-brand-lightGray block mb-1">
+                      3. Valor Entregue pelo Cliente (para Troco)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Ex: 50.00"
+                      value={payChangeFor}
+                      onChange={(e) => setPayChangeFor(e.target.value)}
+                      className="w-full rounded-xl border border-brand-mediumGray bg-brand-darkGray px-3.5 py-2 text-sm text-white font-mono font-bold focus:border-yellow-400 focus:outline-none"
+                    />
+                    {payChangeFor && !isNaN(parseFloat(payChangeFor)) && (
+                      <div className="mt-1.5">
+                        {parseFloat(payChangeFor) >= (parseFloat(payAmount) || 0) ? (
+                          <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg inline-block">
+                            💵 Troco a Devolver: R$ {(parseFloat(payChangeFor) - (parseFloat(payAmount) || 0)).toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-xxs text-amber-400">
+                            ⚠️ Valor entregue menor que o valor a abater.
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={registeringPayment || !payAmount || parseFloat(payAmount) <= 0}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors cursor-pointer shadow-lg shadow-emerald-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {registeringPayment ? "⏳ Registrando Baixa..." : "✔ Confirmar Baixa na Conta"}
+                </button>
+              </div>
+            </form>
+
+            {/* Histórico de Baixas Já Realizadas */}
+            <div className="space-y-2">
+              <span className="text-xxs font-semibold uppercase text-brand-lightGray block">
+                Histórico de Baixas Desta Mesa ({payments.length})
+              </span>
+
+              {payments.length === 0 ? (
+                <div className="text-center py-4 text-xs text-brand-lightGray/50 bg-brand-bg/50 rounded-xl border border-brand-mediumGray/30">
+                  Nenhuma baixa realizada ainda.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {payments.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between p-3 rounded-xl bg-brand-bg border border-brand-mediumGray/40 text-xs"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`px-2 py-0.5 rounded text-xxs font-bold uppercase ${
+                            p.method === "PIX"
+                              ? "bg-emerald-500/20 text-emerald-400"
+                              : p.method === "DINHEIRO"
+                              ? "bg-yellow-500/20 text-yellow-400"
+                              : p.method === "DEBITO"
+                              ? "bg-blue-500/20 text-blue-400"
+                              : "bg-purple-500/20 text-purple-400"
+                          }`}
+                        >
+                          {p.method}
+                        </span>
+                        <span className="text-brand-lightGray text-xxs font-mono">
+                          {new Date(p.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        {p.change && p.change > 0 && (
+                          <span className="text-xxs text-amber-300">
+                            (Recebeu R$ {p.changeFor?.toFixed(2)} • Troco: R$ {p.change.toFixed(2)})
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono font-bold text-emerald-400 text-sm">
+                          R$ {p.amount.toFixed(2)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePayment(p.id)}
+                          className="px-2 py-1 rounded bg-brand-darkGray hover:bg-brand-red hover:text-white text-brand-lightGray border border-brand-mediumGray text-xxs font-bold transition-colors cursor-pointer"
+                          title="Estornar esta baixa"
+                        >
+                          ✕ Estornar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1314,6 +1845,64 @@ export default function ComandasManager({ isAdminView = true }: { isAdminView?: 
                 className="flex-1 py-2 rounded-lg bg-brand-red hover:bg-brand-redHover text-xs font-bold text-white transition-colors cursor-pointer disabled:opacity-50"
               >
                 Confirmar Transferência
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL: TRANSFERIR MESA INTEIRA                                */}
+      {/* ------------------------------------------------------------- */}
+      {isTransferTableModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-brand-mediumGray/40 pb-2">
+              <h3 className="font-serif text-base font-bold text-white flex items-center gap-2">
+                <span>🔄</span> Transferir Mesa Inteira
+              </h3>
+              <button
+                onClick={() => setIsTransferTableModalOpen(false)}
+                className="text-brand-lightGray hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xxs text-brand-lightGray">
+              Selecione a mesa de destino. <strong>Todos os pedidos, itens e pagamentos/baixas</strong> da Mesa #{selectedComanda?.number} serão migrados para a mesa selecionada.
+            </p>
+
+            <select
+              value={transferTargetId}
+              onChange={(e) => setTransferTargetId(e.target.value)}
+              className="w-full rounded-lg border border-brand-mediumGray bg-brand-bg px-3 py-2 text-xs text-white focus:border-brand-red focus:outline-none cursor-pointer"
+            >
+              <option value="">Selecione a Mesa de Destino...</option>
+              {comandas
+                .filter((c) => c.id !== selectedComandaId && c.active)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    Mesa #{c.number} {c.responsibleName ? `(${c.responsibleName})` : `(${c.status})`}
+                  </option>
+                ))}
+            </select>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsTransferTableModalOpen(false)}
+                className="flex-1 py-2 rounded-lg bg-brand-bg border border-brand-mediumGray text-xs font-bold text-brand-lightGray hover:text-white cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleTransferTable}
+                disabled={!transferTargetId || transferringTable}
+                className="flex-1 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {transferringTable ? "Transferindo..." : "Transferir Tudo"}
               </button>
             </div>
           </div>

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { authenticateApiRequest } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +9,9 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER" && session.user.role !== "GARCOM")) {
-    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
+  const auth = await authenticateApiRequest(request, ["ADMIN", "MANAGER", "GARCOM"]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Acesso não autorizado para esta função" }, { status: 403 });
   }
 
   const { id } = params;
@@ -31,7 +30,12 @@ export async function POST(
         },
       });
 
-      // 2. Atualiza a comanda para LIVRE e limpa o nome do responsável
+      // 2. Limpa pagamentos parciais no SystemConfig
+      await tx.systemConfig.delete({
+        where: { key: `comanda_payments_${id}` },
+      }).catch(() => {});
+
+      // 3. Atualiza a comanda para LIVRE e limpa o nome do responsável
       return tx.comanda.update({
         where: { id },
         data: {
