@@ -1928,6 +1928,27 @@
       margin-top: 2px;
     }
 
+    .pdv-saved-addr-card {
+      background: #181818;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      color: #eee;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .pdv-saved-addr-card:hover {
+      background: #11281a;
+      border-color: #00e676;
+      color: #00e676;
+      transform: translateX(3px);
+    }
+
     /* DIREITA: WHATSAPP WEB PANE (68% - 70%) */
     .wa-web-pane {
       flex: 1;
@@ -2621,16 +2642,31 @@
                 </div>
               </div>
 
-              <!-- DADOS DO CLIENTE -->
+              <!-- DADOS DO CLIENTE (NÚMERO VEM PRIMEIRO CONFORME SOLICITADO) -->
               <div class="pdv-section-card">
                 <div class="pdv-card-title">
                   <span>👤 Identificação do Cliente</span>
                 </div>
                 <div class="form-group">
-                  <input type="text" id="pdv-cust-name" class="pdv-input" placeholder="Nome do Cliente (ex: Carlos Silva)" />
+                  <input
+                    type="text"
+                    id="pdv-cust-phone"
+                    class="pdv-input"
+                    placeholder="📱 Telefone / WhatsApp com DDD (ex: 11999998888)"
+                    oninput="handlePdvPhoneInput(this.value)"
+                  />
                 </div>
+
+                <!-- ENDEREÇOS JÁ CADASTRADOS DO CLIENTE (AUTO-COMPLETAR) -->
+                <div id="pdv-customer-addresses-box" style="display: none; flex-direction: column; gap: 5px; background: #16241b; border: 1px dashed #00e676; border-radius: 8px; padding: 8px;">
+                  <div style="font-size: 10px; font-weight: 800; color: #00e676; text-transform: uppercase;">
+                    📍 Endereços já cadastrados deste cliente:
+                  </div>
+                  <div id="pdv-customer-addresses-list" style="display: flex; flex-direction: column; gap: 4px;"></div>
+                </div>
+
                 <div class="form-group">
-                  <input type="text" id="pdv-cust-phone" class="pdv-input" placeholder="WhatsApp com DDD (ex: 11999998888)" />
+                  <input type="text" id="pdv-cust-name" class="pdv-input" placeholder="Nome do Cliente (ex: Carlos Silva)" />
                 </div>
               </div>
 
@@ -2645,20 +2681,39 @@
                   <span style="font-size: 10px; color: #888; align-self: center;">Busca automática</span>
                 </div>
                 <div style="display: flex; gap: 6px;">
-                  <input type="text" id="pdv-cust-street" class="pdv-input" placeholder="Rua / Logradouro" style="flex: 3;" />
-                  <input type="text" id="pdv-cust-number" class="pdv-input" placeholder="Nº" style="flex: 1;" />
+                  <input type="text" id="pdv-cust-street" class="pdv-input" placeholder="Rua / Logradouro" style="flex: 3;" oninput="schedulePdvGeocoding()" />
+                  <input type="text" id="pdv-cust-number" class="pdv-input" placeholder="Nº" style="flex: 1;" oninput="schedulePdvGeocoding()" />
                 </div>
                 <div style="display: flex; gap: 6px;">
-                  <input type="text" id="pdv-cust-neighborhood" class="pdv-input" placeholder="Bairro" style="flex: 2;" />
+                  <input type="text" id="pdv-cust-neighborhood" class="pdv-input" placeholder="Bairro" style="flex: 2;" oninput="schedulePdvGeocoding()" />
                   <input type="text" id="pdv-cust-ref" class="pdv-input" placeholder="Complemento / Ref." style="flex: 2;" />
                 </div>
 
-                <!-- SELETOR DE ZONA / TAXA -->
+                <!-- MAPA INTERATIVO INLINE COM PIN ARRASTÁVEL E DETECÇÃO DE ZONA -->
+                <div id="pdv-inline-map-box" style="margin-top: 6px; display: flex; flex-direction: column; gap: 6px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; font-weight: 800; color: #00e676;">
+                      🗺️ Localização no Mapa (Arraste o Pin)
+                    </span>
+                    <span id="pdv-zone-detect-status" style="font-size: 10.5px; font-weight: 800; color: #fbbf24;">
+                      Arraste o pin p/ calcular
+                    </span>
+                  </div>
+                  <div id="pdv-inline-map" style="width: 100%; height: 220px; border-radius: 10px; border: 1.5px solid #333; background: #161616; overflow: hidden; position: relative;"></div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #888;">
+                    <span>💡 Arraste o pin no mapa para o local exato da entrega</span>
+                    <button type="button" class="btn-action" style="padding: 2px 8px; font-size: 10px;" onclick="geocodePdvCurrentAddress()">
+                      🎯 Localizar Endereço
+                    </button>
+                  </div>
+                </div>
+
+                <!-- SELETOR DE ZONA / TAXA (ATUALIZADO AUTOMATICAMENTE PELO MAPA) -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 6px; border-top: 1px solid #282828;">
                   <div style="display: flex; flex-direction: column; gap: 2px;">
                     <span style="font-size: 11px; color: #ddd; font-weight: 700;">Taxa de Entrega:</span>
-                    <select id="pdv-zone-select" class="pdv-select" style="font-size: 11px; padding: 4px 6px; width: 140px;" onchange="handlePdvZoneSelectChange()">
-                      <option value="manual">Manual</option>
+                    <select id="pdv-zone-select" class="pdv-select" style="font-size: 11px; padding: 4px 6px; width: 150px;" onchange="handlePdvZoneSelectChange()">
+                      <option value="manual">Manual / Sem Zona</option>
                     </select>
                   </div>
                   <div style="display: flex; align-items: center; gap: 4px;">
@@ -4220,6 +4275,16 @@
     let pdvItems = [];
     let lastOrderMessage = "";
 
+    // Estado do Mapa Leaflet Inline e Autocomplete do Cliente
+    let pdvInlineMap = null;
+    let pdvInlineMarker = null;
+    let pdvZonesLayerGroup = null;
+    let pdvCustomerLat = null;
+    let pdvCustomerLng = null;
+    let pdvGeocodeTimeout = null;
+    let pdvCustomerLookupTimeout = null;
+    let pdvCustomerAddresses = [];
+
     const PDV_PIZZA_RULES = {
       P: { label: "Pequena", slices: 4, maxFlavors: 2 },
       M: { label: "Média", slices: 6, maxFlavors: 3 },
@@ -4268,6 +4333,7 @@
       } else if (stepNum === 5) {
         renderPdvItems();
         updatePdvFinalTotal();
+        initPdvInlineMap();
       }
 
       const pdvBody = document.querySelector(".pdv-body");
@@ -4333,6 +4399,9 @@
         opt.dataset.fee = z.deliveryFee;
         zoneSel.appendChild(opt);
       });
+      if (pdvInlineMap) {
+        renderPdvZonesOnMap();
+      }
     }
 
     function handlePdvZoneSelectChange() {
@@ -4347,6 +4416,397 @@
       updatePdvFinalTotal();
     }
 
+    // =========================================================================
+    // MATEMÁTICA GEOMÉTRICA (PONTO EM POLÍGONO / ZONAS DE ENTREGA)
+    // =========================================================================
+    function isPointInRing(lat, lng, ring) {
+      if (!ring || ring.length < 3) return false;
+      let inside = false;
+      const x = lng;
+      const y = lat;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0];
+        const yi = ring[i][1];
+        const xj = ring[j][0];
+        const yj = ring[j][1];
+        const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function isPointInSinglePolygon(lat, lng, rings) {
+      if (!rings || rings.length === 0) return false;
+      const inExterior = isPointInRing(lat, lng, rings[0]);
+      if (!inExterior) return false;
+      for (let i = 1; i < rings.length; i++) {
+        if (isPointInRing(lat, lng, rings[i])) return false;
+      }
+      return true;
+    }
+
+    function isPointInPolygon(lat, lng, polygonGeoJson) {
+      if (!polygonGeoJson || !polygonGeoJson.coordinates || !polygonGeoJson.type) return false;
+      if (polygonGeoJson.type === "Polygon") {
+        return isPointInSinglePolygon(lat, lng, polygonGeoJson.coordinates);
+      }
+      if (polygonGeoJson.type === "MultiPolygon") {
+        const polygons = polygonGeoJson.coordinates;
+        for (const polyRings of polygons) {
+          if (isPointInSinglePolygon(lat, lng, polyRings)) return true;
+        }
+        return false;
+      }
+      return false;
+    }
+
+    function findDeliveryZone(lat, lng, zones) {
+      if (!zones || zones.length === 0) return null;
+      const activeZones = zones
+        .filter((z) => z.isActive !== false)
+        .sort((a, b) => a.deliveryFee - b.deliveryFee);
+
+      for (const zone of activeZones) {
+        try {
+          if (isPointInPolygon(lat, lng, zone.geometry)) {
+            return zone;
+          }
+        } catch (err) {
+          console.warn("Falha ao checar ponto na zona:", err);
+        }
+      }
+      return null;
+    }
+
+    // =========================================================================
+    // MAPA INLINE LEAFLET COM PIN ARRASTÁVEL E DETECÇÃO DE ZONA
+    // =========================================================================
+    function initPdvInlineMap() {
+      const mapContainer = document.getElementById("pdv-inline-map");
+      if (!mapContainer) return;
+      if (typeof L === "undefined") {
+        console.warn("Leaflet ainda não carregado.");
+        return;
+      }
+
+      if (!pdvInlineMap) {
+        let initialLat = -23.55052;
+        let initialLng = -46.633308;
+
+        pdvInlineMap = L.map("pdv-inline-map", {
+          zoomControl: true,
+          attributionControl: false,
+        }).setView([initialLat, initialLng], 13);
+
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+          maxZoom: 19,
+          subdomains: "abcd",
+        }).addTo(pdvInlineMap);
+
+        pdvZonesLayerGroup = L.layerGroup().addTo(pdvInlineMap);
+
+        const customPinIcon = L.divIcon({
+          className: "pdv-draggable-pin",
+          html: `
+            <div style="position: relative; width: 34px; height: 42px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.7)); cursor: grab;">
+              <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17 0C7.61116 0 0 7.61116 0 17C0 27.5 17 42 17 42C17 42 34 27.5 34 17C34 7.61116 26.3888 0 17 0Z" fill="#e31837"/>
+                <circle cx="17" cy="17" r="7" fill="#ffffff"/>
+                <circle cx="17" cy="17" r="4" fill="#111111"/>
+              </svg>
+            </div>
+          `,
+          iconSize: [34, 42],
+          iconAnchor: [17, 42],
+        });
+
+        pdvInlineMarker = L.marker([initialLat, initialLng], {
+          draggable: true,
+          icon: customPinIcon,
+        }).addTo(pdvInlineMap);
+
+        pdvInlineMarker.on("dragend", function (e) {
+          const pos = e.target.getLatLng();
+          pdvCustomerLat = pos.lat;
+          pdvCustomerLng = pos.lng;
+          checkZoneAtLocation(pos.lat, pos.lng);
+        });
+
+        pdvInlineMap.on("click", function (e) {
+          pdvInlineMarker.setLatLng(e.latlng);
+          pdvCustomerLat = e.latlng.lat;
+          pdvCustomerLng = e.latlng.lng;
+          checkZoneAtLocation(e.latlng.lat, e.latlng.lng);
+        });
+
+        renderPdvZonesOnMap();
+      }
+
+      if (pdvCustomerLat && pdvCustomerLng) {
+        pdvInlineMarker.setLatLng([pdvCustomerLat, pdvCustomerLng]);
+        pdvInlineMap.setView([pdvCustomerLat, pdvCustomerLng], 15);
+        checkZoneAtLocation(pdvCustomerLat, pdvCustomerLng);
+      }
+
+      setTimeout(() => {
+        if (pdvInlineMap) {
+          pdvInlineMap.invalidateSize();
+        }
+      }, 250);
+    }
+
+    function renderPdvZonesOnMap() {
+      if (!pdvInlineMap || !pdvZonesLayerGroup) return;
+      pdvZonesLayerGroup.clearLayers();
+
+      const colors = ["#00e676", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899", "#14b8a6"];
+      let bounds = null;
+
+      (pdvZones || []).forEach((zone, idx) => {
+        if (zone.geometry) {
+          const color = colors[idx % colors.length];
+          const layer = L.geoJSON(zone.geometry, {
+            style: {
+              color: color,
+              weight: 2,
+              opacity: 0.85,
+              fillColor: color,
+              fillOpacity: 0.18,
+            },
+          });
+
+          layer.bindTooltip(
+            `<div style="font-size: 11px; font-weight: 700; color: #111;">
+              <b>${zone.title}</b><br/>Taxa: R$ ${zone.deliveryFee.toFixed(2)}
+            </div>`,
+            { sticky: true }
+          );
+
+          pdvZonesLayerGroup.addLayer(layer);
+
+          const layerBounds = layer.getBounds();
+          if (layerBounds.isValid()) {
+            if (!bounds) bounds = layerBounds;
+            else bounds.extend(layerBounds);
+          }
+        }
+      });
+
+      if (bounds && bounds.isValid() && (!pdvCustomerLat || !pdvCustomerLng)) {
+        pdvInlineMap.fitBounds(bounds, { padding: [20, 20] });
+        const center = bounds.getCenter();
+        pdvInlineMarker.setLatLng(center);
+        pdvCustomerLat = center.lat;
+        pdvCustomerLng = center.lng;
+        checkZoneAtLocation(center.lat, center.lng);
+      }
+    }
+
+    function checkZoneAtLocation(lat, lng) {
+      pdvCustomerLat = lat;
+      pdvCustomerLng = lng;
+      const statusEl = document.getElementById("pdv-zone-detect-status");
+      const zoneSel = document.getElementById("pdv-zone-select");
+      const feeInput = document.getElementById("pdv-delivery-fee");
+
+      const matchedZone = findDeliveryZone(lat, lng, pdvZones || []);
+      if (matchedZone) {
+        if (statusEl) {
+          statusEl.innerHTML = `<span style="color: #00e676;">✓ ${matchedZone.title} (R$ ${matchedZone.deliveryFee.toFixed(2)})</span>`;
+        }
+        if (zoneSel) {
+          zoneSel.value = matchedZone.id;
+        }
+        if (feeInput) {
+          feeInput.value = matchedZone.deliveryFee.toFixed(2);
+        }
+      } else {
+        if (statusEl) {
+          statusEl.innerHTML = `<span style="color: #ef4444;">⚠️ Fora das Zonas (Manual)</span>`;
+        }
+        if (zoneSel) {
+          zoneSel.value = "manual";
+        }
+      }
+      updatePdvFinalTotal();
+    }
+
+    function schedulePdvGeocoding() {
+      clearTimeout(pdvGeocodeTimeout);
+      pdvGeocodeTimeout = setTimeout(() => {
+        geocodePdvCurrentAddress();
+      }, 1000);
+    }
+
+    async function geocodePdvCurrentAddress() {
+      const street = (document.getElementById("pdv-cust-street")?.value || "").trim();
+      const number = (document.getElementById("pdv-cust-number")?.value || "").trim();
+      const neighborhood = (document.getElementById("pdv-cust-neighborhood")?.value || "").trim();
+
+      if (!street || street.length < 3) return;
+
+      const queryParts = [street];
+      if (number) queryParts.push(number);
+      if (neighborhood) queryParts.push(neighborhood);
+
+      const query = queryParts.join(", ");
+      const statusEl = document.getElementById("pdv-zone-detect-status");
+      if (statusEl) {
+        statusEl.innerHTML = `<span style="color: #60a5fa;">🔍 Localizando no mapa...</span>`;
+      }
+
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=br`, {
+          headers: { "Accept-Language": "pt-BR" },
+        });
+        const results = await res.json();
+        if (results && results.length > 0) {
+          const lat = parseFloat(results[0].lat);
+          const lng = parseFloat(results[0].lon);
+
+          initPdvInlineMap();
+          if (pdvInlineMap && pdvInlineMarker) {
+            pdvInlineMarker.setLatLng([lat, lng]);
+            pdvInlineMap.setView([lat, lng], 16);
+          }
+          checkZoneAtLocation(lat, lng);
+        } else {
+          if (statusEl) {
+            statusEl.innerHTML = `<span style="color: #fbbf24;">Arraste o pin no mapa</span>`;
+          }
+        }
+      } catch (err) {
+        console.warn("Geocoding lookup error:", err);
+      }
+    }
+
+    // =========================================================================
+    // IDENTIFICAÇÃO DO CLIENTE & AUTO-COMPLETAR ENDEREÇOS
+    // =========================================================================
+    function handlePdvPhoneInput(val) {
+      const clean = val.replace(/\D/g, "");
+      clearTimeout(pdvCustomerLookupTimeout);
+
+      if (clean.length >= 10) {
+        pdvCustomerLookupTimeout = setTimeout(() => {
+          lookupCustomerByPhone(clean);
+        }, 400);
+      } else {
+        const box = document.getElementById("pdv-customer-addresses-box");
+        if (box) box.style.display = "none";
+      }
+    }
+
+    async function lookupCustomerByPhone(phone) {
+      if (!appSettings.serverUrl) return;
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/public/customer-lookup?phone=${encodeURIComponent(phone)}`, {
+          headers: {
+            "x-print-auth": appSettings.apiKey || "alldelivery_internal_print_secret",
+          },
+        });
+
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data.found) {
+          const nameInput = document.getElementById("pdv-cust-name");
+          if (nameInput && (!nameInput.value.trim() || nameInput.value.trim() === "Cliente")) {
+            nameInput.value = data.name || "";
+          }
+
+          renderCustomerSavedAddresses(data.addresses || []);
+          showToast(`✓ Cliente identificado: ${data.name}`);
+        } else {
+          const box = document.getElementById("pdv-customer-addresses-box");
+          if (box) box.style.display = "none";
+        }
+      } catch (err) {
+        console.error("Lookup customer error:", err);
+      }
+    }
+
+    function renderCustomerSavedAddresses(addresses) {
+      const box = document.getElementById("pdv-customer-addresses-box");
+      const list = document.getElementById("pdv-customer-addresses-list");
+      if (!box || !list) return;
+
+      if (!addresses || addresses.length === 0) {
+        box.style.display = "none";
+        return;
+      }
+
+      pdvCustomerAddresses = addresses;
+      box.style.display = "flex";
+      list.innerHTML = "";
+
+      addresses.forEach((addr) => {
+        const card = document.createElement("div");
+        card.className = "pdv-saved-addr-card";
+        const numText = addr.number ? `Nº ${addr.number}` : "";
+        const refText = addr.reference ? `(${addr.reference})` : "";
+        card.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <span>🏠</span>
+            <span style="font-weight: 600;">${addr.address} ${numText} ${refText}</span>
+          </div>
+          <span style="font-weight: 800; font-size: 10px; color: #00e676; text-transform: uppercase;">Usar ↵</span>
+        `;
+        card.onclick = () => applyCustomerSavedAddress(addr);
+        list.appendChild(card);
+      });
+
+      const newAddrBtn = document.createElement("div");
+      newAddrBtn.style.cssText = "font-size: 10px; color: #aaa; cursor: pointer; text-decoration: underline; margin-top: 2px; align-self: flex-start;";
+      newAddrBtn.textContent = "+ Digitar um novo endereço";
+      newAddrBtn.onclick = () => {
+        clearPdvAddressFields();
+        showToast("Campos limpos para cadastrar novo endereço.");
+      };
+      list.appendChild(newAddrBtn);
+    }
+
+    function applyCustomerSavedAddress(addr) {
+      const streetInput = document.getElementById("pdv-cust-street");
+      const numInput = document.getElementById("pdv-cust-number");
+      const refInput = document.getElementById("pdv-cust-ref");
+
+      if (streetInput) streetInput.value = addr.address || "";
+      if (numInput && addr.number) numInput.value = addr.number;
+      if (refInput && addr.reference) refInput.value = addr.reference;
+
+      showToast(`Endereço selecionado: ${addr.address}`);
+      initPdvInlineMap();
+
+      if (addr.lat && addr.lng) {
+        const lat = parseFloat(addr.lat);
+        const lng = parseFloat(addr.lng);
+        pdvCustomerLat = lat;
+        pdvCustomerLng = lng;
+
+        if (pdvInlineMap && pdvInlineMarker) {
+          pdvInlineMarker.setLatLng([lat, lng]);
+          pdvInlineMap.setView([lat, lng], 16);
+        }
+        checkZoneAtLocation(lat, lng);
+      } else {
+        geocodePdvCurrentAddress();
+      }
+    }
+
+    function clearPdvAddressFields() {
+      if (document.getElementById("pdv-cust-cep")) document.getElementById("pdv-cust-cep").value = "";
+      if (document.getElementById("pdv-cust-street")) document.getElementById("pdv-cust-street").value = "";
+      if (document.getElementById("pdv-cust-number")) document.getElementById("pdv-cust-number").value = "";
+      if (document.getElementById("pdv-cust-neighborhood")) document.getElementById("pdv-cust-neighborhood").value = "";
+      if (document.getElementById("pdv-cust-ref")) document.getElementById("pdv-cust-ref").value = "";
+      pdvCustomerLat = null;
+      pdvCustomerLng = null;
+      const statusEl = document.getElementById("pdv-zone-detect-status");
+      if (statusEl) statusEl.textContent = "Arraste o pin p/ calcular";
+      document.getElementById("pdv-cust-street")?.focus();
+    }
+
     async function handlePdvCepInput(val) {
       const clean = val.replace(/\D/g, "");
       if (clean.length === 8) {
@@ -4359,6 +4819,7 @@
             if (data.bairro) document.getElementById("pdv-cust-neighborhood").value = data.bairro;
             document.getElementById("pdv-cust-number").focus();
             showToast(`✓ CEP localizado: ${data.logradouro || data.bairro}`);
+            geocodePdvCurrentAddress();
           } else {
             showToast("CEP não encontrado.");
           }
@@ -5393,6 +5854,13 @@
       document.getElementById("pdv-delivery-fee").value = "0.00";
       document.getElementById("pdv-notes").value = "";
       document.getElementById("pdv-change-for").value = "";
+      pdvCustomerLat = null;
+      pdvCustomerLng = null;
+      pdvCustomerAddresses = [];
+      const box = document.getElementById("pdv-customer-addresses-box");
+      if (box) box.style.display = "none";
+      const statusEl = document.getElementById("pdv-zone-detect-status");
+      if (statusEl) statusEl.textContent = "Arraste o pin p/ calcular";
       goToPdvStep(1);
       updatePdvFinalTotal();
       showToast("Formulário reiniciado para novo pedido.");
@@ -5449,6 +5917,8 @@
         customerAddress: fullAddress,
         addressNumber: number || null,
         reference: ref || null,
+        customerLat: pdvCustomerLat || null,
+        customerLng: pdvCustomerLng || null,
         paymentMethod,
         changeFor: paymentMethod === "DINHEIRO" && changeFor ? parseFloat(changeFor) : null,
         deliveryFee,

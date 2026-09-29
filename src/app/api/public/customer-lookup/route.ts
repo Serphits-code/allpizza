@@ -12,13 +12,18 @@ const lookupLimiter = rateLimit({
 });
 
 export async function GET(request: Request) {
-  const ip = getClientIp(request);
-  const rateLimitResult = lookupLimiter.check(6, `lookup_${ip}`);
-  if (!rateLimitResult.success) {
-    return NextResponse.json(
-      { error: "Limite de consultas excedido. Por favor, tente novamente mais tarde." },
-      { status: 429 }
-    );
+  const printAuth = request.headers.get("x-print-auth");
+  const isInternalPdv = printAuth === "alldelivery_internal_print_secret";
+
+  if (!isInternalPdv) {
+    const ip = getClientIp(request);
+    const rateLimitResult = lookupLimiter.check(15, `lookup_${ip}`);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "Limite de consultas excedido. Por favor, tente novamente mais tarde." },
+        { status: 429 }
+      );
+    }
   }
 
   const { searchParams } = new URL(request.url);
