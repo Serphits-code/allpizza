@@ -2427,15 +2427,22 @@
       console.log(`[Auto-Print] Enviando pedido #${order.orderNumber} para impressora "${stageCfg.printer}" (Etapa ${status})`);
 
       try {
-        const copies = Math.max(1, stageCfg.copies || 1);
-        for (let i = 0; i < copies; i++) {
-          await fetch("http://localhost:3001/print", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ order, status }),
-          });
+        if (window.electronAPI && window.electronAPI.printOrder) {
+          const res = await window.electronAPI.printOrder(order, status);
+          if (res && res.success) {
+            showToast(`Cupom #${order.orderNumber} impresso na ${stageCfg.printer}!`);
+          }
+        } else {
+          const copies = Math.max(1, stageCfg.copies || 1);
+          for (let i = 0; i < copies; i++) {
+            await fetch("http://localhost:4005/print", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ order, status }),
+            });
+          }
+          showToast(`Cupom #${order.orderNumber} impresso na ${stageCfg.printer}!`);
         }
-        showToast(`Cupom #${order.orderNumber} impresso na ${stageCfg.printer}!`);
       } catch (err) {
         console.error("Falha ao imprimir via auto-print:", err);
       }

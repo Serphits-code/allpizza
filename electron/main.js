@@ -909,23 +909,33 @@ const localServer = http.createServer((req, res) => {
   res.end(JSON.stringify({ error: "Rota não encontrada no daemon local" }));
 });
 
-// Ouve em 0.0.0.0 com fallback caso a porta 3001 esteja em uso pelo Next.js
-const DEFAULT_PRINT_PORT = parseInt(process.env.ELECTRON_PRINT_PORT || "3001", 10);
-localServer.listen(DEFAULT_PRINT_PORT, "0.0.0.0", () => {
-  console.log(`[Electron Server] Ouvindo comandos de impressão e rede em 0.0.0.0:${DEFAULT_PRINT_PORT}`);
-});
+// Servidor HTTP local opcional para comandos externos em 0.0.0.0 (Porta 4005+)
+let currentPrintPort = parseInt(process.env.ELECTRON_PRINT_PORT || "4005", 10);
+let retryCount = 0;
+const MAX_PORT_RETRIES = 3;
 
-localServer.on("error", (err) => {
-  if (err.code === "EADDRINUSE") {
-    const fallbackPort = 3005;
-    console.warn(`[Electron Server] Porta ${DEFAULT_PRINT_PORT} já está em uso (provável Next.js). Alternando para porta ${fallbackPort}...`);
-    localServer.listen(fallbackPort, "0.0.0.0", () => {
-      console.log(`[Electron Server] Ouvindo comandos de impressão e rede em 0.0.0.0:${fallbackPort}`);
+function startLocalPrintServer() {
+  localServer.once("error", (err) => {
+    if (err.code === "EADDRINUSE" && retryCount < MAX_PORT_RETRIES) {
+      retryCount++;
+      currentPrintPort++;
+      console.warn(`[Electron Server] Porta em uso. Tentando porta alternativa ${currentPrintPort}...`);
+      setTimeout(startLocalPrintServer, 300);
+    } else {
+      console.warn("[Electron Server] Servidor HTTP local desativado devido a porta em uso:", err.message);
+    }
+  });
+
+  try {
+    localServer.listen(currentPrintPort, "0.0.0.0", () => {
+      console.log(`[Electron Server] Ouvindo comandos de impressão e rede em 0.0.0.0:${currentPrintPort}`);
     });
-  } else {
-    console.error("[Electron Server] Erro no servidor local:", err);
+  } catch (err) {
+    console.warn("[Electron Server] Falha ao iniciar daemon HTTP:", err.message);
   }
-});
+}
+
+startLocalPrintServer();
 
 app.whenReady().then(() => {
   // IPC handlers
@@ -1012,6 +1022,29 @@ app.whenReady().then(() => {
 
     const success = await printSilently(printerName, testText);
     return { success };
+  });
+
+  ipcMain.handle("print-order", async (event, { order, status }) => {
+    try {
+      const targetStatus = status || order.status || "NOVO";
+      const settings = loadSettings();
+      const config = settings.configs?.[targetStatus];
+
+      if (config && config.printer) {
+        const receiptText = formatThermalReceipt(order, config.layout || "completo");
+        const copies = Math.max(1, config.copies || 1);
+        let allSuccess = true;
+        for (let i = 0; i < copies; i++) {
+          const success = await printSilently(config.printer, receiptText);
+          if (!success) allSuccess = false;
+        }
+        return { success: allSuccess };
+      }
+      return { success: false, error: "Nenhuma impressora configurada para esta etapa" };
+    } catch (err) {
+      console.error("Erro no IPC print-order:", err);
+      return { success: false, error: err.message };
+    }
   });
 
   createWindow();
