@@ -1,16 +1,27 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { roundCurrency } from "@/lib/pricing";
+import { authenticateApiRequest } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
 
+interface DailyPaymentRecord {
+  id: string;
+  comandaId?: string;
+  comandaNumber?: number;
+  responsibleName?: string | null;
+  method: "PIX" | "DINHEIRO" | "DEBITO" | "CREDITO";
+  amount: number;
+  changeFor?: number | null;
+  troco?: number | null;
+  createdAt: string;
+}
+
 // GET /api/admin/summary?date=YYYY-MM-DD
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const auth = await authenticateApiRequest(request, ["ADMIN", "MANAGER", "GARCOM"]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Não autorizado" }, { status: 401 });
   }
 
   try {
@@ -28,8 +39,10 @@ export async function GET(request: Request) {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // 1. Busca paralela de pedidos do dia, config e pedidos travados
-    const [orders, config, stalledOrders] = await Promise.all([
+    const dateStr = startOfDay.toISOString().split("T")[0];
+
+    // 1. Busca paralela de pedidos do dia, configs de pagamentos de comanda e pedidos travados
+    const [orders, dailyPaymentsConfig, activeComandaConfigs, stalledOrders] = await Promise.all([
       prisma.order.findMany({
         where: {
           createdAt: {
@@ -54,7 +67,10 @@ export async function GET(request: Request) {
         orderBy: { createdAt: "desc" },
       }),
       prisma.systemConfig.findUnique({
-        where: { key: "delivery_last_closed_at" },
+        where: { key: `daily_comanda_payments_${dateStr}` },
+      }),
+      prisma.systemConfig.findMany({
+        where: { key: { startsWith: "comanda_payments_" } },
       }),
       prisma.order.findMany({
         where: {
@@ -72,14 +88,131 @@ export async function GET(request: Request) {
       }),
     ]);
 
+    // Busca comandas para mapear número e responsável
+    const allComandas = await prisma.comanda.findMany({
+      select: { id: true, number: true, responsibleName: true },
+    });
+    const comandaInfoMap = new Map<string, { number: number; responsibleName?: string | null }>();
+    allComandas.forEach((c) => comandaInfoMap.set(c.id, { number: c.number, responsibleName: c.responsibleName }));
+
+    // 2. Consolidação de Baixas de Comandas/Mesas do Dia
+    const paymentsMap = new Map<string, DailyPaymentRecord>();
+
+    // 2.1 Adiciona baixas salvas no histórico diário permanente
+    if (dailyPaymentsConfig?.value) {
+      try {
+        const parsed: DailyPaymentRecord[] = JSON.parse(dailyPaymentsConfig.value);
+        parsed.forEach((p) => {
+          const info = p.comandaId ? comandaInfoMap.get(p.comandaId) : undefined;
+          paymentsMap.set(p.id, {
+            ...p,
+            comandaNumber: p.comandaNumber ?? info?.number,
+            responsibleName: p.responsibleName ?? info?.responsibleName ?? null,
+          });
+        });
+      } catch (e) {
+        console.error("Erro ao ler daily_comanda_payments:", e);
+      }
+    }
+
+    // 2.2 Adiciona também baixas de comandas ativas hoje que porventura ainda não fecharam a conta
+    activeComandaConfigs.forEach((cfg) => {
+      try {
+        const comandaId = cfg.key.replace("comanda_payments_", "");
+        const info = comandaInfoMap.get(comandaId);
+        const parsed: any[] = JSON.parse(cfg.value || "[]");
+        parsed.forEach((p) => {
+          if (p.createdAt) {
+            const pDate = new Date(p.createdAt);
+            if (pDate >= startOfDay && pDate <= endOfDay) {
+              if (!paymentsMap.has(p.id)) {
+                paymentsMap.set(p.id, {
+                  id: p.id,
+                  comandaId,
+                  comandaNumber: info?.number,
+                  responsibleName: info?.responsibleName || null,
+                  method: p.method,
+                  amount: roundCurrency(p.amount || 0),
+                  changeFor: p.changeFor,
+                  troco: p.troco,
+                  createdAt: p.createdAt,
+                });
+              }
+            }
+          }
+        });
+      } catch (e) {}
+    });
+
+    const comandaPayments = Array.from(paymentsMap.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    // 3. Cálculos de Baixas de Comanda
+    let comandasPix = 0;
+    let comandasDinheiro = 0;
+    let comandasDebito = 0;
+    let comandasCredito = 0;
+
+    comandaPayments.forEach((p) => {
+      const amt = roundCurrency(p.amount || 0);
+      if (p.method === "PIX") comandasPix += amt;
+      else if (p.method === "DINHEIRO") comandasDinheiro += amt;
+      else if (p.method === "DEBITO") comandasDebito += amt;
+      else if (p.method === "CREDITO") comandasCredito += amt;
+    });
+
+    comandasPix = roundCurrency(comandasPix);
+    comandasDinheiro = roundCurrency(comandasDinheiro);
+    comandasDebito = roundCurrency(comandasDebito);
+    comandasCredito = roundCurrency(comandasCredito);
+    const comandasTotal = roundCurrency(comandasPix + comandasDinheiro + comandasDebito + comandasCredito);
+
+    // 4. Cálculos de Pedidos (Delivery e Retirada - não cancelados)
     const billableOrders = orders.filter((o) => o.status !== "CANCELADO");
-    const total = roundCurrency(billableOrders.reduce((sum, o) => sum + (o.total || 0), 0));
+    const nonComandaOrders = billableOrders.filter((o) => o.type !== "COMANDA");
+
+    let ordersPix = 0;
+    let ordersDinheiro = 0;
+    let ordersDebito = 0;
+    let ordersCredito = 0;
+    let totalDeliveryFee = 0;
+
+    nonComandaOrders.forEach((o) => {
+      const tot = roundCurrency(o.total || 0);
+      if (o.paymentMethod === "PIX") ordersPix += tot;
+      else if (o.paymentMethod === "DINHEIRO") ordersDinheiro += tot;
+      else if (o.paymentMethod === "DEBITO") ordersDebito += tot;
+      else if (o.paymentMethod === "CREDITO") ordersCredito += tot;
+    });
+
+    billableOrders.forEach((o) => {
+      if (o.type === "DELIVERY") {
+        totalDeliveryFee += roundCurrency(o.deliveryFee || 0);
+      }
+    });
+
+    ordersPix = roundCurrency(ordersPix);
+    ordersDinheiro = roundCurrency(ordersDinheiro);
+    ordersDebito = roundCurrency(ordersDebito);
+    ordersCredito = roundCurrency(ordersCredito);
+    totalDeliveryFee = roundCurrency(totalDeliveryFee);
+    const ordersTotal = roundCurrency(ordersPix + ordersDinheiro + ordersDebito + ordersCredito);
+
+    // 5. Consolidado Geral do Caixa do Dia (Pedidos Delivery/Retirada + Baixas de Mesa)
+    const totalPix = roundCurrency(ordersPix + comandasPix);
+    const totalDinheiro = roundCurrency(ordersDinheiro + comandasDinheiro);
+    const totalDebito = roundCurrency(ordersDebito + comandasDebito);
+    const totalCredito = roundCurrency(ordersCredito + comandasCredito);
+    const grandTotalRevenue = roundCurrency(totalPix + totalDinheiro + totalDebito + totalCredito);
+
+    // Métricas operacionais
     const count = billableOrders.length;
     const canceledCount = orders.filter((o) => o.status === "CANCELADO").length;
     const finishedCount = billableOrders.filter(
       (o) => o.status === "ENTREGUE" || o.status === "PRONTO_RETIRADA"
     ).length;
-    const averageTicket = count > 0 ? roundCurrency(total / count) : 0;
+    const averageTicket = count > 0 ? roundCurrency(grandTotalRevenue / count) : 0;
 
     const now = new Date();
     const stalledDeliveryAlert = stalledOrders.map((o) => {
@@ -104,13 +237,46 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({
-      date: startOfDay.toISOString().split("T")[0],
-      total,
+      date: dateStr,
+      total: grandTotalRevenue,
+      totalRevenue: grandTotalRevenue,
+      totalDeliveryFee,
+      totalPix,
+      totalDinheiro,
+      totalDebito,
+      totalCredito,
+      financial: {
+        totalRevenue: grandTotalRevenue,
+        totalDeliveryFee,
+        totalPix,
+        totalDinheiro,
+        totalDebito,
+        totalCredito,
+        ordersBreakdown: {
+          total: ordersTotal,
+          pix: ordersPix,
+          dinheiro: ordersDinheiro,
+          debito: ordersDebito,
+          credito: ordersCredito,
+          deliveryFee: totalDeliveryFee,
+          count: nonComandaOrders.length,
+        },
+        comandasBreakdown: {
+          total: comandasTotal,
+          pix: comandasPix,
+          dinheiro: comandasDinheiro,
+          debito: comandasDebito,
+          credito: comandasCredito,
+          count: comandaPayments.length,
+          payments: comandaPayments,
+        },
+      },
       count,
       canceledCount,
       finishedCount,
       averageTicket,
       orders,
+      comandaPayments,
       stalledDeliveryAlert,
     });
   } catch (error) {

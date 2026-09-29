@@ -146,6 +146,30 @@ export async function POST(
       update: { value: JSON.stringify(updatedPayments) },
     });
 
+    // Persistência contábil no histórico diário consolidado
+    const todayStr = new Date().toISOString().split("T")[0];
+    const dailyKey = `daily_comanda_payments_${todayStr}`;
+    const dailyConfig = await prisma.systemConfig.findUnique({
+      where: { key: dailyKey },
+    });
+    const dailyPayments: any[] = dailyConfig ? JSON.parse(dailyConfig.value || "[]") : [];
+    dailyPayments.push({
+      id: newPayment.id,
+      comandaId: id,
+      comandaNumber: comanda.number,
+      responsibleName: comanda.responsibleName || null,
+      method: newPayment.method,
+      amount: newPayment.amount,
+      changeFor: newPayment.changeFor,
+      troco: newPayment.troco,
+      createdAt: newPayment.createdAt,
+    });
+    await prisma.systemConfig.upsert({
+      where: { key: dailyKey },
+      create: { key: dailyKey, value: JSON.stringify(dailyPayments) },
+      update: { value: JSON.stringify(dailyPayments) },
+    });
+
     const totalPaid = roundCurrency(updatedPayments.reduce((sum, p) => sum + (p.amount || 0), 0));
     const remainingBalance = Math.max(0, roundCurrency(totalConsumption - totalPaid));
     const isFullyPaid = totalConsumption > 0 && remainingBalance <= 0.01;
@@ -200,6 +224,19 @@ export async function DELETE(
       where: { key: `comanda_payments_${id}` },
       data: { value: JSON.stringify(updatedPayments) },
     });
+
+    // Remove também do histórico diário consolidado
+    const todayStr = new Date().toISOString().split("T")[0];
+    const dailyKey = `daily_comanda_payments_${todayStr}`;
+    const dailyConfig = await prisma.systemConfig.findUnique({ where: { key: dailyKey } });
+    if (dailyConfig) {
+      const dailyPayments: any[] = JSON.parse(dailyConfig.value || "[]");
+      const filteredDaily = dailyPayments.filter((p) => p.id !== paymentId);
+      await prisma.systemConfig.update({
+        where: { key: dailyKey },
+        data: { value: JSON.stringify(filteredDaily) },
+      });
+    }
 
     return NextResponse.json({
       success: true,

@@ -2067,6 +2067,9 @@
 
     <!-- ACTIONS -->
     <div class="header-actions">
+      <button id="btn-daily-summary" class="btn-action" style="font-size: 11px; padding: 6px 12px; background: #202020; border: 1px solid var(--border); color: #fff; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="openDailySummaryModal()" title="Visualizar Resumo Diário e Fechamento de Caixa">
+        <span>📅</span> Resumo do Dia
+      </button>
       <button id="btn-toggle-store" class="btn-delivery-status open" title="Clique para abrir ou fechar o Delivery">
         <span class="dot online"></span>
         <span>DELIVERY ON</span>
@@ -3087,6 +3090,132 @@
       <div class="modal-footer" style="justify-content: space-between;">
         <button id="btn-copy-qr-link" class="btn-action">📋 Copiar Link</button>
         <button id="btn-print-qr-flyer" class="btn-action primary">🖨️ Imprimir Placa da Mesa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RESUMO DIÁRIO & FECHAMENTO DE CAIXA -->
+  <div id="modal-daily-summary" class="modal-overlay">
+    <div class="modal-box" style="max-width: 900px; width: 95%; height: 90vh; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <span>📅</span>
+          <span>Resumo Diário & Fechamento de Caixa</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button class="btn-action" style="padding: 4px 8px; font-size: 11px;" onclick="changeDailySummaryDay(-1)">◀ Anterior</button>
+          <button class="btn-action" style="padding: 4px 8px; font-size: 11px; background: var(--red); color: #fff;" onclick="setDailySummaryToday()">Hoje</button>
+          <button class="btn-action" style="padding: 4px 8px; font-size: 11px;" onclick="changeDailySummaryDay(1)">Próximo ▶</button>
+          <input type="date" id="summary-date-input" style="background: #1c1c1c; border: 1px solid #333; color: #fff; padding: 4px 8px; border-radius: 6px; font-size: 11px;" onchange="loadDailySummary(this.value)" />
+          <button class="btn-close-modal" onclick="closeModal('modal-daily-summary')">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 16px;">
+        <!-- CARDS FINANCEIROS POR FORMA DE PAGAMENTO -->
+        <div>
+          <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+            💰 Entradas no Caixa por Forma de Pagamento (Delivery + Salão)
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
+            <!-- DINHEIRO -->
+            <div style="background: #102419; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 12px; padding: 10px 12px;">
+              <span style="font-size: 10px; font-weight: 800; color: #34d399; text-transform: uppercase; display: block;">💵 Dinheiro</span>
+              <span id="summary-val-dinheiro" style="font-size: 17px; font-weight: 900; color: #6ee7b7; font-family: monospace; display: block; margin: 3px 0;">R$ 0,00</span>
+              <span id="summary-sub-dinheiro" style="font-size: 9px; color: #34d399; opacity: 0.85;">Ped: R$ 0 | Mesas: R$ 0</span>
+            </div>
+
+            <!-- PIX -->
+            <div style="background: #0d2328; border: 1px solid rgba(6, 182, 212, 0.4); border-radius: 12px; padding: 10px 12px;">
+              <span style="font-size: 10px; font-weight: 800; color: #22d3ee; text-transform: uppercase; display: block;">⚡ PIX</span>
+              <span id="summary-val-pix" style="font-size: 17px; font-weight: 900; color: #67e8f9; font-family: monospace; display: block; margin: 3px 0;">R$ 0,00</span>
+              <span id="summary-sub-pix" style="font-size: 9px; color: #22d3ee; opacity: 0.85;">Ped: R$ 0 | Mesas: R$ 0</span>
+            </div>
+
+            <!-- DÉBITO -->
+            <div style="background: #0f1d2e; border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 12px; padding: 10px 12px;">
+              <span style="font-size: 10px; font-weight: 800; color: #60a5fa; text-transform: uppercase; display: block;">💳 Débito</span>
+              <span id="summary-val-debito" style="font-size: 17px; font-weight: 900; color: #93c5fd; font-family: monospace; display: block; margin: 3px 0;">R$ 0,00</span>
+              <span id="summary-sub-debito" style="font-size: 9px; color: #60a5fa; opacity: 0.85;">Ped: R$ 0 | Mesas: R$ 0</span>
+            </div>
+
+            <!-- CRÉDITO -->
+            <div style="background: #1f142b; border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 12px; padding: 10px 12px;">
+              <span style="font-size: 10px; font-weight: 800; color: #c084fc; text-transform: uppercase; display: block;">💳 Crédito</span>
+              <span id="summary-val-credito" style="font-size: 17px; font-weight: 900; color: #d8b4fe; font-family: monospace; display: block; margin: 3px 0;">R$ 0,00</span>
+              <span id="summary-sub-credito" style="font-size: 9px; color: #c084fc; opacity: 0.85;">Ped: R$ 0 | Mesas: R$ 0</span>
+            </div>
+
+            <!-- TAXA DE ENTREGA -->
+            <div style="background: #271c0c; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 12px; padding: 10px 12px;">
+              <span style="font-size: 10px; font-weight: 800; color: #fbbf24; text-transform: uppercase; display: block;">🛵 Taxa Entrega</span>
+              <span id="summary-val-delivery-fee" style="font-size: 17px; font-weight: 900; color: #fde68a; font-family: monospace; display: block; margin: 3px 0;">R$ 0,00</span>
+              <span style="font-size: 9px; color: #fbbf24; opacity: 0.85;">Total de fretes</span>
+            </div>
+
+            <!-- TOTAL GERAL -->
+            <div style="background: linear-gradient(135deg, rgba(227, 24, 55, 0.25), #1a1215); border: 1.5px solid var(--red); border-radius: 12px; padding: 10px 12px;">
+              <span style="font-size: 10px; font-weight: 800; color: #ff808f; text-transform: uppercase; display: block;">💰 Total Faturado</span>
+              <span id="summary-val-total" style="font-size: 18px; font-weight: 900; color: #fff; font-family: monospace; display: block; margin: 3px 0;">R$ 0,00</span>
+              <span style="font-size: 9px; color: #ff808f; opacity: 0.85;">Caixa consolidado</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPIS OPERACIONAIS -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+          <div style="background: #181818; border: 1px solid #2a2a2a; border-radius: 10px; padding: 8px 10px; text-align: center;">
+            <span style="font-size: 9.5px; color: #888; text-transform: uppercase; font-weight: 700; display: block;">Total Pedidos</span>
+            <span id="summary-kpi-orders" style="font-size: 15px; font-weight: 800; color: #fff; font-family: monospace;">0</span>
+          </div>
+          <div style="background: #181818; border: 1px solid #2a2a2a; border-radius: 10px; padding: 8px 10px; text-align: center;">
+            <span style="font-size: 9.5px; color: #888; text-transform: uppercase; font-weight: 700; display: block;">Finalizados</span>
+            <span id="summary-kpi-finished" style="font-size: 15px; font-weight: 800; color: #34d399; font-family: monospace;">0</span>
+          </div>
+          <div style="background: #181818; border: 1px solid #2a2a2a; border-radius: 10px; padding: 8px 10px; text-align: center;">
+            <span style="font-size: 9.5px; color: #888; text-transform: uppercase; font-weight: 700; display: block;">Ticket Médio</span>
+            <span id="summary-kpi-ticket" style="font-size: 15px; font-weight: 800; color: #fbbf24; font-family: monospace;">R$ 0,00</span>
+          </div>
+          <div style="background: #181818; border: 1px solid #2a2a2a; border-radius: 10px; padding: 8px 10px; text-align: center;">
+            <span style="font-size: 9.5px; color: #888; text-transform: uppercase; font-weight: 700; display: block;">Baixas no Salão</span>
+            <span id="summary-kpi-payments-count" style="font-size: 15px; font-weight: 800; color: #22d3ee; font-family: monospace;">0 baixas</span>
+          </div>
+        </div>
+
+        <!-- HISTÓRICO DE BAIXAS DE MESAS DO DIA -->
+        <div style="background: #181818; border: 1px solid #2e2e2e; border-radius: 12px; padding: 12px; flex: 1; display: flex; flex-direction: column; min-height: 200px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2a2a; padding-bottom: 8px; margin-bottom: 8px;">
+            <span style="font-size: 12px; font-weight: 800; color: #fff;">🍽️ Baixas de Comandas e Mesas no Dia</span>
+            <span id="summary-comandas-total-badge" style="font-size: 11px; font-weight: 800; color: #34d399; font-family: monospace;">Total Baixado: R$ 0,00</span>
+          </div>
+          <div id="summary-comandas-table-box" style="flex: 1; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; text-align: left;">
+              <thead>
+                <tr style="border-bottom: 1px solid #333; color: #888; font-size: 10px; text-transform: uppercase;">
+                  <th style="padding: 6px 8px;">Horário</th>
+                  <th style="padding: 6px 8px;">Mesa</th>
+                  <th style="padding: 6px 8px;">Responsável</th>
+                  <th style="padding: 6px 8px;">Forma</th>
+                  <th style="padding: 6px 8px; text-align: right;">Valor Baixado</th>
+                  <th style="padding: 6px 8px;">Troco</th>
+                </tr>
+              </thead>
+              <tbody id="summary-comandas-tbody">
+                <!-- Linhas preenchidas via JS -->
+              </tbody>
+            </table>
+            <div id="summary-empty-comandas" style="display: none; text-align: center; color: #666; font-size: 11px; padding: 30px 0;">
+              Nenhuma baixa de mesa registrada nesta data.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button id="btn-print-summary-receipt" class="btn-action primary" style="background: #f59e0b; border-color: #d97706; color: #000; font-weight: 800; display: flex; align-items: center; gap: 6px;" onclick="printDailySummaryThermal()">
+          <span>🖨️</span> Imprimir Fechamento de Caixa (Térmico)
+        </button>
+        <button class="btn-action" onclick="closeModal('modal-daily-summary')">Fechar</button>
       </div>
     </div>
   </div>
@@ -4800,6 +4929,266 @@
       if (banner) banner.style.display = "none";
       const btnCom = document.getElementById("pdv-type-comanda");
       if (btnCom) btnCom.style.display = "none";
+    }
+
+    // ==========================================
+    // 4.1 RESUMO DIÁRIO & FECHAMENTO DE CAIXA
+    // ==========================================
+    let currentSummaryDate = new Date().toISOString().split("T")[0];
+    let currentSummaryData = null;
+
+    function openDailySummaryModal() {
+      const modal = document.getElementById("modal-daily-summary");
+      if (!modal) return;
+      modal.classList.add("active");
+      currentSummaryDate = new Date().toISOString().split("T")[0];
+      const dateInput = document.getElementById("summary-date-input");
+      if (dateInput) dateInput.value = currentSummaryDate;
+      loadDailySummary(currentSummaryDate);
+    }
+
+    function setDailySummaryToday() {
+      currentSummaryDate = new Date().toISOString().split("T")[0];
+      const dateInput = document.getElementById("summary-date-input");
+      if (dateInput) dateInput.value = currentSummaryDate;
+      loadDailySummary(currentSummaryDate);
+    }
+
+    function changeDailySummaryDay(delta) {
+      const d = new Date(currentSummaryDate + "T12:00:00");
+      d.setDate(d.getDate() + delta);
+      currentSummaryDate = d.toISOString().split("T")[0];
+      const dateInput = document.getElementById("summary-date-input");
+      if (dateInput) dateInput.value = currentSummaryDate;
+      loadDailySummary(currentSummaryDate);
+    }
+
+    async function loadDailySummary(dateStr) {
+      currentSummaryDate = dateStr || currentSummaryDate;
+      if (!appSettings.serverUrl) return;
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/summary?date=${currentSummaryDate}`, {
+          headers: { "x-print-auth": appSettings.apiKey },
+        });
+        if (!res.ok) throw new Error("Erro ao buscar resumo");
+        const json = await res.json();
+        currentSummaryData = json;
+        renderDailySummary(json);
+      } catch (err) {
+        console.error("Erro ao carregar resumo:", err);
+        showToast("Falha ao carregar resumo do dia", "error");
+      }
+    }
+
+    function renderDailySummary(data) {
+      if (!data) return;
+      const fmt = (v) => "R$ " + (Number(v) || 0).toFixed(2).replace(".", ",");
+
+      const totalDinheiro = data.totalDinheiro ?? data.financial?.totalDinheiro ?? 0;
+      const totalPix = data.totalPix ?? data.financial?.totalPix ?? 0;
+      const totalDebito = data.totalDebito ?? data.financial?.totalDebito ?? 0;
+      const totalCredito = data.totalCredito ?? data.financial?.totalCredito ?? 0;
+      const totalDeliveryFee = data.totalDeliveryFee ?? data.financial?.totalDeliveryFee ?? 0;
+      const grandTotal = data.totalRevenue ?? data.total ?? 0;
+
+      const pedDinheiro = data.financial?.ordersBreakdown?.dinheiro ?? 0;
+      const mesDinheiro = data.financial?.comandasBreakdown?.dinheiro ?? 0;
+      const pedPix = data.financial?.ordersBreakdown?.pix ?? 0;
+      const mesPix = data.financial?.comandasBreakdown?.pix ?? 0;
+      const pedDebito = data.financial?.ordersBreakdown?.debito ?? 0;
+      const mesDebito = data.financial?.comandasBreakdown?.debito ?? 0;
+      const pedCredito = data.financial?.ordersBreakdown?.credito ?? 0;
+      const mesCredito = data.financial?.comandasBreakdown?.credito ?? 0;
+
+      document.getElementById("summary-val-dinheiro").textContent = fmt(totalDinheiro);
+      document.getElementById("summary-sub-dinheiro").textContent = `Ped: ${fmt(pedDinheiro)} | Mes: ${fmt(mesDinheiro)}`;
+
+      document.getElementById("summary-val-pix").textContent = fmt(totalPix);
+      document.getElementById("summary-sub-pix").textContent = `Ped: ${fmt(pedPix)} | Mes: ${fmt(mesPix)}`;
+
+      document.getElementById("summary-val-debito").textContent = fmt(totalDebito);
+      document.getElementById("summary-sub-debito").textContent = `Ped: ${fmt(pedDebito)} | Mes: ${fmt(mesDebito)}`;
+
+      document.getElementById("summary-val-credito").textContent = fmt(totalCredito);
+      document.getElementById("summary-sub-credito").textContent = `Ped: ${fmt(pedCredito)} | Mes: ${fmt(mesCredito)}`;
+
+      document.getElementById("summary-val-delivery-fee").textContent = fmt(totalDeliveryFee);
+      document.getElementById("summary-val-total").textContent = fmt(grandTotal);
+
+      document.getElementById("summary-kpi-orders").textContent = data.count || 0;
+      document.getElementById("summary-kpi-finished").textContent = data.finishedCount || 0;
+      document.getElementById("summary-kpi-ticket").textContent = fmt(data.averageTicket || 0);
+
+      const payments = data.comandaPayments ?? data.financial?.comandasBreakdown?.payments ?? [];
+      document.getElementById("summary-kpi-payments-count").textContent = `${payments.length} baixas`;
+
+      const tbody = document.getElementById("summary-comandas-tbody");
+      const emptyEl = document.getElementById("summary-empty-comandas");
+      const totalBadge = document.getElementById("summary-comandas-total-badge");
+      tbody.innerHTML = "";
+
+      const comandasTotal = data.financial?.comandasBreakdown?.total ?? payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      totalBadge.textContent = `Total Baixado: ${fmt(comandasTotal)}`;
+
+      if (payments.length === 0) {
+        emptyEl.style.display = "block";
+      } else {
+        emptyEl.style.display = "none";
+        payments.forEach((p) => {
+          const tr = document.createElement("tr");
+          tr.style.borderBottom = "1px solid #262626";
+
+          const badgeStyles = {
+            PIX: "background: rgba(6, 182, 212, 0.2); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3);",
+            DINHEIRO: "background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);",
+            DEBITO: "background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);",
+            CREDITO: "background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);",
+          };
+          const style = badgeStyles[p.method] || "background: #333; color: #fff;";
+
+          const timeStr = p.createdAt ? new Date(p.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "--:--";
+          const trocoText = p.method === "DINHEIRO" && p.changeFor && p.troco && p.troco > 0
+            ? `<span style="color:#34d399;">Troco: ${fmt(p.troco)} (de ${fmt(p.changeFor)})</span>`
+            : "-";
+
+          tr.innerHTML = `
+            <td style="padding: 6px 8px; font-family: monospace; color: #ccc;">${timeStr}</td>
+            <td style="padding: 6px 8px; font-weight: bold; color: #fff;">Mesa #${p.comandaNumber ? String(p.comandaNumber).padStart(2, "0") : "--"}</td>
+            <td style="padding: 6px 8px; color: #ddd;">${p.responsibleName || '<span style="color:#666; font-style:italic;">Consumo Local</span>'}</td>
+            <td style="padding: 6px 8px;">
+              <span style="font-size: 9.5px; font-weight: 800; padding: 2px 6px; border-radius: 6px; ${style}">${p.method}</span>
+            </td>
+            <td style="padding: 6px 8px; text-align: right; font-family: monospace; font-weight: bold; color: #fff;">${fmt(p.amount)}</td>
+            <td style="padding: 6px 8px; font-size: 10px; color: #888;">${trocoText}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+    }
+
+    async function printDailySummaryThermal() {
+      if (!currentSummaryData) {
+        showToast("Carregue o resumo antes de imprimir", "error");
+        return;
+      }
+      const data = currentSummaryData;
+      const fmt = (v) => "R$ " + (Number(v) || 0).toFixed(2).replace(".", ",");
+
+      const totalDinheiro = data.totalDinheiro ?? data.financial?.totalDinheiro ?? 0;
+      const totalPix = data.totalPix ?? data.financial?.totalPix ?? 0;
+      const totalDebito = data.totalDebito ?? data.financial?.totalDebito ?? 0;
+      const totalCredito = data.totalCredito ?? data.financial?.totalCredito ?? 0;
+      const totalDeliveryFee = data.totalDeliveryFee ?? data.financial?.totalDeliveryFee ?? 0;
+      const grandTotal = data.totalRevenue ?? data.total ?? 0;
+      const payments = data.comandaPayments ?? data.financial?.comandasBreakdown?.payments ?? [];
+
+      const paymentsHtml = payments.map((p) => `
+        <tr>
+          <td style="padding: 2px 0;">${p.createdAt ? new Date(p.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""}</td>
+          <td style="padding: 2px 0; font-weight: bold;">Mesa #${p.comandaNumber || "--"}</td>
+          <td style="padding: 2px 0;">${p.method}</td>
+          <td style="padding: 2px 0; text-align: right; font-weight: bold;">${fmt(p.amount)}</td>
+        </tr>
+      `).join("");
+
+      const receiptHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Fechamento de Caixa - ${currentSummaryDate}</title>
+          <style>
+            body {
+              font-family: 'Courier New', Courier, monospace;
+              width: 280px;
+              margin: 0 auto;
+              padding: 8px;
+              color: #000;
+              background: #fff;
+              font-size: 11px;
+            }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .bold { font-weight: bold; }
+            .divider { border-top: 1px dashed #000; margin: 6px 0; }
+            .row { display: flex; justify-content: space-between; margin: 2px 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+            @media print {
+              body { width: 100%; margin: 0; padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="text-center bold" style="font-size: 14px;">ALLDELIVERY</div>
+          <div class="text-center" style="font-size: 11px;">RESUMO DIARIO & FECHAMENTO</div>
+          <div class="text-center" style="font-size: 9px;">Data: ${currentSummaryDate} | Hora: ${new Date().toLocaleTimeString("pt-BR")}</div>
+          
+          <div class="divider"></div>
+          <div class="bold" style="font-size: 11px;">FORMA DE PAGAMENTO (TOTAL)</div>
+          <div class="divider"></div>
+          <div class="row"><span>⚡ PIX:</span><span class="bold">${fmt(totalPix)}</span></div>
+          <div class="row"><span>💵 DINHEIRO:</span><span class="bold">${fmt(totalDinheiro)}</span></div>
+          <div class="row"><span>💳 DEBITO:</span><span class="bold">${fmt(totalDebito)}</span></div>
+          <div class="row"><span>💳 CREDITO:</span><span class="bold">${fmt(totalCredito)}</span></div>
+          <div class="row"><span>🛵 TAXA ENTREGA:</span><span class="bold">${fmt(totalDeliveryFee)}</span></div>
+          <div class="divider"></div>
+          <div class="row bold" style="font-size: 13px;">
+            <span>TOTAL FATURADO:</span>
+            <span>${fmt(grandTotal)}</span>
+          </div>
+          <div class="divider"></div>
+
+          <div class="bold" style="font-size: 10px;">METRICAS DO DIA</div>
+          <div class="row"><span>Pedidos:</span><span>${data.count || 0}</span></div>
+          <div class="row"><span>Finalizados:</span><span>${data.finishedCount || 0}</span></div>
+          <div class="row"><span>Ticket Medio:</span><span>${fmt(data.averageTicket || 0)}</span></div>
+          <div class="row"><span>Baixas de Mesas:</span><span>${payments.length} baixas</span></div>
+
+          ${payments.length > 0 ? `
+            <div class="divider"></div>
+            <div class="bold" style="font-size: 10px;">BAIXAS DE MESAS DO DIA</div>
+            <table>
+              <thead>
+                <tr style="border-bottom: 1px dashed #000; font-size: 9px;">
+                  <th style="text-align: left;">HORA</th>
+                  <th style="text-align: left;">MESA</th>
+                  <th style="text-align: left;">FORMA</th>
+                  <th style="text-align: right;">VALOR</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${paymentsHtml}
+              </tbody>
+            </table>
+          ` : ""}
+
+          <div class="divider"></div>
+          <div class="text-center" style="font-size: 9px; margin-top: 6px;">
+            AllDelivery Desktop - Fechamento Seguro
+          </div>
+        </body>
+        </html>
+      `;
+
+      const caixaPrinter = appSettings.configs?.ENTREGUE?.printer || appSettings.configs?.NOVO?.printer || "";
+      if (window.electronAPI && window.electronAPI.printHtmlReceipt) {
+        try {
+          const res = await window.electronAPI.printHtmlReceipt(caixaPrinter, receiptHtml);
+          if (res && res.success) {
+            showToast("Fechamento impresso com sucesso!");
+            return;
+          }
+        } catch (e) {
+          console.warn("Falha no printHtmlReceipt, usando janela:", e);
+        }
+      }
+
+      const pWin = window.open("", "_blank", "width=380,height=600");
+      if (pWin) {
+        pWin.document.open();
+        pWin.document.write(receiptHtml + `<script>window.onload=function(){window.print();};<\/script>`);
+        pWin.document.close();
+      }
     }
 
     // 5. MODAL DE QR CODE DA MESA
