@@ -68,6 +68,12 @@ interface PizzaBuilderProps {
   crusts: CrustType[];
   standardCategories: StandardCategory[];
   toppingCategories?: ToppingCategory[];
+  tableNumber?: number;
+  initialFlavorId?: string | null;
+  onFinishOrder?: (pizzaItem: any, drinks: any[]) => void;
+  onCancel?: () => void;
+  cartCount?: number;
+  onOpenCart?: () => void;
 }
 
 export default function PizzaBuilder({
@@ -75,6 +81,12 @@ export default function PizzaBuilder({
   crusts,
   standardCategories,
   toppingCategories = [],
+  tableNumber,
+  initialFlavorId,
+  onFinishOrder,
+  onCancel,
+  cartCount,
+  onOpenCart,
 }: PizzaBuilderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -147,16 +159,16 @@ export default function PizzaBuilder({
   const [selectedCategoryTab, setSelectedCategoryTab] = useState<string>("ALL");
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
-  // Pré-selecionar o sabor se vier por Query Parameter
+  // Pré-selecionar o sabor se vier por Query Parameter ou Prop
   useEffect(() => {
-    const preselectedId = searchParams.get("flavorId");
+    const preselectedId = initialFlavorId || (searchParams ? searchParams.get("flavorId") : null);
     if (preselectedId) {
       const found = flavors.find((f) => f.id === preselectedId);
       if (found) {
         setSelectedFlavors([found, null, null]);
       }
     }
-  }, [searchParams, flavors]);
+  }, [searchParams, flavors, initialFlavorId]);
 
   // Se o número de sabores diminuir, limpamos os excedentes
   useEffect(() => {
@@ -395,51 +407,62 @@ export default function PizzaBuilder({
       displayName = `Pizza Customizada ${size} (${activeFlavors[0]?.name || "Sabores"})`;
     }
 
-    addItem({
+    const crustPriceVal = selectedCrust
+      ? size === "P" || size === "M"
+        ? selectedCrust.pricePM
+        : selectedCrust.priceGGG
+      : 0;
+
+    const toppingsList = selectedToppings.map((t) => ({
+      toppingId: t.topping.id,
+      toppingName: t.topping.name,
+      targetType: t.targetType,
+      flavorName: t.flavorName,
+      slicesCount: t.slicesCount,
+      totalSlices: t.totalSlices,
+      price: calcSingleToppingPrice(
+        t.topping,
+        size,
+        t.slicesCount,
+        t.totalSlices,
+        t.quantity || 1
+      ),
+      quantity: t.quantity || 1,
+    }));
+
+    const toppingsTotalVal = toppingsList.reduce((sum, t) => sum + t.price, 0);
+    const basePriceVal = Math.max(0, currentTotal - crustPriceVal - toppingsTotalVal);
+
+    const pizzaItem = {
       name: displayName,
       isPizza: true,
       quantity: 1,
       price: currentTotal,
+      basePrice: basePriceVal,
+      totalPrice: currentTotal,
       pizzaSize: size,
-      flavors: activeFlavors.map((f, idx) => ({
-        name: isDynamic
-          ? `${slicesDistribution[idx]} fatias ${f.name}`
-          : size === "P" && flavorCount === 2
-          ? `2 fatias ${f.name}`
-          : f.name,
-        categoryName: f.category.name,
-        slices: isDynamic
-          ? slicesDistribution[idx]
+      flavors: activeFlavors.map((f, idx) => {
+        const sliceCount = isDynamic
+          ? (slicesDistribution[idx] || (totalSlices / flavorCount))
           : size === "P" && flavorCount === 2
           ? 2
-          : totalSlices,
-      })),
+          : totalSlices;
+        const formattedFlavor = `${sliceCount} fatias ${f.name}`;
+        return {
+          name: formattedFlavor,
+          flavorName: formattedFlavor,
+          categoryName: f.category.name,
+          slices: sliceCount,
+        };
+      }),
       crustType: selectedCrust?.name || "Tradicional",
-      crustPrice: selectedCrust
-        ? size === "P" || size === "M"
-          ? selectedCrust.pricePM
-          : selectedCrust.priceGGG
-        : 0,
+      crustPrice: crustPriceVal,
       caracolRequested,
-      toppings: selectedToppings.map((t) => ({
-        toppingId: t.topping.id,
-        toppingName: t.topping.name,
-        targetType: t.targetType,
-        flavorName: t.flavorName,
-        slicesCount: t.slicesCount,
-        totalSlices: t.totalSlices,
-        price: calcSingleToppingPrice(
-          t.topping,
-          size,
-          t.slicesCount,
-          t.totalSlices,
-          t.quantity || 1
-        ),
-        quantity: t.quantity || 1,
-      })),
+      toppings: toppingsList,
       notes,
-    });
+    };
 
+    const drinksList: any[] = [];
     Object.entries(selectedDrinks).forEach(([productId, qty]) => {
       if (qty > 0) {
         let foundProduct: StandardProduct | undefined = undefined;
@@ -451,17 +474,26 @@ export default function PizzaBuilder({
           }
         }
         if (foundProduct) {
-          addItem({
+          drinksList.push({
             name: foundProduct.name,
             isPizza: false,
             quantity: qty,
             price: foundProduct.price,
+            basePrice: foundProduct.price,
+            totalPrice: foundProduct.price * qty,
             productId: foundProduct.id,
           });
         }
       }
     });
 
+    if (onFinishOrder) {
+      onFinishOrder(pizzaItem, drinksList);
+      return;
+    }
+
+    addItem(pizzaItem);
+    drinksList.forEach((d) => addItem(d));
     router.push("/carrinho");
   };
 
@@ -474,6 +506,39 @@ export default function PizzaBuilder({
 
   return (
     <main className="mx-auto max-w-5xl px-3 sm:px-6 py-3 sm:py-6 relative pb-28">
+      {/* Barra de Topo caso esteja em atendimento de Mesa via QR Code */}
+      {tableNumber && (
+        <div className="flex items-center justify-between bg-brand-darkGray/90 border border-brand-mediumGray rounded-2xl px-4 py-2.5 mb-4 shadow-lg backdrop-blur">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex items-center gap-1.5 text-xs font-semibold text-brand-lightGray hover:text-white transition-colors cursor-pointer"
+          >
+            <span>←</span> Voltar ao Cardápio
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="bg-brand-red/15 border border-brand-red/30 text-amber-300 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Mesa {tableNumber}
+            </span>
+            {onOpenCart && (
+              <button
+                type="button"
+                onClick={onOpenCart}
+                className="relative bg-brand-bg hover:bg-brand-mediumGray p-2 rounded-xl border border-brand-mediumGray text-white text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <span>🛒</span>
+                {(cartCount || 0) > 0 && (
+                  <span className="bg-brand-red text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                    {cartCount}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 1. STEPPER HORIZONTAL (NO TOPO) */}
       <div
         className={`transition-opacity duration-300 mb-2 sm:mb-4 ${
@@ -1025,7 +1090,9 @@ export default function PizzaBuilder({
                 onClick={handleConfirmAll}
                 className="w-full sm:w-auto rounded-2xl bg-brand-red hover:bg-brand-redHover px-6 py-3.5 font-bold text-xs sm:text-sm text-white transition-all cursor-pointer text-center shadow-lg shadow-brand-red/20"
               >
-                {drinksCount > 0
+                {tableNumber
+                  ? "Adicionar ao Pedido da Mesa →"
+                  : drinksCount > 0
                   ? "Adicionar itens e ir para o carrinho →"
                   : "Ir para o carrinho →"}
               </button>

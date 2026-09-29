@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { signOut } from "next-auth/react";
 import GarcomOrderBuilder from "./GarcomOrderBuilder";
+import { playNotificationSound } from "@/lib/sound";
 
 interface OrderItem {
   id: string;
@@ -90,12 +91,9 @@ export default function GarcomMobileDashboard({
   const [orderCreatedSuccessToast, setOrderCreatedSuccessToast] = useState<string | null>(null);
   const [sseConnected, setSseConnected] = useState(true);
 
-  // Toca som de alerta
+  // Toca som de alerta nativo (sem rede externa)
   const playAlertSound = () => {
-    try {
-      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav");
-      audio.play().catch(() => {});
-    } catch (e) {}
+    playNotificationSound();
   };
 
   // Busca dados atualizados das mesas
@@ -121,7 +119,10 @@ export default function GarcomMobileDashboard({
   // Polling em background a cada 5 segundos + SSE em tempo real
   useEffect(() => {
     fetchMesas();
-    const interval = setInterval(fetchMesas, 5000);
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      fetchMesas();
+    }, 20000);
 
     const eventSource = new EventSource("/api/print/events");
 
@@ -155,8 +156,14 @@ export default function GarcomMobileDashboard({
     eventSource.addEventListener("order_created", () => fetchMesas());
     eventSource.addEventListener("order_updated", () => fetchMesas());
 
+    const onFocus = () => {
+      fetchMesas();
+    };
+    window.addEventListener("focus", onFocus);
+
     return () => {
       clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
       eventSource.close();
     };
   }, []);

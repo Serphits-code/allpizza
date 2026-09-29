@@ -27,30 +27,49 @@ export async function GET(request: Request) {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // 1. Busca pedidos do dia selecionado
-    const orders = await prisma.order.findMany({
-      where: {
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-      },
-      include: {
-        driver: {
-          select: {
-            id: true,
-            name: true,
+    // 1. Busca paralela de pedidos do dia, config e pedidos travados
+    const [orders, config, stalledOrders] = await Promise.all([
+      prisma.order.findMany({
+        where: {
+          createdAt: {
+            gte: startOfDay,
+            lte: endOfDay,
           },
         },
-        items: {
-          include: {
-            flavors: true,
-            toppings: true,
+        include: {
+          driver: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          items: {
+            include: {
+              flavors: true,
+              toppings: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.systemConfig.findUnique({
+        where: { key: "delivery_last_closed_at" },
+      }),
+      prisma.order.findMany({
+        where: {
+          type: "DELIVERY",
+          status: { in: ["NOVO", "EM_PREPARO", "EM_ROTA"] },
+          createdAt: { lte: startOfDay },
+        },
+        include: {
+          driver: {
+            select: { id: true, name: true },
+          },
+          items: true,
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+    ]);
 
     const total = orders.reduce((sum, o) => sum + (o.total || 0), 0);
     const count = orders.length;
@@ -59,33 +78,8 @@ export async function GET(request: Request) {
     ).length;
     const averageTicket = count > 0 ? total / count : 0;
 
-    // 2. Alerta de Entregas Aguardando Fechamento (Sessões Anteriores)
-    const config = await prisma.systemConfig.findUnique({
-      where: { key: "delivery_last_closed_at" },
-    });
-
-    let stalledDeliveryAlert = [];
-
-    // Busca pedidos de delivery travados em aberto anteriores ao início do dia atual
     const now = new Date();
-    const cutoffDate = config?.value ? new Date(config.value) : startOfDay;
-
-    const stalledOrders = await prisma.order.findMany({
-      where: {
-        type: "DELIVERY",
-        status: { in: ["NOVO", "EM_PREPARO", "EM_ROTA"] },
-        createdAt: { lte: startOfDay },
-      },
-      include: {
-        driver: {
-          select: { id: true, name: true },
-        },
-        items: true,
-      },
-      orderBy: { createdAt: "asc" },
-    });
-
-    stalledDeliveryAlert = stalledOrders.map((o) => {
+    const stalledDeliveryAlert = stalledOrders.map((o) => {
       const diffMs = now.getTime() - new Date(o.createdAt).getTime();
       const elapsedHours = Math.floor(diffMs / (1000 * 60 * 60));
       const elapsedMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));

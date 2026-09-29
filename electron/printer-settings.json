@@ -1,25 +1,32 @@
 {
-  "serverUrl": "http://localhost:3000",
+  "serverUrl": "http://localhost:3001",
+  "apiKey": "alldelivery_internal_print_secret",
+  "soundEnabled": true,
   "configs": {
     "NOVO": {
+      "auto": false,
       "printer": "",
-      "auto": false
+      "copies": 1
     },
     "EM_PREPARO": {
+      "auto": true,
       "printer": "ELGIN i8",
-      "auto": true
-    },
-    "EM_ROTA": {
-      "printer": "",
-      "auto": false
+      "copies": 1
     },
     "PRONTO_RETIRADA": {
+      "auto": false,
       "printer": "",
-      "auto": false
+      "copies": 1
+    },
+    "EM_ROTA": {
+      "auto": false,
+      "printer": "",
+      "copies": 1
     },
     "ENTREGUE": {
+      "auto": false,
       "printer": "",
-      "auto": false
+      "copies": 1
     }
   }
 }

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { authenticateApiRequest } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +9,9 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const auth = await authenticateApiRequest(request, ["ADMIN", "MANAGER", "GARCOM", "KITCHEN"]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Não autorizado" }, { status: 401 });
   }
 
   const { id } = params;
@@ -60,9 +59,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const auth = await authenticateApiRequest(request, ["ADMIN", "MANAGER", "GARCOM"]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Não autorizado" }, { status: 401 });
   }
 
   const { id } = params;
@@ -93,9 +92,9 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Apenas administradores podem excluir comandas" }, { status: 403 });
+  const auth = await authenticateApiRequest(request, ["ADMIN"]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Apenas administradores podem excluir comandas" }, { status: 403 });
   }
 
   const { id } = params;

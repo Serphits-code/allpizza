@@ -5,6 +5,16 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+// Cache curto de zonas e depot (TTL 60s) para não transferir nem buscar do banco em todo polling de 5s
+interface StaticMapCache {
+  zones: any[];
+  depotLat: number;
+  depotLng: number;
+  cachedAt: number;
+}
+let staticMapCache: StaticMapCache | null = null;
+const STATIC_CACHE_TTL_MS = 60_000;
+
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
@@ -12,88 +22,95 @@ export async function GET() {
   }
 
   try {
-    // 1. Busca configurações de Centro do Mapa (Depot)
-    const configs = await prisma.systemConfig.findMany();
-    const configMap = new Map(configs.map((c) => [c.key, c.value]));
-
-    const depotLat = parseFloat(configMap.get("vroom_depot_lat") || configMap.get("depotLat") || "-8.05");
-    const depotLng = parseFloat(configMap.get("vroom_depot_lng") || configMap.get("depotLng") || "-34.90");
-
-    // 2. Busca pedidos Delivery ativos das últimas 48h com coordenadas
+    const now = Date.now();
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
-    const activeOrders = await prisma.order.findMany({
-      where: {
-        type: "DELIVERY",
-        status: {
-          in: ["NOVO", "EM_PREPARO", "EM_ROTA"],
+    // Queries dinâmicas e estáticas executadas em paralelo
+    const shouldRefreshStatic = !staticMapCache || now - staticMapCache.cachedAt >= STATIC_CACHE_TTL_MS;
+
+    const [configs, zones, activeOrders, drivers, activeRoutes] = await Promise.all([
+      shouldRefreshStatic ? prisma.systemConfig.findMany() : Promise.resolve(null),
+      shouldRefreshStatic ? prisma.deliveryZone.findMany({ where: { isActive: true } }) : Promise.resolve(null),
+      prisma.order.findMany({
+        where: {
+          type: "DELIVERY",
+          status: {
+            in: ["NOVO", "EM_PREPARO", "EM_ROTA"],
+          },
+          customerLat: { not: null },
+          customerLng: { not: null },
+          createdAt: { gte: twoDaysAgo },
         },
-        customerLat: { not: null },
-        customerLng: { not: null },
-        createdAt: { gte: twoDaysAgo },
-      },
-      include: {
-        driver: {
-          select: {
-            id: true,
-            name: true,
-            driverLat: true,
-            driverLng: true,
-            driverUpdatedAt: true,
+        include: {
+          driver: {
+            select: {
+              id: true,
+              name: true,
+              driverLat: true,
+              driverLng: true,
+              driverUpdatedAt: true,
+            },
+          },
+          items: {
+            select: {
+              id: true,
+              name: true,
+              quantity: true,
+            },
           },
         },
-        items: {
-          select: {
-            id: true,
-            name: true,
-            quantity: true,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.adminUser.findMany({
+        where: {
+          role: "DRIVER",
+          active: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          driverLat: true,
+          driverLng: true,
+          driverUpdatedAt: true,
+          driverActiveRoute: true,
+        },
+      }),
+      prisma.driverActiveRoute.findMany({
+        include: {
+          driver: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+      }),
+    ]);
 
-    // 3. Busca entregadores com dados de GPS
-    const drivers = await prisma.adminUser.findMany({
-      where: {
-        role: "DRIVER",
-        active: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        driverLat: true,
-        driverLng: true,
-        driverUpdatedAt: true,
-        driverActiveRoute: true,
-      },
-    });
+    if (shouldRefreshStatic && configs && zones) {
+      const configMap = new Map(configs.map((c) => [c.key, c.value]));
+      const depotLat = parseFloat(configMap.get("vroom_depot_lat") || configMap.get("depotLat") || "-8.05");
+      const depotLng = parseFloat(configMap.get("vroom_depot_lng") || configMap.get("depotLng") || "-34.90");
+      staticMapCache = {
+        zones,
+        depotLat,
+        depotLng,
+        cachedAt: now,
+      };
+    }
 
-    // 4. Busca Zonas de Entrega Ativas
-    const zones = await prisma.deliveryZone.findMany({
-      where: { isActive: true },
-    });
-
-    // 5. Rotas ativas dos entregadores
-    const activeRoutes = await prisma.driverActiveRoute.findMany({
-      include: {
-        driver: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
+    const currentDepotLat = staticMapCache?.depotLat ?? -8.05;
+    const currentDepotLng = staticMapCache?.depotLng ?? -34.90;
+    const currentZones = staticMapCache?.zones ?? [];
 
     return NextResponse.json({
       orders: activeOrders,
       drivers,
-      zones,
+      zones: currentZones,
       activeRoutes,
-      mapCenter: [depotLat, depotLng],
+      mapCenter: [currentDepotLat, currentDepotLng],
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {

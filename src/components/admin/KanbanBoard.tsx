@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { OrderStatus, OrderType, PaymentMethod } from "@prisma/client";
+import { playNotificationSound } from "@/lib/sound";
 
 interface OrderItem {
   id: string;
@@ -17,6 +18,15 @@ interface OrderItem {
     id: string;
     flavorName: string;
     categoryName: string;
+  }[];
+  toppings?: {
+    id?: string;
+    toppingName?: string;
+    name?: string;
+    targetType: string;
+    flavorName?: string | null;
+    slicesCount?: number;
+    price?: number;
   }[];
 }
 
@@ -59,13 +69,8 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
       const newOrder = JSON.parse(event.data);
       console.log("[SSE] Novo pedido recebido no painel:", newOrder.orderNumber);
       
-      // Toca um alerta sonoro discreto de notificacao
-      try {
-        const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav");
-        audio.play();
-      } catch (err) { 
-        console.warn("Falha ao tocar som de notificacao:", err);
-      }
+      // Toca um alerta sonoro discreto de notificacao sem dependência externa
+      playNotificationSound();
 
       setOrders((prev) => {
         if (prev.some((o) => o.id === newOrder.id)) return prev;
@@ -205,23 +210,61 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
         </div>
 
         {/* Itens do Pedido */}
-        <div className="space-y-1 bg-brand-darkGray/40 p-2 rounded border border-brand-mediumGray/20 max-h-24 overflow-y-auto">
+        <div className="space-y-1.5 bg-brand-darkGray/40 p-2.5 rounded border border-brand-mediumGray/20">
           {order.items.map((item) => (
-            <div key={item.id} className="text-xxs text-brand-lightGray leading-normal">
+            <div key={item.id} className="text-xs text-brand-lightGray leading-normal">
               <span className="font-bold text-white">{item.quantity}x</span> {item.name}
               {item.isPizza && item.flavors.length > 0 && (
-                <span className="block italic opacity-70 text-xxxs">
-                  Sabor(es): {item.flavors.map((f) => f.flavorName).join(" / ")}
-                </span>
+                <div className="space-y-1 mt-1 pl-1 border-l-2 border-brand-red/60">
+                  {item.flavors.map((f, i) => {
+                    const cleanName = f.flavorName.replace(/^\d+\s*fatias?\s*(?:de\s*)?/i, "").trim();
+                    const sliceMatch = f.flavorName.match(/^(\d+)\s*fat/i);
+                    const flavorToppings = (item.toppings || [])
+                      .filter((t: any) => {
+                        if (t.targetType === "FULL" || t.targetType === "INTEIRA" || !t.flavorName) return false;
+                        const target = (t.flavorName || "").toLowerCase().replace(/^\d+\s*fatias?\s*/i, "").trim();
+                        const fn = cleanName.toLowerCase();
+                        return target === fn || target.includes(fn) || fn.includes(target);
+                      })
+                      .map((t: any) => t.toppingName || t.name);
+
+                    return (
+                      <div key={f.id || i} className="text-xxs flex items-center gap-1.5 flex-wrap">
+                        {sliceMatch ? (
+                          <span className="bg-brand-red text-white font-extrabold px-1 py-0.5 rounded text-xxxs tracking-wide">
+                            {sliceMatch[1]} FAT
+                          </span>
+                        ) : null}
+                        <span className="text-white font-semibold">{cleanName}</span>
+                        {flavorToppings.length > 0 && (
+                          <span className="text-emerald-400 font-bold text-xxxs">
+                            (+ {flavorToppings.join(", ")})
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {(item.toppings || [])
+                    .filter((t: any) => t.targetType === "FULL" || t.targetType === "INTEIRA" || !t.flavorName)
+                    .map((t: any, idx: number) => (
+                      <div key={idx} className="text-xxxs text-emerald-400 font-bold pl-1">
+                        + Toda pizza: {t.toppingName || t.name}
+                      </div>
+                    ))}
+                </div>
               )}
             </div>
           ))}
         </div>
 
-        {/* Notas da Cozinha */}
+        {/* Notas da Cozinha (Destacada) */}
         {order.notes && (
-          <div className="p-2 rounded bg-brand-red/5 border border-brand-red/10 text-xxs italic text-brand-red">
-            Obs: &quot;{order.notes}&quot;
+          <div className="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-300 flex items-start gap-1.5">
+            <span>⚠️</span>
+            <div>
+              <span className="block text-xxxs uppercase tracking-wider font-extrabold text-emerald-400">Observação da Cozinha:</span>
+              <span>&quot;{order.notes}&quot;</span>
+            </div>
           </div>
         )}
 
@@ -234,8 +277,12 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
         )}
 
         {/* Pagamento e Valor */}
-        <div className="flex justify-between items-center text-xxs text-brand-lightGray font-mono pt-1">
-          <span>Pg: {paymentLabels[order.paymentMethod] || "Comanda"}</span>
+        <div className="flex justify-between items-center text-xs text-brand-lightGray font-mono pt-1">
+          {!isTableOrder ? (
+            <span>Pg: {paymentLabels[order.paymentMethod] || "Comanda"}</span>
+          ) : (
+            <span className="text-purple-300 font-bold">🍽️ Pagar no Balcão</span>
+          )}
           <span className="font-bold text-white text-xs">Total: R$ {order.total.toFixed(2)}</span>
         </div>
 

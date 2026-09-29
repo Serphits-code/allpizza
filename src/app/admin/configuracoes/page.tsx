@@ -12,6 +12,14 @@ export default function ConfigPage() {
   const [depotLng, setDepotLng] = useState("-34.90");
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
+  // Integração Desktop / API Key
+  const [desktopApiKey, setDesktopApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [localIps, setLocalIps] = useState<{ name: string; address: string }[]>([]);
+  const [selectedServerUrl, setSelectedServerUrl] = useState("");
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -28,6 +36,14 @@ export default function ConfigPage() {
         setPrimaryColor(data.primaryColor || "#e31837");
         setDepotLat(data.depotLat || "-8.05");
         setDepotLng(data.depotLng || "-34.90");
+        setDesktopApiKey(data.desktopApiKey || "alldelivery_internal_print_secret");
+        if (data.localIps && Array.isArray(data.localIps)) {
+          setLocalIps(data.localIps);
+        }
+
+        // Define a URL padrão (origem atual do navegador ou IP local)
+        const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+        setSelectedServerUrl(origin);
       })
       .catch((err) => {
         console.error("Erro ao carregar configurações:", err);
@@ -68,6 +84,36 @@ export default function ConfigPage() {
     }
   };
 
+  // Gerar Nova Chave de Acesso Segura
+  const handleGenerateApiKey = () => {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let token = "alldelivery_";
+    for (let i = 0; i < 28; i++) {
+      token += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setDesktopApiKey(token);
+    setMessage({
+      type: "success",
+      text: "Nova chave de acesso gerada! Clique em 'Salvar Configurações' abaixo para ativá-la no servidor.",
+    });
+  };
+
+  // Copiar Link da API
+  const handleCopyLink = () => {
+    if (!selectedServerUrl) return;
+    navigator.clipboard.writeText(selectedServerUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  // Copiar Chave de Acesso
+  const handleCopyKey = () => {
+    if (!desktopApiKey) return;
+    navigator.clipboard.writeText(desktopApiKey);
+    setCopiedKey(true);
+    setTimeout(() => setCopiedKey(false), 2500);
+  };
+
   // Salvar Configurações
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,13 +131,17 @@ export default function ConfigPage() {
           primaryColor,
           depotLat,
           depotLng,
+          desktopApiKey,
         }),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        setMessage({ type: "success", text: "Configurações salvas com sucesso! Atualize a página do cliente para visualizar as novas cores." });
+        setMessage({
+          type: "success",
+          text: "Configurações e Chave de Acesso salvas com sucesso! O aplicativo Electron já pode se comunicar com esta chave.",
+        });
       } else {
         setMessage({ type: "error", text: data.error || "Erro ao salvar configurações." });
       }
@@ -115,7 +165,7 @@ export default function ConfigPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       
       <div>
-        <h2 className="font-serif text-2xl font-bold text-white mb-1">Configurações Gerais</h2>
+        <h2 className="text-2xl font-extrabold text-white mb-1 tracking-tight">Configurações Gerais</h2>
         <p className="text-xs text-brand-lightGray">Ajuste a identidade visual, logo e as restrições regionais do seu delivery.</p>
       </div>
 
@@ -131,7 +181,7 @@ export default function ConfigPage() {
         </div>
       )}
 
-      <form onSubmit={handleSave} className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-6 space-y-5 shadow-xl font-sans">
+      <form onSubmit={handleSave} className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-6 space-y-6 shadow-xl font-sans">
         
         {/* Nome da Empresa */}
         <div>
@@ -278,12 +328,146 @@ export default function ConfigPage() {
           </div>
         </div>
 
+        {/* SEÇÃO: INTEGRAÇÃO COM APP DESKTOP (ELECTRON / IMPRESSORAS) */}
+        <div className="space-y-4 bg-brand-bg/70 p-5 rounded-2xl border-2 border-red-500/30 shadow-inner">
+          <div className="border-b border-brand-mediumGray/40 pb-3 flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-base">🖥️</span>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-red-400">
+                  Integração Aplicativo Desktop (Electron / Impressão Térmica)
+                </h3>
+              </div>
+              <p className="text-xxs text-brand-lightGray/80 mt-1 leading-relaxed">
+                Utilize o <strong>Link da API</strong> e a <strong>Chave de Acesso</strong> abaixo para autenticar o programa Electron na rede local ou internet.
+              </p>
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
+              Ativo
+            </span>
+          </div>
+
+          {/* 1. Link da API */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <label className="block text-xxs font-semibold uppercase tracking-wider text-brand-lightGray">
+                Link da API do Servidor (Copiar para o Electron)
+              </label>
+              {localIps.length > 0 && (
+                <span className="text-xxxs text-brand-lightGray/60 font-mono">
+                  IP Wi-Fi: {localIps[0].address}
+                </span>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={selectedServerUrl}
+                className="flex-1 rounded-lg border border-brand-mediumGray bg-brand-bg px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none select-all"
+              />
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className={`px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  copiedLink
+                    ? "bg-green-600 text-white"
+                    : "bg-brand-mediumGray/70 hover:bg-brand-mediumGray text-white border border-brand-mediumGray"
+                }`}
+              >
+                <span>{copiedLink ? "✓" : "📋"}</span>
+                <span>{copiedLink ? "Copiado!" : "Copiar Link"}</span>
+              </button>
+            </div>
+
+            {/* Alternativas de IP detectadas na máquina */}
+            {localIps.length > 0 && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-xxxs text-brand-lightGray">Opções de Link:</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedServerUrl(typeof window !== "undefined" ? window.location.origin : "http://localhost:3000")}
+                  className="text-xxxs px-2 py-0.5 rounded bg-brand-darkGray border border-brand-mediumGray hover:border-gray-500 text-gray-300 font-mono"
+                >
+                  Origem Web
+                </button>
+                {localIps.map((ip) => (
+                  <button
+                    key={ip.address}
+                    type="button"
+                    onClick={() => setSelectedServerUrl(`http://${ip.address}:3000`)}
+                    className="text-xxxs px-2 py-0.5 rounded bg-brand-darkGray border border-brand-mediumGray hover:border-red-400 text-amber-300 font-mono"
+                    title={`Usar IP de rede ${ip.name}`}
+                  >
+                    Rede ({ip.address})
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 2. Chave de Acesso (API Key / Senha) */}
+          <div className="space-y-1.5 pt-2">
+            <div className="flex justify-between items-center">
+              <label className="block text-xxs font-semibold uppercase tracking-wider text-brand-lightGray">
+                Chave de Acesso / Senha da API (API Key)
+              </label>
+              <button
+                type="button"
+                onClick={handleGenerateApiKey}
+                className="text-xxxs font-bold text-red-400 hover:text-red-300 transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <span>🎲</span> Gerar Nova Chave
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  required
+                  value={desktopApiKey}
+                  onChange={(e) => setDesktopApiKey(e.target.value)}
+                  placeholder="alldelivery_internal_print_secret"
+                  className="w-full rounded-lg border border-brand-mediumGray bg-brand-bg pl-3.5 pr-10 py-2.5 text-xs text-white font-mono focus:border-brand-red focus:outline-none select-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs cursor-pointer p-1"
+                  title={showApiKey ? "Ocultar Chave" : "Mostrar Chave"}
+                >
+                  {showApiKey ? "🙈" : "👁️"}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCopyKey}
+                className={`px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  copiedKey
+                    ? "bg-green-600 text-white"
+                    : "bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/40"
+                }`}
+              >
+                <span>{copiedKey ? "✓" : "📋"}</span>
+                <span>{copiedKey ? "Copiada!" : "Copiar Chave"}</span>
+              </button>
+            </div>
+
+            <span className="text-xxxs text-brand-lightGray/70 block pt-1 leading-relaxed">
+              * Cole esta chave no aplicativo Electron ao entrar pela primeira vez ou nas configurações. Se gerar uma nova chave, clique em <strong>Salvar Configurações</strong> abaixo para ativá-la.
+            </span>
+          </div>
+        </div>
+
         {/* Salvar */}
         <div className="pt-4 border-t border-brand-mediumGray/35">
           <button
             type="submit"
             disabled={saving || uploading}
-            className="w-full rounded-xl bg-brand-red hover:bg-brand-redHover py-3.5 text-center text-xs font-bold text-white transition-colors cursor-pointer disabled:opacity-50"
+            className="w-full rounded-xl bg-brand-red hover:bg-brand-redHover py-3.5 text-center text-xs font-bold text-white transition-colors cursor-pointer disabled:opacity-50 shadow-lg shadow-red-900/30"
           >
             {saving ? "Salvando..." : "Salvar Configurações"}
           </button>

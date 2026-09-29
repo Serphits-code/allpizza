@@ -60,52 +60,55 @@ export async function POST(request: Request) {
     let orderedOrders = [...validOrders];
     let isOptimized = false;
 
-    // Tenta comunicar com contêiner VROOM local (perfil bike)
-    try {
-      const vroomJobs = validOrders.map((o, idx) => ({
-        id: idx + 1,
-        description: o.id,
-        location: [o.customerLng!, o.customerLat!], // VROOM usa [lng, lat]
-      }));
+    // Só tenta VROOM se expressamente configurado via env (evita esperar 4s de timeout por nada)
+    const vroomEnabled = process.env.VROOM_ENABLED === "true" || Boolean(process.env.VROOM_URL);
+    const vroomUrl = process.env.VROOM_URL || "http://localhost:5000";
 
-      const vroomPayload = {
-        jobs: vroomJobs,
-        vehicles: [
-          {
-            id: 1,
-            profile: "bike",
-            start: [parsedDriverLng, parsedDriverLat],
-            end: [depotLng, depotLat],
-          },
-        ],
-      };
+    if (vroomEnabled) {
+      try {
+        const vroomJobs = validOrders.map((o, idx) => ({
+          id: idx + 1,
+          description: o.id,
+          location: [o.customerLng!, o.customerLat!], // VROOM usa [lng, lat]
+        }));
 
-      // VROOM localmente escutando na porta 3000 ou 5000. Vamos tentar localhost:5000/com_vroom ou similar, timeout de 4s
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const vroomPayload = {
+          jobs: vroomJobs,
+          vehicles: [
+            {
+              id: 1,
+              profile: "bike",
+              start: [parsedDriverLng, parsedDriverLat],
+              end: [depotLng, depotLat],
+            },
+          ],
+        };
 
-      const vroomRes = await fetch("http://localhost:5000", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(vroomPayload),
-        signal: controller.signal,
-      });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s timeout
 
-      clearTimeout(timeoutId);
-      const vroomData = await vroomRes.json();
+        const vroomRes = await fetch(vroomUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(vroomPayload),
+          signal: controller.signal,
+        });
 
-      if (vroomData && vroomData.code === 0 && vroomData.routes && vroomData.routes[0]) {
-        const routeSteps = vroomData.routes[0].steps;
-        // Mapeia ordem calculada pelo VROOM
-        const jobSteps = routeSteps.filter((s: any) => s.type === "job");
-        const orderIdMap = new Map(validOrders.map((o, idx) => [idx + 1, o]));
-        
-        orderedOrders = jobSteps.map((s: any) => orderIdMap.get(s.id)).filter(Boolean);
-        isOptimized = true;
-        console.log("[VROOM] Otimização TSP via Bike concluída com sucesso!");
+        clearTimeout(timeoutId);
+        const vroomData = await vroomRes.json();
+
+        if (vroomData && vroomData.code === 0 && vroomData.routes && vroomData.routes[0]) {
+          const routeSteps = vroomData.routes[0].steps;
+          const jobSteps = routeSteps.filter((s: any) => s.type === "job");
+          const orderIdMap = new Map(validOrders.map((o, idx) => [idx + 1, o]));
+          
+          orderedOrders = jobSteps.map((s: any) => orderIdMap.get(s.id)).filter(Boolean);
+          isOptimized = true;
+          console.log("[VROOM] Otimização TSP concluída com sucesso!");
+        }
+      } catch (vroomErr) {
+        console.warn("[VROOM] Servidor VROOM indisponível. Usando Fallback Geodésico (Haversine)...");
       }
-    } catch (vroomErr) {
-      console.warn("[VROOM] Falha no VROOM local. Acionando Fallback Geodésico (Haversine Distance)...");
     }
 
     // Fallback Geodésico (Haversine) se o VROOM falhou
@@ -162,7 +165,7 @@ export async function POST(request: Request) {
     // Tentativa 1: OSRM Bike de Alta Fidelidade (routing.openstreetmap.de)
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
 
       const osrmUrl = `https://routing.openstreetmap.de/routed-bike/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
       const res = await fetch(osrmUrl, { signal: controller.signal });
@@ -189,7 +192,7 @@ export async function POST(request: Request) {
     if (!routeLoaded) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
 
         const osrmFallbackUrl = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
         const res = await fetch(osrmFallbackUrl, { signal: controller.signal });

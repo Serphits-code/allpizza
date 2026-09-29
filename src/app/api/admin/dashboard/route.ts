@@ -5,6 +5,13 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+interface DashboardCacheEntry {
+  data: any;
+  cachedAt: number;
+}
+const dashboardCache = new Map<string, DashboardCacheEntry>();
+const DASHBOARD_CACHE_TTL_MS = 30_000; // 30 segundos
+
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
@@ -13,9 +20,15 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const fromParam = searchParams.get("from") || searchParams.get("start");
-    const toParam = searchParams.get("to") || searchParams.get("end");
-    const weekdayParam = searchParams.get("weekday");
+    const fromParam = searchParams.get("from") || searchParams.get("start") || "";
+    const toParam = searchParams.get("to") || searchParams.get("end") || "";
+    const cacheKey = `${fromParam}_${toParam}`;
+
+    const nowMs = Date.now();
+    const cached = dashboardCache.get(cacheKey);
+    if (cached && nowMs - cached.cachedAt < DASHBOARD_CACHE_TTL_MS) {
+      return NextResponse.json(cached.data);
+    }
 
     const parseLocalDate = (dateStr: string, isEndOfDay: boolean = false): Date => {
       const parts = dateStr.split("-").map((v) => parseInt(v, 10));
@@ -53,7 +66,7 @@ export async function GET(request: Request) {
       endDate.setHours(23, 59, 59, 999);
     }
 
-    // Busca pedidos do período
+    // Busca pedidos do período selecionando apenas colunas necessárias para agregação
     const orders = await prisma.order.findMany({
       where: {
         createdAt: {
@@ -61,11 +74,33 @@ export async function GET(request: Request) {
           lte: endDate,
         },
       },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        type: true,
+        total: true,
+        deliveryFee: true,
+        paymentMethod: true,
+        createdAt: true,
+        preparedAt: true,
+        sentAt: true,
+        readyForPickupAt: true,
+        deliveredAt: true,
         items: {
-          include: {
-            flavors: true,
-            toppings: true,
+          select: {
+            name: true,
+            quantity: true,
+            totalPrice: true,
+            flavors: {
+              select: {
+                flavorName: true,
+              },
+            },
+            toppings: {
+              select: {
+                toppingName: true,
+              },
+            },
           },
         },
       },
@@ -311,7 +346,7 @@ export async function GET(request: Request) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 6);
 
-    return NextResponse.json({
+    const responseData = {
       kpis: {
         totalSales,
         orderCount,
@@ -342,7 +377,11 @@ export async function GET(request: Request) {
         from: startDate.toISOString().split("T")[0],
         to: endDate.toISOString().split("T")[0],
       },
-    });
+    };
+
+    dashboardCache.set(cacheKey, { data: responseData, cachedAt: Date.now() });
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error("Dashboard error:", error);
     return NextResponse.json({ error: "Erro ao gerar indicadores" }, { status: 500 });

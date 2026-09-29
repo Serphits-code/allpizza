@@ -83,6 +83,8 @@ export default function LiveDeliveryMap({
   const zonesLayerRef = useRef<any>(null);
   const routesLayerRef = useRef<any>(null);
   const depotMarkerRef = useRef<any>(null);
+  const ordersMarkersMapRef = useRef<Map<string, any>>(new Map());
+  const driversMarkersMapRef = useRef<Map<string, any>>(new Map());
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [data, setData] = useState<MapData | null>(null);
@@ -127,11 +129,21 @@ export default function LiveDeliveryMap({
     }
   };
 
-  // Polling automático a cada 5 segundos
+  // Polling automático a cada 5 segundos com detecção de visibilidade
   useEffect(() => {
     fetchMapData();
-    const interval = setInterval(fetchMapData, 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      fetchMapData();
+    }, 5000);
+
+    const onFocus = () => fetchMapData();
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
   // Inicializa o Mapa Leaflet centralizado na sede
@@ -241,10 +253,8 @@ export default function LiveDeliveryMap({
       }
     }
 
-    // 3. Marcadores de Pedidos
+    // 3. Marcadores de Pedidos (Diffing incremental)
     if (ordersLayerRef.current) {
-      ordersLayerRef.current.clearLayers();
-
       const filteredOrders = data.orders.filter((o) => {
         const matchesStatus = statusFilter === "ALL" || o.status === statusFilter;
         const matchesDriver =
@@ -254,46 +264,13 @@ export default function LiveDeliveryMap({
         return matchesStatus && matchesDriver;
       });
 
+      const activeOrderIds = new Set<string>();
+
       for (const order of filteredOrders) {
         if (!order.customerLat || !order.customerLng) continue;
+        activeOrderIds.add(order.id);
 
-        const colorClass =
-          order.status === "NOVO"
-            ? "#3b82f6"
-            : order.status === "EM_PREPARO"
-            ? "#f59e0b"
-            : "#a855f7";
-
-        const orderIcon = L.divIcon({
-          className: "custom-order-marker",
-          html: `
-            <div style="
-              background-color: ${colorClass};
-              color: white;
-              font-family: monospace;
-              font-weight: bold;
-              font-size: 11px;
-              width: 32px;
-              height: 32px;
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-              border: 2px solid white;
-            ">
-              #${order.orderNumber}
-            </div>
-          `,
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
-        });
-
-        const marker = L.marker([order.customerLat, order.customerLng], { icon: orderIcon }).addTo(
-          ordersLayerRef.current
-        );
-
-        marker.bindPopup(`
+        const popupContent = `
           <div style="font-family: sans-serif; font-size: 11px; color: #131313; min-width: 160px;">
             <strong style="color: #e31837; font-size: 13px;">Pedido #${order.orderNumber}</strong><br/>
             <strong>Cliente:</strong> ${order.customerName}<br/>
@@ -302,88 +279,155 @@ export default function LiveDeliveryMap({
             <strong>Status:</strong> <span style="text-transform: uppercase;">${order.status}</span><br/>
             ${order.driver ? `<strong>Entregador:</strong> ${order.driver.name}` : "<span style='color: #888;'>Sem entregador</span>"}
           </div>
-        `);
+        `;
+
+        const existingMarker = ordersMarkersMapRef.current.get(order.id);
+        if (existingMarker) {
+          existingMarker.setLatLng([order.customerLat, order.customerLng]);
+          existingMarker.setPopupContent(popupContent);
+        } else {
+          const colorClass =
+            order.status === "NOVO"
+              ? "#3b82f6"
+              : order.status === "EM_PREPARO"
+              ? "#f59e0b"
+              : "#a855f7";
+
+          const orderIcon = L.divIcon({
+            className: "custom-order-marker",
+            html: `
+              <div style="
+                background-color: ${colorClass};
+                color: white;
+                font-family: monospace;
+                font-weight: bold;
+                font-size: 11px;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+                border: 2px solid white;
+              ">
+                #${order.orderNumber}
+              </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+          });
+
+          const newMarker = L.marker([order.customerLat, order.customerLng], { icon: orderIcon })
+            .bindPopup(popupContent)
+            .addTo(ordersLayerRef.current);
+
+          ordersMarkersMapRef.current.set(order.id, newMarker);
+        }
+      }
+
+      // Remove marcadores que saíram do filtro ou foram finalizados
+      for (const [id, marker] of ordersMarkersMapRef.current.entries()) {
+        if (!activeOrderIds.has(id)) {
+          ordersLayerRef.current.removeLayer(marker);
+          ordersMarkersMapRef.current.delete(id);
+        }
       }
     }
 
-    // 4. Marcadores de Entregadores (GPS)
+    // 4. Marcadores de Entregadores (GPS com Diffing incremental)
     if (driversLayerRef.current) {
-      driversLayerRef.current.clearLayers();
-
       const filteredDrivers = data.drivers.filter(
         (d) => driverFilter === "ALL" || driverFilter === d.id
       );
+      const activeDriverIds = new Set<string>();
 
       for (const driver of filteredDrivers) {
         if (!driver.driverLat || !driver.driverLng) continue;
-
-        // Extrai as iniciais do nome do entregador (ex: Carlos Silva -> CS, Gustavo -> GU)
-        const nameParts = driver.name.trim().split(/\s+/).filter(Boolean);
-        const initials =
-          nameParts.length > 1
-            ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
-            : (driver.name.substring(0, 2) || "E").toUpperCase();
-
-        const driverIcon = L.divIcon({
-          className: "custom-driver-marker",
-          html: `
-            <div style="position: relative; width: 36px; height: 36px;">
-              <div style="
-                width: 36px;
-                height: 36px;
-                background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-                color: #c084fc;
-                font-family: sans-serif;
-                font-weight: 800;
-                font-size: 13px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 4px 14px rgba(0,0,0,0.7), 0 0 0 2.5px #8b5cf6;
-                letter-spacing: 0.5px;
-                user-select: none;
-              ">
-                ${initials}
-              </div>
-              <div style="
-                position: absolute;
-                bottom: -2px;
-                right: -4px;
-                width: 16px;
-                height: 16px;
-                background-color: #8b5cf6;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 9px;
-                border: 1.5px solid #131313;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-              ">
-                🛵
-              </div>
-            </div>
-          `,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
-        });
-
-        const marker = L.marker([driver.driverLat, driver.driverLng], { icon: driverIcon }).addTo(
-          driversLayerRef.current
-        );
+        activeDriverIds.add(driver.id);
 
         const lastUp = driver.driverUpdatedAt
           ? new Date(driver.driverUpdatedAt).toLocaleTimeString("pt-BR")
           : "Nunca";
 
-        marker.bindPopup(`
+        const popupContent = `
           <div style="font-family: sans-serif; font-size: 11px; color: #131313;">
             <strong style="font-size: 12px;">🛵 Entregador: ${driver.name}</strong><br/>
             <strong>E-mail:</strong> ${driver.email}<br/>
             <strong>Último GPS:</strong> ${lastUp}
           </div>
-        `);
+        `;
+
+        const existingMarker = driversMarkersMapRef.current.get(driver.id);
+        if (existingMarker) {
+          existingMarker.setLatLng([driver.driverLat, driver.driverLng]);
+          existingMarker.setPopupContent(popupContent);
+        } else {
+          const nameParts = driver.name.trim().split(/\s+/).filter(Boolean);
+          const initials =
+            nameParts.length > 1
+              ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+              : (driver.name.substring(0, 2) || "E").toUpperCase();
+
+          const driverIcon = L.divIcon({
+            className: "custom-driver-marker",
+            html: `
+              <div style="position: relative; width: 36px; height: 36px;">
+                <div style="
+                  width: 36px;
+                  height: 36px;
+                  background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+                  color: #c084fc;
+                  font-family: sans-serif;
+                  font-weight: 800;
+                  font-size: 13px;
+                  border-radius: 50%;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  box-shadow: 0 4px 14px rgba(0,0,0,0.7), 0 0 0 2.5px #8b5cf6;
+                  letter-spacing: 0.5px;
+                  user-select: none;
+                ">
+                  ${initials}
+                </div>
+                <div style="
+                  position: absolute;
+                  bottom: -2px;
+                  right: -4px;
+                  width: 16px;
+                  height: 16px;
+                  background-color: #8b5cf6;
+                  border-radius: 50%;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 9px;
+                  border: 1.5px solid #131313;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+                ">
+                  🛵
+                </div>
+              </div>
+            `,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+          });
+
+          const newMarker = L.marker([driver.driverLat, driver.driverLng], { icon: driverIcon })
+            .bindPopup(popupContent)
+            .addTo(driversLayerRef.current);
+
+          driversMarkersMapRef.current.set(driver.id, newMarker);
+        }
+      }
+
+      // Remove marcadores de entregadores não filtrados
+      for (const [id, marker] of driversMarkersMapRef.current.entries()) {
+        if (!activeDriverIds.has(id)) {
+          driversLayerRef.current.removeLayer(marker);
+          driversMarkersMapRef.current.delete(id);
+        }
       }
     }
   }, [data, statusFilter, driverFilter, showZones]);

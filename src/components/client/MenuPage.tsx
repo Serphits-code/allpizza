@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useCartStore } from "@/stores/cartStore";
 import { getOptimizedImageUrl } from "@/lib/imageHelper";
 
@@ -218,14 +219,14 @@ export default function MenuPage({ pizzaCategories, standardCategories }: MenuPa
                   className="absolute -left-10 sm:-left-12 top-1/2 -translate-y-1/2 w-28 h-28 sm:w-32 sm:h-32 rounded-full border border-brand-mediumGray bg-brand-bg shadow-xl overflow-hidden flex-shrink-0 cursor-pointer group/img"
                   title="Visualizar pizza grande"
                 >
-                  <img
+                  <Image
                     src={getOptimizedImageUrl(flavor.imageUrl)}
                     alt={flavor.name}
+                    width={128}
+                    height={128}
+                    sizes="(max-width: 640px) 112px, 128px"
                     className="w-full h-full object-cover group-hover/img:scale-105 group-hover:rotate-6 transition-transform duration-500"
                     loading="lazy"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "/images/pizza-placeholder.png";
-                    }}
                   />
                   {/* Hover Overlay with Eye Icon */}
                   <div className="absolute inset-0 bg-black/45 opacity-0 group-hover/img:opacity-100 flex items-center justify-center text-white transition-opacity duration-300">

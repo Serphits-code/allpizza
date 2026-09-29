@@ -7,6 +7,18 @@ import { normalizeContactPhoneKey } from "@/lib/phone";
 
 export const dynamic = "force-dynamic";
 
+// Cache em memória dos contatos agregados (TTL 30s) para evitar full table scan em cada letra digitada ou troca de página
+interface ContactsCacheEntry {
+  contacts: any[];
+  cachedAt: number;
+}
+let contactsCache: ContactsCacheEntry | null = null;
+const CONTACTS_CACHE_TTL_MS = 30_000;
+
+export function invalidateContactsCache(): void {
+  contactsCache = null;
+}
+
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
@@ -22,26 +34,38 @@ export async function GET(request: Request) {
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pageSize") || "20", 10)));
 
-    // Busca pedidos apenas com metadados necessários para sumarização (sem itens/sabores pesados)
-    const orders = await prisma.order.findMany({
-      select: {
-        id: true,
-        orderNumber: true,
-        status: true,
-        type: true,
-        customerName: true,
-        customerPhone: true,
-        total: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const now = Date.now();
+    let baseContacts: any[] = [];
 
-    // Busca perfis de contato salvos
-    const profiles = await prisma.customerContactProfile.findMany();
+    if (contactsCache && now - contactsCache.cachedAt < CONTACTS_CACHE_TTL_MS) {
+      baseContacts = [...contactsCache.contacts];
+    } else {
+      // Busca paralela de pedidos e perfis
+      const [orders, profiles] = await Promise.all([
+        prisma.order.findMany({
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            type: true,
+            customerName: true,
+            customerPhone: true,
+            total: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.customerContactProfile.findMany(),
+      ]);
 
-    // Consolida contatos
-    let contacts = aggregateContacts(orders, profiles);
+      baseContacts = aggregateContacts(orders, profiles);
+      contactsCache = {
+        contacts: baseContacts,
+        cachedAt: now,
+      };
+    }
+
+    let contacts = [...baseContacts];
 
     // Filtro por texto de busca (nome, apelido ou telefone)
     if (q) {

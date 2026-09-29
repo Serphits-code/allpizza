@@ -2,6 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   compress: true,
+  allowedDevOrigins: ["10.0.0.186", "localhost", "127.0.0.1"],
+
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60,

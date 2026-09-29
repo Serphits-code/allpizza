@@ -426,10 +426,19 @@ export default function GarcomOrderBuilder({
         crustType: selectedCrust?.name || null,
         crustPrice: crustPriceVal,
         caracolRequested,
-        flavors: activeFlavors.map((f, idx) => ({
-          name: f.name,
-          categoryName: f.category.name,
-        })),
+        flavors: activeFlavors.map((f, idx) => {
+          const sliceNum = isDynamic
+            ? slicesDistribution[idx]
+            : size === "P" && flavorCount === 2
+            ? 2
+            : totalSlices;
+          return {
+            name: `${sliceNum} fatias ${f.name}`,
+            flavorName: `${sliceNum} fatias ${f.name}`,
+            slices: sliceNum,
+            categoryName: f.category.name,
+          };
+        }),
         toppings: selectedToppings.map((t) => ({
           toppingName: t.topping.name,
           targetType: t.targetType,

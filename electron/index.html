@@ -2,623 +2,2707 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>AllDelivery | Central de Impressão Desktop</title>
+  <title>AllDelivery Desktop | Central de Pedidos, Impressão e Comandas</title>
   <style>
     :root {
-      --bg: #131313;
-      --card-bg: #1a1a1a;
+      --bg: #111111;
+      --card-bg: #181818;
+      --card-inner: #222222;
       --border: #2a2a2a;
+      --border-focus: #444444;
       --red: #e31837;
       --red-hover: #c2122b;
       --text: #ffffff;
-      --text-gray: #a0a0a0;
-      --green: #22c55e;
-      --yellow: #eab308;
+      --text-muted: #9e9e9e;
+      --green: #10b981;
+      --green-bg: rgba(16, 185, 129, 0.15);
+      --yellow: #f59e0b;
+      --yellow-bg: rgba(245, 158, 11, 0.15);
+      --blue: #3b82f6;
+      --blue-bg: rgba(59, 130, 246, 0.15);
+      --purple: #8b5cf6;
+      --purple-bg: rgba(139, 92, 246, 0.15);
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     body {
       background-color: var(--bg);
       color: var(--text);
-      padding: 24px;
-      overflow-x: hidden;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-b: 1px solid var(--border);
-    }
-
-    h1 {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    h1 span {
-      color: var(--red);
-    }
-
-    .badge {
-      font-size: 10px;
-      font-weight: 700;
-      background-color: var(--border);
-      color: var(--text-gray);
-      padding: 4px 10px;
-      border-radius: 20px;
-      text-transform: uppercase;
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-cols: 1fr 1fr;
-      gap: 24px;
-      align-items: start;
-    }
-
-    @media (max-width: 768px) {
-      .grid {
-        grid-template-cols: 1fr;
-      }
-    }
-
-    .panel {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-
-    .panel-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--red);
-      margin-bottom: 16px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-left: 3px solid var(--red);
-      padding-left: 8px;
-    }
-
-    .form-group {
-      margin-bottom: 16px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
     }
 
-    label {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-gray);
-      text-transform: uppercase;
+    /* TOP NAVBAR */
+    header {
+      background-color: #161616;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      z-index: 20;
     }
 
-    input[type="text"], select {
-      background-color: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.2s;
-      width: 100%;
-    }
-
-    input[type="text"]:focus, select:focus {
-      border-color: var(--red);
-    }
-
-    .status-box {
-      background-color: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-      font-size: 12px;
+    .brand {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
+      gap: 12px;
     }
 
-    .status-indicator {
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, var(--red), #ff5722);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 4px 12px rgba(227, 24, 55, 0.35);
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-title span {
+      color: var(--red);
+    }
+
+    .connection-badge {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-weight: 700;
+      font-size: 11px;
+      font-weight: 600;
+      background-color: #202020;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      margin-left: 10px;
     }
 
     .dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background-color: var(--text-gray);
+      background-color: #666;
     }
 
     .dot.online {
       background-color: var(--green);
-      box-shadow: 0 0 10px var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
     }
 
     .dot.offline {
       background-color: var(--red);
-      box-shadow: 0 0 10px var(--red);
+      box-shadow: 0 0 8px var(--red);
     }
 
-    .status-text {
-      font-weight: 700;
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.4; }
+      100% { opacity: 1; }
     }
-    
-    .status-text.online { color: var(--green); }
-    .status-text.offline { color: var(--red); }
 
-    .print-settings-row {
+    /* NAV TABS */
+    .tabs {
+      display: flex;
+      gap: 6px;
+      background-color: #1e1e1e;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      background-color: var(--bg);
+      gap: 8px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      background-color: var(--red);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(227, 24, 55, 0.4);
+    }
+
+    .tab-badge {
+      font-size: 10px;
+      background-color: rgba(0, 0, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 800;
+    }
+
+    /* HEADER ACTIONS */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-icon {
+      background-color: #202020;
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      margin-bottom: 10px;
+      color: var(--text);
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+      background-color: #2c2c2c;
+      border-color: var(--border-focus);
+    }
+
+    .btn-delivery-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 7px 12px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-delivery-status.open {
+      background-color: var(--green-bg);
+      color: var(--green);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-delivery-status.closed {
+      background-color: rgba(227, 24, 55, 0.15);
+      color: var(--red);
+      border-color: rgba(227, 24, 55, 0.3);
+    }
+
+    /* MAIN CONTAINER */
+    main {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .tab-content {
+      display: none;
+      height: 100%;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* KANBAN BOARD - TWO-TIER WEB LAYOUT */
+    #tab-kanban {
+      display: none;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 20px 24px 40px 24px;
+    }
+
+    #tab-kanban.active {
+      display: block;
+    }
+
+    /* SECTION HEADER (DELIVERY) */
+    .kanban-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
       gap: 12px;
     }
 
-    .print-settings-row .label {
+    .kanban-section-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .kanban-section-title .title-bar {
+      width: 4px;
+      height: 20px;
+      background-color: var(--green);
+      border-radius: 2px;
+    }
+
+    .btn-delivery-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background-color: rgba(16, 185, 129, 0.1);
+      color: var(--green);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .btn-delivery-badge:hover {
+      background-color: rgba(16, 185, 129, 0.2);
+    }
+
+    .btn-delivery-badge.closed {
+      background-color: rgba(227, 24, 55, 0.1);
+      color: var(--red);
+      border-color: rgba(227, 24, 55, 0.35);
+    }
+
+    .btn-delivery-badge.closed:hover {
+      background-color: rgba(227, 24, 55, 0.2);
+    }
+
+    /* GRIDS */
+    .kanban-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .kanban-divider {
+      height: 1px;
+      background-color: #242424;
+      margin: 28px 0 20px 0;
+    }
+
+    .kanban-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    @media (max-width: 1080px) {
+      .kanban-grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .kanban-grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* KANBAN BOX / COLUMN */
+    .kanban-col-box {
+      background-color: #161616;
+      border: 1px solid #262626;
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      min-height: 280px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .col-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #242424;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+
+    .col-box-title {
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 800;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .col-box-count {
+      font-family: monospace;
+      font-size: 11px;
+      font-weight: 800;
+      background-color: #111111;
+      color: var(--green);
+      padding: 2px 8px;
+      border-radius: 12px;
+      border: 1px solid #2a2a2a;
+    }
+
+    .col-box-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      max-height: 520px;
+      padding-right: 4px;
       flex: 1;
     }
 
-    .print-settings-row select {
-      max-width: 180px;
-      padding: 6px 10px;
+    .col-box-body::-webkit-scrollbar {
+      width: 5px;
     }
 
-    .checkbox-label {
+    .col-box-body::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+    }
+
+    .empty-state-text {
+      text-align: center;
+      font-size: 12px;
+      color: #616161;
+      padding: 48px 10px;
+      user-select: none;
+      margin: auto 0;
+    }
+
+    /* ORDER CARD */
+    .order-card {
+      background-color: #181818;
+      border: 1px solid #2c2c2c;
+      border-radius: 12px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .order-card:hover {
+      border-color: #4a4a4a;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+    }
+
+    .order-card.mesa {
+      background-color: #16121d;
+      border: 1px solid rgba(168, 85, 247, 0.4);
+    }
+
+    .order-card.mesa:hover {
+      border-color: rgba(168, 85, 247, 0.7);
+    }
+
+    .order-card.delivery {
+      border: 1px solid rgba(59, 130, 246, 0.35);
+    }
+
+    .order-card.retirada {
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+
+    .card-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .card-order-num {
+      font-family: monospace;
+      font-weight: 800;
+      font-size: 13px;
+      color: var(--green);
+    }
+
+    .card-cust-name {
+      display: block;
+      font-size: 11px;
+      color: #d1d5db;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .card-tag {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .card-tag.tag-mesa {
+      background-color: rgba(168, 85, 247, 0.2);
+      color: #d8b4fe;
+      border-color: rgba(168, 85, 247, 0.35);
+    }
+
+    .card-tag.tag-delivery {
+      background-color: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .card-tag.tag-retirada {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: #fcd34d;
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    /* CARD ITEMS BOX (EXPANSÍVEL SEM ACHATAMENTO) */
+    .card-items-box {
+      background-color: rgba(0, 0, 0, 0.4);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 11.5px;
+      line-height: 1.45;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .card-item-line {
+      color: #d1d5db;
+    }
+
+    .card-item-line strong {
+      color: #ffffff;
+    }
+
+    .card-pizza-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .card-pizza-flavors {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 10.5px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .card-pizza-flavor-row {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 11px;
-      cursor: pointer;
-      color: var(--text-gray);
-      user-select: none;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
     }
 
-    .checkbox-label:hover {
-      color: var(--text);
+    .slice-badge {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 9.5px;
+      font-weight: 900;
+      background: #e31837;
+      color: #ffffff;
+      padding: 1.5px 6px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      letter-spacing: 0.3px;
     }
 
-    input[type="checkbox"] {
-      cursor: pointer;
-      accent-color: var(--red);
-    }
-
-    button.btn {
-      background-color: var(--red);
-      color: var(--text);
-      border: none;
-      padding: 12px 24px;
-      font-weight: 700;
-      font-size: 13px;
+    /* CARD OBSERVATION BOX (SUPER DESTACADA) */
+    .card-obs-box {
+      border: 1.5px solid #10b981;
+      background-color: rgba(16, 185, 129, 0.15);
+      color: #ffffff;
+      font-size: 12px;
+      padding: 9px 12px;
       border-radius: 8px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-      width: 100%;
+      line-height: 1.35;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 4px;
     }
 
-    button.btn:hover {
+    .card-address-box {
+      font-size: 11px;
+      color: #9ca3af;
+      line-height: 1.3;
+    }
+
+    /* CARD BOTTOM / META */
+    .card-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #a1a1aa;
+    }
+
+    .card-total-val {
+      font-weight: 800;
+      color: #ffffff;
+      font-size: 12px;
+    }
+
+    /* CARD ACTION BUTTONS */
+    .card-actions-row {
+      display: flex;
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      align-items: center;
+    }
+
+    .btn-card-action {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      color: #ffffff;
+    }
+
+    .btn-card-action.btn-green {
+      background-color: #059669;
+    }
+
+    .btn-card-action.btn-green:hover {
+      background-color: #047857;
+    }
+
+    .btn-card-action.btn-red {
+      background-color: var(--red);
+    }
+
+    .btn-card-action.btn-red:hover {
       background-color: var(--red-hover);
     }
 
-    .logs-area {
-      background-color: var(--bg);
-      border: 1px solid var(--border);
+    .btn-card-action.btn-blue {
+      background-color: #2563eb;
+    }
+
+    .btn-card-action.btn-blue:hover {
+      background-color: #1d4ed8;
+    }
+
+    .btn-card-action.btn-purple {
+      background-color: #9333ea;
+    }
+
+    .btn-card-action.btn-purple:hover {
+      background-color: #7e22ce;
+    }
+
+    .btn-card-action.btn-amber {
+      background-color: #d97706;
+    }
+
+    .btn-card-action.btn-amber:hover {
+      background-color: #b45309;
+    }
+
+    .btn-card-concluded {
+      flex: 1;
+      text-align: center;
+      padding: 6px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: #34d399;
+      font-weight: 800;
       border-radius: 8px;
-      padding: 12px;
-      font-family: monospace;
       font-size: 11px;
-      color: #38bdf8;
-      height: 350px;
+    }
+
+    .btn-card-print {
+      background-color: #242424;
+      border: 1px solid #333333;
+      color: #ffffff;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-card-print:hover {
+      background-color: #333333;
+      border-color: #555555;
+    }
+
+    /* COMANDAS / MESAS TAB */
+    .comandas-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 16px;
+    }
+
+    .stat-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .stat-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      font-family: monospace;
+    }
+
+    .comandas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .table-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .table-card:hover {
+      border-color: #555;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .table-card.ocupada {
+      border-color: rgba(227, 24, 55, 0.4);
+      background-color: #1c1416;
+    }
+
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .table-badge-num {
+      font-size: 16px;
+      font-weight: 900;
+      color: #fff;
+    }
+
+    .table-status-pill {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+    }
+
+    .status-livre {
+      background-color: var(--green-bg);
+      color: var(--green);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-ocupada {
+      background-color: rgba(227, 24, 55, 0.15);
+      color: var(--red);
+      border: 1px solid rgba(227, 24, 55, 0.3);
+    }
+
+    .table-consumption {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      font-family: monospace;
+    }
+
+    .table-details-text {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .btn-qr-card {
+      background-color: #242424;
+      border: 1px solid var(--border);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 7px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+
+    .btn-qr-card:hover {
+      background-color: #333;
+      border-color: #555;
+    }
+
+    /* CONFIGURAÇÕES TAB */
+    .config-container {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .config-section {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--red);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #ccc;
+    }
+
+    input[type="text"], input[type="password"], select {
+      background-color: #202020;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: #fff;
+      padding: 10px 12px;
+      font-size: 13px;
+      transition: all 0.2s;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 0 2px rgba(227, 24, 55, 0.2);
+    }
+
+    /* PRINTER ROUTING CARDS */
+    .printers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .stage-card {
+      background-color: var(--card-inner);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .stage-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stage-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 42px;
+      height: 22px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #333;
+      transition: .3s;
+      border-radius: 22px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--green);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    .btn-save-all {
+      background: linear-gradient(135deg, var(--red), #c2122b);
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(227, 24, 55, 0.4);
+      transition: all 0.2s;
+      align-self: flex-end;
+    }
+
+    .btn-save-all:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(227, 24, 55, 0.5);
+    }
+
+    /* MODAIS */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background-color: var(--card-bg);
+      border: 1px solid #333;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+      animation: modalIn 0.2s ease;
+    }
+
+    @keyframes modalIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .btn-close-modal {
+      background: none;
+      border: none;
+      color: #999;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 20px;
       overflow-y: auto;
-      white-space: pre-wrap;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
-    .log-entry {
-      margin-bottom: 6px;
-      line-height: 1.4;
-      border-left: 2px solid var(--border);
-      padding-left: 6px;
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background-color: #141414;
     }
 
-    .log-time {
-      color: var(--text-gray);
-      margin-right: 6px;
+    /* TOAST */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background-color: #222;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      gap: 10px;
+      z-index: 200;
+      animation: toastIn 0.3s ease;
+    }
+
+    #toast.success {
+      border-left: 4px solid var(--green);
+    }
+
+    #toast.error {
+      border-left: 4px solid var(--red);
+    }
+
+    @keyframes toastIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
   </style>
 </head>
 <body>
 
+  <!-- TOP HEADER -->
   <header>
-    <h1>AllDelivery <span>Desktop Print Hub</span></h1>
-    <div class="badge">Local Print Server: Port 3001</div>
-  </header>
-
-  <div class="grid">
-    <!-- Coluna 1: Configurações -->
-    <div class="panel">
-      <div class="panel-title">Configurações Gerais</div>
-
-      <div class="status-box">
-        <span>Status da Conexão SSE:</span>
-        <div class="status-indicator">
-          <div id="sse-dot" class="dot"></div>
-          <span id="sse-text" class="status-text">Desconectado</span>
-        </div>
+    <div class="brand">
+      <div class="brand-icon">🍕</div>
+      <div>
+        <div class="brand-title">AllDelivery <span>Desktop</span></div>
       </div>
-
-      <div class="form-group">
-        <label for="server-url">URL do Servidor AllPizza (WEB)</label>
-        <input type="text" id="server-url" placeholder="http://localhost:3000">
+      <div class="connection-badge">
+        <span id="sse-indicator" class="dot"></span>
+        <span id="sse-status-text">Conectando...</span>
       </div>
-
-      <div class="form-group" style="margin-top: 24px; margin-bottom: 24px;">
-        <label>Configurações de Impressão por Status</label>
-        
-        <!-- NOVO -->
-        <div class="print-settings-row">
-          <span class="label">Novos Pedidos</span>
-          <select id="printer-NOVO"></select>
-          <label class="checkbox-label">
-            <input type="checkbox" id="auto-NOVO"> Auto
-          </label>
-        </div>
-
-        <!-- EM_PREPARO -->
-        <div class="print-settings-row">
-          <span class="label">Cozinha (Preparo)</span>
-          <select id="printer-EM_PREPARO"></select>
-          <label class="checkbox-label">
-            <input type="checkbox" id="auto-EM_PREPARO"> Auto
-          </label>
-        </div>
-
-        <!-- EM_ROTA -->
-        <div class="print-settings-row">
-          <span class="label">Motoboy (Em Rota)</span>
-          <select id="printer-EM_ROTA"></select>
-          <label class="checkbox-label">
-            <input type="checkbox" id="auto-EM_ROTA"> Auto
-          </label>
-        </div>
-
-        <!-- PRONTO_RETIRADA -->
-        <div class="print-settings-row">
-          <span class="label">Balcão (Retirada)</span>
-          <select id="printer-PRONTO_RETIRADA"></select>
-          <label class="checkbox-label">
-            <input type="checkbox" id="auto-PRONTO_RETIRADA"> Auto
-          </label>
-        </div>
-
-        <!-- ENTREGUE -->
-        <div class="print-settings-row">
-          <span class="label">Concluídos</span>
-          <select id="printer-ENTREGUE"></select>
-          <label class="checkbox-label">
-            <input type="checkbox" id="auto-ENTREGUE"> Auto
-          </label>
-        </div>
-      </div>
-
-      <button id="btn-save" class="btn">Salvar Configurações</button>
     </div>
 
-    <!-- Coluna 2: Log de Atividades -->
-    <div class="panel">
-      <div class="panel-title">Logs de Atividade</div>
-      <div id="logs" class="logs-area"></div>
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="kanban">
+        📊 Pedidos (Kanban) <span id="badge-kanban" class="tab-badge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="comandas">
+        🍽️ Comandas / Mesas <span id="badge-comandas" class="tab-badge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="config">
+        ⚙️ Configurações
+      </button>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="header-actions">
+      <button id="btn-toggle-store" class="btn-delivery-status open" title="Clique para abrir ou fechar o Delivery">
+        <span class="dot online"></span>
+        <span>DELIVERY ON</span>
+      </button>
+      <button id="btn-refresh" class="btn-icon" title="Atualizar dados agora">🔄</button>
+      <button id="btn-sound-toggle" class="btn-icon" title="Ativar/Desativar som de alerta">🔔</button>
+    </div>
+  </header>
+
+  <!-- MAIN VIEW -->
+  <main>
+    <!-- TAB 1: KANBAN (DISPOSIÇÃO IDÊNTICA À WEB) -->
+    <div id="tab-kanban" class="tab-content active">
+      <!-- FLUXO DE ENTREGA (DELIVERY) -->
+      <div class="kanban-header-row">
+        <div class="kanban-section-title">
+          <span class="title-bar"></span>
+          Fluxo de Entrega (Delivery)
+        </div>
+        <button id="btn-toggle-store-kanban" class="btn-delivery-badge open" title="Clique para abrir ou fechar o Delivery">
+          <span class="dot online"></span>
+          <span>DELIVERY: ABERTO (ON)</span>
+        </button>
+      </div>
+
+      <!-- GRID 4 COLUNAS: NOVOS, NA COZINHA, EM ROTA, CONCLUÍDOS -->
+      <div class="kanban-grid-4">
+        <!-- 1. NOVOS -->
+        <div class="kanban-col-box">
+          <div class="col-box-header">
+            <span class="col-box-title">Novos</span>
+            <span id="count-NOVO" class="col-box-count">0</span>
+          </div>
+          <div id="col-NOVO" class="col-box-body"></div>
+          <div id="empty-NOVO" class="empty-state-text">Sem novos pedidos.</div>
+        </div>
+
+        <!-- 2. NA COZINHA -->
+        <div class="kanban-col-box">
+          <div class="col-box-header">
+            <span class="col-box-title">Na Cozinha</span>
+            <span id="count-EM_PREPARO" class="col-box-count">0</span>
+          </div>
+          <div id="col-EM_PREPARO" class="col-box-body"></div>
+          <div id="empty-EM_PREPARO" class="empty-state-text">Nenhum em preparo.</div>
+        </div>
+
+        <!-- 3. EM ROTA (MOTOBOY) -->
+        <div class="kanban-col-box">
+          <div class="col-box-header">
+            <span class="col-box-title">Em Rota (Motoboy)</span>
+            <span id="count-EM_ROTA" class="col-box-count">0</span>
+          </div>
+          <div id="col-EM_ROTA" class="col-box-body"></div>
+          <div id="empty-EM_ROTA" class="empty-state-text">Sem envios em rota.</div>
+        </div>
+
+        <!-- 4. CONCLUÍDOS -->
+        <div class="kanban-col-box">
+          <div class="col-box-header">
+            <span class="col-box-title">Concluidos</span>
+            <span id="count-ENTREGUE" class="col-box-count">0</span>
+          </div>
+          <div id="col-ENTREGUE" class="col-box-body"></div>
+          <div id="empty-ENTREGUE" class="empty-state-text">Sem concluidos hoje.</div>
+        </div>
+      </div>
+
+      <!-- LINHA DIVISÓRIA -->
+      <div class="kanban-divider"></div>
+
+      <!-- GRID 2 COLUNAS: BALCÃO & COMANDAS DE MESA -->
+      <div class="kanban-grid-2">
+        <!-- RETIRADA NO BALCÃO -->
+        <div class="kanban-col-box">
+          <div class="col-box-header">
+            <span class="col-box-title">Retirada no Balcao</span>
+            <span id="count-BALCAO" class="col-box-count">0 ativas</span>
+          </div>
+          <div id="col-BALCAO" class="col-box-body"></div>
+          <div id="empty-BALCAO" class="empty-state-text">Sem retiradas agendadas.</div>
+        </div>
+
+        <!-- COMANDAS DE MESA -->
+        <div class="kanban-col-box">
+          <div class="col-box-header">
+            <span class="col-box-title">Comandas de Mesa</span>
+            <span id="count-COMANDAS" class="col-box-count">0 mesas</span>
+          </div>
+          <div id="col-COMANDAS" class="col-box-body"></div>
+          <div id="empty-COMANDAS" class="empty-state-text">Sem comandas abertas no local.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: COMANDAS / MESAS -->
+    <div id="tab-comandas" class="tab-content">
+      <div class="comandas-header">
+        <div class="stats-row">
+          <div class="stat-card">
+            <span class="stat-label">Total de Mesas</span>
+            <span id="stat-total-mesas" class="stat-val">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Mesas Ocupadas</span>
+            <span id="stat-ocupadas" class="stat-val" style="color: var(--yellow);">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Consumo no Salão</span>
+            <span id="stat-consumo" class="stat-val" style="color: var(--green);">R$ 0,00</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="text" id="search-comanda" placeholder="Filtrar por mesa..." style="width: 180px;" />
+          <button id="btn-sync-comandas" class="btn-action">🔄 Recarregar Mesas</button>
+        </div>
+      </div>
+
+      <div id="grid-comandas" class="comandas-grid"></div>
+    </div>
+
+    <!-- TAB 3: CONFIGURAÇÕES -->
+    <div id="tab-config" class="tab-content">
+      <div class="config-container">
+        <!-- 1. SERVIDOR E API -->
+        <div class="config-section">
+          <div class="section-title">🌐 Conexão com o Servidor e Wi-Fi</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>URL da API do Servidor:</label>
+              <input type="text" id="cfg-server-url" placeholder="http://localhost:3000" />
+            </div>
+
+            <div class="form-group">
+              <label>Chave de Acesso / API Key:</label>
+              <input type="password" id="cfg-api-key" placeholder="alldelivery_internal_print_secret" />
+            </div>
+
+            <div class="form-group full">
+              <label>IP da Rede Wi-Fi (Detectado para QR Code da Mesa):</label>
+              <select id="cfg-network-ip"></select>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px; display: flex; gap: 10px;">
+            <button id="btn-test-connection" class="btn-action primary">Testar Conexão com Servidor</button>
+            <span id="conn-test-result" style="font-size: 12px; align-self: center;"></span>
+          </div>
+        </div>
+
+        <!-- 2. ROTEAMENTO DE IMPRESSORAS -->
+        <div class="config-section">
+          <div class="section-title">🖨️ Roteamento de Impressoras por Etapa</div>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+            Configure separadamente qual impressora térmica imprimirá automaticamente em cada etapa do fluxo.
+          </p>
+
+          <div class="printers-grid">
+            <!-- 1. NOVOS -->
+            <div class="stage-card">
+              <div class="stage-top">
+                <span class="stage-title">📥 Novos Pedidos (Caixa)</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-NOVO">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label>Impressora:</label>
+                <select id="printer-NOVO" class="printer-select"></select>
+              </div>
+              <div class="form-group">
+                <label>Cópias:</label>
+                <select id="copies-NOVO">
+                  <option value="1">1 via</option>
+                  <option value="2">2 vias</option>
+                  <option value="3">3 vias</option>
+                </select>
+              </div>
+              <button class="btn-action" onclick="handleTestPrint('NOVO')">Testar Impressão</button>
+            </div>
+
+            <!-- 2. NA COZINHA -->
+            <div class="stage-card" style="border-color: rgba(245, 158, 11, 0.4);">
+              <div class="stage-top">
+                <span class="stage-title" style="color: #f59e0b;">🍳 Na Cozinha (Preparo)</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-EM_PREPARO">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label>Impressora:</label>
+                <select id="printer-EM_PREPARO" class="printer-select"></select>
+              </div>
+              <div class="form-group">
+                <label>Cópias:</label>
+                <select id="copies-EM_PREPARO">
+                  <option value="1">1 via</option>
+                  <option value="2">2 vias</option>
+                </select>
+              </div>
+              <button class="btn-action" onclick="handleTestPrint('EM_PREPARO')">Testar Impressão</button>
+            </div>
+
+            <!-- 3. BALCÃO / MESA PRONTA -->
+            <div class="stage-card">
+              <div class="stage-top">
+                <span class="stage-title">🛍️ Balcão / Pronto</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-PRONTO_RETIRADA">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label>Impressora:</label>
+                <select id="printer-PRONTO_RETIRADA" class="printer-select"></select>
+              </div>
+              <div class="form-group">
+                <label>Cópias:</label>
+                <select id="copies-PRONTO_RETIRADA">
+                  <option value="1">1 via</option>
+                  <option value="2">2 vias</option>
+                </select>
+              </div>
+              <button class="btn-action" onclick="handleTestPrint('PRONTO_RETIRADA')">Testar Impressão</button>
+            </div>
+
+            <!-- 4. EM ROTA (DELIVERY) -->
+            <div class="stage-card">
+              <div class="stage-top">
+                <span class="stage-title">🛵 Em Rota (Motoboy)</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-EM_ROTA">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label>Impressora:</label>
+                <select id="printer-EM_ROTA" class="printer-select"></select>
+              </div>
+              <div class="form-group">
+                <label>Cópias:</label>
+                <select id="copies-EM_ROTA">
+                  <option value="1">1 via</option>
+                  <option value="2">2 vias</option>
+                </select>
+              </div>
+              <button class="btn-action" onclick="handleTestPrint('EM_ROTA')">Testar Impressão</button>
+            </div>
+
+            <!-- 5. CONCLUÍDOS -->
+            <div class="stage-card">
+              <div class="stage-top">
+                <span class="stage-title">✅ Concluídos (Recibo)</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-ENTREGUE">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label>Impressora:</label>
+                <select id="printer-ENTREGUE" class="printer-select"></select>
+              </div>
+              <div class="form-group">
+                <label>Cópias:</label>
+                <select id="copies-ENTREGUE">
+                  <option value="1">1 via</option>
+                </select>
+              </div>
+              <button class="btn-action" onclick="handleTestPrint('ENTREGUE')">Testar Impressão</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-save-settings" class="btn-save-all">💾 Salvar Todas as Configurações</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL: DETALHES DO PEDIDO -->
+  <div id="modal-order" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-order-title">Pedido #000</div>
+        <button class="btn-close-modal" onclick="closeModal('modal-order')">✕</button>
+      </div>
+      <div class="modal-body" id="modal-order-body"></div>
+      <div class="modal-footer" id="modal-order-footer"></div>
     </div>
   </div>
 
+  <!-- MODAL: QR CODE DA MESA -->
+  <div id="modal-qr" class="modal-overlay">
+    <div class="modal-box" style="max-width: 440px;">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-qr-title">QR Code da Mesa</div>
+        <button class="btn-close-modal" onclick="closeModal('modal-qr')">✕</button>
+      </div>
+      <div class="modal-body" style="text-align: center; align-items: center;">
+        <p style="font-size: 12px; color: var(--text-muted);">
+          O cliente no mesmo Wi-Fi escaneia este QR Code e faz o pedido idêntico ao delivery, que chega direto <strong>NA COZINHA</strong>!
+        </p>
+
+        <div style="background: #fff; padding: 12px; border-radius: 16px; margin: 10px auto; display: inline-block;">
+          <img id="qr-image" style="width: 240px; height: 240px; display: block;" alt="QR Code Mesa" />
+        </div>
+
+        <div style="width: 100%; text-align: left; margin-top: 6px;">
+          <label style="font-size: 11px;">Link do Cardápio para a Mesa:</label>
+          <input type="text" id="qr-url-input" readonly style="width: 100%; font-family: monospace; font-size: 11px; margin-top: 4px;" />
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button id="btn-copy-qr-link" class="btn-action">📋 Copiar Link</button>
+        <button id="btn-print-qr-flyer" class="btn-action primary">🖨️ Imprimir Placa da Mesa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ONBOARDING / PRIMEIRO ACESSO -->
+  <div id="modal-setup" class="modal-overlay">
+    <div class="modal-box" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-title">Configuração Inicial AllDelivery Desktop</div>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: #ccc;">
+          Informe o endereço da API do servidor AllDelivery e a Chave de Acesso para sincronizar o Kanban e os pedidos em tempo real.
+        </p>
+
+        <div class="form-group">
+          <label>URL do Servidor (ex: http://localhost:3000):</label>
+          <input type="text" id="setup-server-url" value="http://localhost:3000" />
+        </div>
+
+        <div class="form-group">
+          <label>Chave de Acesso (API Key / Token):</label>
+          <input type="password" id="setup-api-key" value="alldelivery_internal_print_secret" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-setup-connect" class="btn-action primary" style="width: 100%; padding: 10px;">
+          Conectar e Entrar no Sistema
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast"></div>
+
+  <!-- CLIENT SCRIPT -->
   <script>
+    let appSettings = {
+      serverUrl: "http://localhost:3000",
+      apiKey: "alldelivery_internal_print_secret",
+      soundEnabled: true,
+      configs: {
+        NOVO: { printer: "", auto: false, copies: 1, layout: "caixa" },
+        EM_PREPARO: { printer: "", auto: true, copies: 1, layout: "cozinha" },
+        PRONTO_RETIRADA: { printer: "", auto: false, copies: 1, layout: "balcao" },
+        EM_ROTA: { printer: "", auto: false, copies: 1, layout: "entrega" },
+        ENTREGUE: { printer: "", auto: false, copies: 1, layout: "caixa" },
+      }
+    };
+
+    let installedPrinters = [];
+    let networkIps = [];
+    let ordersList = [];
+    let comandasList = [];
     let sseSource = null;
-    let printersList = [];
-    let currentSettings = { serverUrl: "http://localhost:3000", configs: {} };
-    let printedLog = new Set(); // Evita dupla impressão por eventos duplicados do SSE
+    let printedHistory = new Set();
+    let currentQrTable = null;
+    let currentQrUrl = "";
+    let currentQrDataUrl = "";
 
-    // Elementos do DOM
-    const logsEl = document.getElementById("logs");
-    const serverUrlInput = document.getElementById("server-url");
-    const saveBtn = document.getElementById("btn-save");
-    const sseDot = document.getElementById("sse-dot");
-    const sseText = document.getElementById("sse-text");
-
-    const statuses = ["NOVO", "EM_PREPARO", "EM_ROTA", "PRONTO_RETIRADA", "ENTREGUE"];
-
-    function addLog(message, type = "info") {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString("pt-BR");
-      const entry = document.createElement("div");
-      entry.className = "log-entry";
-      entry.innerHTML = `<span class="log-time">[${timeStr}]</span> ${message}`;
-      logsEl.appendChild(entry);
-      logsEl.scrollTop = logsEl.scrollHeight;
-      console.log(`[Log] ${message}`);
+    // Toast notification
+    function showToast(text, type = "success") {
+      const toast = document.getElementById("toast");
+      toast.textContent = text;
+      toast.className = type;
+      toast.style.display = "flex";
+      setTimeout(() => {
+        toast.style.display = "none";
+      }, 4000);
     }
 
-    // Carrega impressoras e configurações iniciais
-    async function init() {
-      addLog("Inicializando Central de Impressão...");
+    function closeModal(id) {
+      document.getElementById(id).classList.remove("active");
+    }
 
+    function playAlertSound() {
+      if (!appSettings.soundEnabled) return;
       try {
-        // Carrega impressoras locais
-        printersList = await window.electronAPI.getPrinters();
-        addLog(`Encontradas ${printersList.length} impressoras no sistema.`);
-        
-        // Popula os seletores de impressora
-        statuses.forEach(status => {
-          const select = document.getElementById(`printer-${status}`);
-          select.innerHTML = '<option value="">Desabilitada</option>';
-          printersList.forEach(p => {
-            const option = document.createElement("option");
-            option.value = p.name;
-            option.textContent = p.displayName || p.name;
-            select.appendChild(option);
-          });
-        });
-
-        // Carrega configurações persistidas do Electron Main Process
-        currentSettings = await window.electronAPI.loadSettings();
-        serverUrlInput.value = currentSettings.serverUrl || "http://localhost:3000";
-
-        // Preenche campos de configuração
-        statuses.forEach(status => {
-          const config = currentSettings.configs[status] || { printer: "", auto: false };
-          document.getElementById(`printer-${status}`).value = config.printer || "";
-          document.getElementById(`auto-${status}`).checked = !!config.auto;
-        });
-
-        addLog("Configurações locais carregadas com sucesso.");
-
-        // Conecta ao fluxo SSE
-        connectSSE();
-      } catch (err) {
-        addLog(`Erro durante a inicialização: ${err.message}`, "error");
-      }
+        const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav");
+        audio.play().catch(() => {});
+      } catch (err) {}
     }
 
-    // Salva configurações
-    saveBtn.addEventListener("click", async () => {
-      const configs = {};
-      statuses.forEach(status => {
-        configs[status] = {
-          printer: document.getElementById(`printer-${status}`).value,
-          auto: document.getElementById(`auto-${status}`).checked,
-        };
+    // Tab Navigation
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
+
+        btn.classList.add("active");
+        const tabId = "tab-" + btn.dataset.tab;
+        document.getElementById(tabId).classList.add("active");
       });
-
-      const updatedSettings = {
-        serverUrl: serverUrlInput.value.trim(),
-        configs
-      };
-
-      const success = await window.electronAPI.saveSettings(updatedSettings);
-      if (success) {
-        currentSettings = updatedSettings;
-        addLog("Configurações salvas no arquivo persistente.");
-        connectSSE(); // Reconecta SSE caso a URL do servidor tenha mudado
-      } else {
-        addLog("Falha ao salvar configurações no disco.", "error");
-      }
     });
 
-    // Conecta ao SSE do servidor AllPizza
-    function connectSSE() {
-      if (sseSource) {
-        addLog("Fechando conexão SSE anterior...");
-        sseSource.close();
-      }
-
-      const sseUrl = `${currentSettings.serverUrl}/api/print/events`;
-      addLog(`Tentando se conectar ao barramento SSE: ${sseUrl}...`);
-
-      sseDot.className = "dot";
-      sseText.textContent = "Conectando...";
-      sseText.className = "status-text";
-
+    // 1. CARREGA CONFIGURAÇÕES E PRINTERS
+    async function initDesktop() {
       try {
-        sseSource = new EventSource(sseUrl);
+        if (window.electronAPI) {
+          appSettings = await window.electronAPI.loadSettings();
+          installedPrinters = await window.electronAPI.getPrinters();
+          networkIps = await window.electronAPI.getNetworkIps();
+        }
 
-        sseSource.onopen = () => {
-          addLog("Conexão SSE aberta com sucesso!");
-          sseDot.className = "dot online";
-          sseText.textContent = "Conectado";
-          sseText.className = "status-text online";
-        };
+        populatePrintersDropdowns();
+        populateNetworkIps();
+        populateSettingsFields();
 
-        // Escuta novo pedido criado
-        sseSource.addEventListener("order_created", (event) => {
-          try {
-            const newOrder = JSON.parse(event.data);
-            addLog(`SSE: Novo pedido recebido: #${newOrder.orderNumber}`);
+        // Se URL ou chave estiver vazia, abre setup inicial
+        if (!appSettings.serverUrl || !appSettings.apiKey) {
+          document.getElementById("modal-setup").classList.add("active");
+          return;
+        }
 
-            const config = currentSettings.configs["NOVO"];
-            if (config && config.auto && config.printer) {
-              triggerPrint(newOrder, "NOVO", config.printer);
-            }
-          } catch (e) {
-            addLog(`Erro ao processar order_created: ${e.message}`, "error");
-          }
-        });
-
-        // Escuta pedido atualizado (Kanban / Entrega)
-        sseSource.addEventListener("order_updated", (event) => {
-          try {
-            const updatedOrder = JSON.parse(event.data);
-            addLog(`SSE: Pedido #${updatedOrder.orderNumber} atualizado para status ${updatedOrder.status}`);
-
-            const config = currentSettings.configs[updatedOrder.status];
-            if (config && config.auto && config.printer) {
-              triggerPrint(updatedOrder, updatedOrder.status, config.printer);
-            }
-          } catch (e) {
-            addLog(`Erro ao processar order_updated: ${e.message}`, "error");
-          }
-        });
-
-        sseSource.onerror = (err) => {
-          addLog("Erro na conexão SSE. Tentando reconectar...", "error");
-          sseDot.className = "dot offline";
-          sseText.textContent = "Desconectado";
-          sseText.className = "status-text offline";
-        };
+        // Conecta ao SSE e busca dados iniciais
+        connectSSE();
+        fetchOrders();
+        fetchComandas();
+        fetchStoreStatus();
       } catch (err) {
-        addLog(`Erro ao iniciar EventSource: ${err.message}`, "error");
-        sseDot.className = "dot offline";
-        sseText.textContent = "Erro";
-        sseText.className = "status-text offline";
+        console.error("Erro na inicialização:", err);
       }
     }
 
-    // Executa e registra a ação de impressão
-    async function triggerPrint(order, status, printerName) {
-      const logKey = `${order.id}_${status}`;
-      if (printedLog.has(logKey)) {
-        addLog(`[Print] Pedido #${order.orderNumber} já impresso para status ${status} nesta sessão. Ignorando.`);
+    function populatePrintersDropdowns() {
+      const selects = document.querySelectorAll(".printer-select");
+      selects.forEach((sel) => {
+        sel.innerHTML = '<option value="">-- Nenhuma impressora selecionada --</option>';
+        installedPrinters.forEach((p) => {
+          const opt = document.createElement("option");
+          opt.value = p.name;
+          opt.textContent = p.name + (p.isDefault ? " (Padrão Windows)" : "");
+          sel.appendChild(opt);
+        });
+      });
+    }
+
+    function populateNetworkIps() {
+      const sel = document.getElementById("cfg-network-ip");
+      sel.innerHTML = "";
+
+      if (networkIps.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "localhost";
+        opt.textContent = "localhost (Rede Local Não Detectada)";
+        sel.appendChild(opt);
         return;
       }
 
-      addLog(`Enviando cupom do pedido #${order.orderNumber} para a impressora: ${printerName}...`);
-      
-      const receiptText = formatThermalReceipt(order);
-      const res = await window.electronAPI.printReceipt(printerName, receiptText);
+      networkIps.forEach((net) => {
+        const opt = document.createElement("option");
+        opt.value = net.address;
+        opt.textContent = `${net.address} [${net.name}]${net.isWifi ? " (Wi-Fi Recomendado)" : ""}`;
+        sel.appendChild(opt);
+      });
+    }
+
+    function populateSettingsFields() {
+      document.getElementById("cfg-server-url").value = appSettings.serverUrl || "http://localhost:3000";
+      document.getElementById("cfg-api-key").value = appSettings.apiKey || "";
+
+      const cfgs = appSettings.configs || {};
+      ["NOVO", "EM_PREPARO", "PRONTO_RETIRADA", "EM_ROTA", "ENTREGUE"].forEach((key) => {
+        const item = cfgs[key] || {};
+        const chk = document.getElementById(`auto-${key}`);
+        if (chk) chk.checked = Boolean(item.auto);
+
+        const selPr = document.getElementById(`printer-${key}`);
+        if (selPr && item.printer) selPr.value = item.printer;
+
+        const selCp = document.getElementById(`copies-${key}`);
+        if (selCp && item.copies) selCp.value = String(item.copies);
+      });
+    }
+
+    // 2. CONEXÃO SSE EM TEMPO REAL
+    function connectSSE() {
+      if (sseSource) {
+        sseSource.close();
+      }
+
+      const indicator = document.getElementById("sse-indicator");
+      const statusText = document.getElementById("sse-status-text");
+
+      const url = `${appSettings.serverUrl}/api/print/events?token=${encodeURIComponent(appSettings.apiKey)}`;
+      sseSource = new EventSource(url);
+
+      sseSource.onopen = () => {
+        indicator.className = "dot online";
+        statusText.textContent = "Online (Tempo Real)";
+      };
+
+      sseSource.addEventListener("order_created", (event) => {
+        try {
+          const newOrder = JSON.parse(event.data);
+          console.log("[SSE] Pedido recebido:", newOrder);
+
+          playAlertSound();
+          showToast(`Novo Pedido #${newOrder.orderNumber} recebido!`);
+
+          // Roteamento de Impressão Automática
+          handleAutoPrint(newOrder, newOrder.status);
+
+          // Atualiza lista em memória e re-renderiza
+          ordersList = [newOrder, ...ordersList.filter((o) => o.id !== newOrder.id)];
+          renderKanban();
+
+          // Se for mesa, atualiza comandas
+          if (newOrder.type === "COMANDA" || newOrder.comandaId) {
+            fetchComandas();
+          }
+        } catch (err) {
+          console.error("Erro ao processar order_created:", err);
+        }
+      });
+
+      sseSource.addEventListener("order_updated", (event) => {
+        try {
+          const updatedOrder = JSON.parse(event.data);
+          console.log("[SSE] Pedido atualizado:", updatedOrder);
+
+          // Roteamento de Impressão Automática para o novo status
+          handleAutoPrint(updatedOrder, updatedOrder.status);
+
+          ordersList = ordersList.map((o) => (o.id === updatedOrder.id ? updatedOrder : o));
+          renderKanban();
+
+          if (updatedOrder.type === "COMANDA" || updatedOrder.comandaId) {
+            fetchComandas();
+          }
+        } catch (err) {
+          console.error("Erro ao processar order_updated:", err);
+        }
+      });
+
+      sseSource.addEventListener("table_order_ready", (event) => {
+        const order = JSON.parse(event.data);
+        showToast(`🍽️ Pedido #${order.orderNumber} (Mesa ${order.comanda?.number || "—"}) pronto para servir!`);
+      });
+
+      sseSource.addEventListener("store_status_changed", (event) => {
+        const data = JSON.parse(event.data);
+        updateStoreButton(data.open);
+      });
+
+      sseSource.onerror = () => {
+        indicator.className = "dot offline";
+        statusText.textContent = "Reconectando...";
+      };
+    }
+
+    // Roteamento de Impressão Automática por Etapa
+    async function handleAutoPrint(order, status) {
+      if (!window.electronAPI) return;
+      const key = `${order.id}_${status}`;
+      if (printedHistory.has(key)) return; // Evita duplicar impressões
+      printedHistory.add(key);
+
+      const stageCfg = appSettings.configs?.[status];
+      if (!stageCfg || !stageCfg.auto || !stageCfg.printer) return;
+
+      console.log(`[Auto-Print] Enviando pedido #${order.orderNumber} para impressora "${stageCfg.printer}" (Etapa ${status})`);
+
+      try {
+        const copies = Math.max(1, stageCfg.copies || 1);
+        for (let i = 0; i < copies; i++) {
+          await fetch("http://localhost:3001/print", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ order, status }),
+          });
+        }
+        showToast(`Cupom #${order.orderNumber} impresso na ${stageCfg.printer}!`);
+      } catch (err) {
+        console.error("Falha ao imprimir via auto-print:", err);
+      }
+    }
+
+    // 3. FETCH E RENDER DO KANBAN
+    async function fetchOrders() {
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/orders?days=3`, {
+          headers: {
+            "x-print-auth": appSettings.apiKey,
+          },
+        });
+        const data = await res.json();
+        if (data.orders) {
+          ordersList = data.orders;
+          renderKanban();
+        }
+      } catch (err) {
+        console.error("Erro ao buscar pedidos:", err);
+      }
+    }
+
+    function renderKanban() {
+      // Separacao dos pedidos identica a KanbanBoard.tsx
+      const novo = ordersList.filter((o) => o.status === "NOVO");
+      const emPreparo = ordersList.filter((o) => o.status === "EM_PREPARO");
+      const emRota = ordersList.filter((o) => o.status === "EM_ROTA" && o.type === "DELIVERY");
+      const entregue = ordersList.filter((o) => o.status === "ENTREGUE");
+      const balcao = ordersList.filter((o) => o.status === "PRONTO_RETIRADA" && o.type === "RETIRADA");
+      const comandas = ordersList.filter(
+        (o) => (o.type === "COMANDA" || Boolean(o.comandaId)) && o.status === "PRONTO_RETIRADA"
+      );
+
+      const columnsMap = [
+        { key: "NOVO", list: novo, countText: novo.length },
+        { key: "EM_PREPARO", list: emPreparo, countText: emPreparo.length },
+        { key: "EM_ROTA", list: emRota, countText: emRota.length },
+        { key: "ENTREGUE", list: entregue, countText: entregue.length },
+        { key: "BALCAO", list: balcao, countText: `${balcao.length} ativas` },
+        { key: "COMANDAS", list: comandas, countText: `${comandas.length} mesas` },
+      ];
+
+      columnsMap.forEach(({ key, list, countText }) => {
+        const colEl = document.getElementById(`col-${key}`);
+        const countEl = document.getElementById(`count-${key}`);
+        const emptyEl = document.getElementById(`empty-${key}`);
+
+        if (colEl) {
+          colEl.innerHTML = "";
+          list.forEach((order) => {
+            colEl.appendChild(createOrderCard(order));
+          });
+        }
+
+        if (countEl) {
+          countEl.textContent = countText;
+        }
+
+        if (emptyEl) {
+          emptyEl.style.display = list.length === 0 ? "block" : "none";
+        }
+      });
+
+      // Total de pedidos ativos no badge da aba principal
+      const activeTotal = novo.length + emPreparo.length + emRota.length + balcao.length + comandas.length;
+      const badgeEl = document.getElementById("badge-kanban");
+      if (badgeEl) {
+        badgeEl.textContent = activeTotal;
+      }
+    }
+
+    // Analisador inteligente de sabores e fatias da pizza no Electron UI
+    function parsePizzaFlavorsWithSlices(item) {
+      const size = (item.pizzaSize || "G").toUpperCase();
+      const totalSlices = size === "P" ? 4 : size === "M" ? 6 : size === "G" ? 8 : 10;
+      const rawFlavors = item.flavors || [];
+
+      let list = [];
+      if (rawFlavors.length > 0) {
+        list = rawFlavors.map((f, idx) => {
+          const raw = (typeof f === "string" ? f : (f.flavorName || f.name || "")).trim();
+          let slices = typeof f.slices === "number" && f.slices > 0 ? f.slices : null;
+          if (!slices) {
+            const m = raw.match(/^(\d+)\s*fatias?/i) || raw.match(/\((\d+)\s*fatias?\)/i);
+            if (m) slices = parseInt(m[1], 10);
+          }
+          if (!slices && item.name) {
+            const cleanTest = raw.replace(/^\d+\s*fatias?\s*/i, "").trim();
+            const safe = cleanTest.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const m2 = item.name.match(new RegExp("(\\d+)\\s*fatias?\\s+(?:de\\s+)?" + safe, "i"));
+            if (m2) slices = parseInt(m2[1], 10);
+          }
+          const cleanName = raw
+            .replace(/^\d+\s*fatias?\s*(?:de\s*)?[-–—:]?\s*/i, "")
+            .replace(/\s*\(\d+\s*fatias?\)$/i, "")
+            .trim() || `Sabor ${idx + 1}`;
+          return { cleanName, slices, raw };
+        });
+      } else if (item.name) {
+        const matchParen = item.name.match(/\(([^)]+)\)/);
+        if (matchParen) {
+          const parts = matchParen[1].split(/\s*[\/+]\s*/);
+          list = parts.map((p, idx) => {
+            const raw = p.trim();
+            const m = raw.match(/^(\d+)\s*fatias?\s*(?:de\s*)?(.*)/i);
+            if (m) return { cleanName: m[2].trim(), slices: parseInt(m[1], 10), raw };
+            return { cleanName: raw || `Sabor ${idx + 1}`, slices: null, raw };
+          });
+        }
+      }
+
+      if (list.length === 0) {
+        list = [{ cleanName: item.name || "Pizza Inteira", slices: totalSlices, raw: item.name }];
+      }
+
+      const assigned = list.reduce((acc, f) => acc + (f.slices || 0), 0);
+      const unassigned = list.filter((f) => !f.slices);
+      if (unassigned.length > 0) {
+        const remaining = Math.max(0, totalSlices - assigned);
+        if (list.length === 2 && !list[0].slices && !list[1].slices) {
+          const half = Math.floor(totalSlices / 2);
+          list[0].slices = half;
+          list[1].slices = totalSlices - half;
+        } else if (list.length === 3 && unassigned.length === 3) {
+          if (totalSlices === 6) { list[0].slices = 2; list[1].slices = 2; list[2].slices = 2; }
+          else if (totalSlices === 8) { list[0].slices = 3; list[1].slices = 3; list[2].slices = 2; }
+          else { list[0].slices = 4; list[1].slices = 3; list[2].slices = 3; }
+        } else {
+          const per = Math.max(1, Math.floor(remaining / unassigned.length));
+          unassigned.forEach((f, idx) => {
+            f.slices = idx === unassigned.length - 1 ? (remaining - per * (unassigned.length - 1)) : per;
+          });
+        }
+      }
+
+      return { totalSlices, flavors: list };
+    }
+
+    // Gerador SVG da Pizza Dinâmica para a interface Desktop
+    function generatePizzaSvgUi(flavors, totalSlices, size = 44) {
+      const cx = size / 2;
+      const cy = size / 2;
+      const r = (size / 2) - 3;
+      let svg = "";
+
+      // Disco base e borda da pizza
+      svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#261c14" stroke="#d97706" stroke-width="2" />`;
+      svg += `<circle cx="${cx}" cy="${cy}" r="${r - 2.5}" fill="#1a1510" stroke="#92400e" stroke-width="0.8" stroke-dasharray="2,2" />`;
+
+      const count = flavors.length;
+      if (count <= 1) {
+        const s = flavors[0]?.slices || totalSlices;
+        svg += `
+          <text x="${cx}" y="${cy}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${Math.round(size * 0.42)}" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#ffffff">${s}</text>
+        `;
+      } else if (count === 2) {
+        const s1 = flavors[0].slices;
+        const s2 = flavors[1].slices;
+        if (s1 === s2) {
+          svg += `<line x1="${cx}" y1="${cy - r}" x2="${cx}" y2="${cy + r}" stroke="#d97706" stroke-width="1.8" />`;
+          svg += `<text x="${cx - (r * 0.46)}" y="${cy}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${Math.round(size * 0.34)}" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#fbbf24">${s1}</text>`;
+          svg += `<text x="${cx + (r * 0.46)}" y="${cy}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${Math.round(size * 0.34)}" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#38bdf8">${s2}</text>`;
+        } else {
+          const total = s1 + s2;
+          const angle1 = (s1 / total) * 360;
+          const rad0 = -Math.PI / 2;
+          const rad1 = rad0 + (angle1 * Math.PI) / 180;
+          svg += `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy - r}" stroke="#d97706" stroke-width="1.8" />`;
+          const x1 = cx + r * Math.cos(rad1);
+          const y1 = cy + r * Math.sin(rad1);
+          svg += `<line x1="${cx}" y1="${cy}" x2="${x1}" y2="${y1}" stroke="#d97706" stroke-width="1.8" />`;
+
+          const midRad1 = rad0 + ((angle1 / 2) * Math.PI) / 180;
+          const tx1 = cx + (r * 0.52) * Math.cos(midRad1);
+          const ty1 = cy + (r * 0.52) * Math.sin(midRad1);
+          svg += `<text x="${tx1}" y="${ty1}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${Math.round(size * 0.3)}" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#fbbf24">${s1}</text>`;
+
+          const midRad2 = rad1 + (((360 - angle1) / 2) * Math.PI) / 180;
+          const tx2 = cx + (r * 0.52) * Math.cos(midRad2);
+          const ty2 = cy + (r * 0.52) * Math.sin(midRad2);
+          svg += `<text x="${tx2}" y="${ty2}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${Math.round(size * 0.3)}" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#38bdf8">${s2}</text>`;
+        }
+      } else {
+        const sectorColors = ["#fbbf24", "#38bdf8", "#4ade80", "#f472b6"];
+        const total = flavors.reduce((acc, f) => acc + f.slices, 0) || totalSlices;
+        let currAngle = -90;
+        flavors.forEach((f, i) => {
+          const sweep = (f.slices / total) * 360;
+          const radLine = (currAngle * Math.PI) / 180;
+          const lx = cx + r * Math.cos(radLine);
+          const ly = cy + r * Math.sin(radLine);
+          svg += `<line x1="${cx}" y1="${cy}" x2="${lx}" y2="${ly}" stroke="#d97706" stroke-width="1.8" />`;
+
+          const midAngle = currAngle + sweep / 2;
+          const midRad = (midAngle * Math.PI) / 180;
+          const tx = cx + (r * 0.55) * Math.cos(midRad);
+          const ty = cy + (r * 0.55) * Math.sin(midRad);
+          svg += `<text x="${tx}" y="${ty}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${Math.round(size * 0.28)}" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${sectorColors[i % sectorColors.length]}">${f.slices}</text>`;
+          currAngle += sweep;
+        });
+      }
+
+      svg += `<circle cx="${cx}" cy="${cy}" r="2.5" fill="#d97706" />`;
+      return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0;">${svg}</svg>`;
+    }
+
+    // Gerador de Diagrama de Pizza com Callouts e Adicionais para a Interface Desktop
+    function generatePizzaCalloutSvgUi(item, options = {}) {
+      const { totalSlices, flavors } = parsePizzaFlavorsWithSlices(item);
+      const isDarkUi = options.dark !== false;
+
+      const strokeColor = isDarkUi ? "#ffffff" : "#000000";
+      const crustColor = isDarkUi ? "#d97706" : "#000000";
+      const numColor = isDarkUi ? "#ffffff" : "#000000";
+      const textColor = isDarkUi ? "#ffffff" : "#000000";
+      const toppingColor = isDarkUi ? "#34d399" : "#000000";
+      const pointerColor = isDarkUi ? "#e31837" : "#000000";
+
+      const toppingsByFlavor = {};
+      const fullToppings = [];
+
+      (item.toppings || []).forEach((t) => {
+        const tName = t.toppingName || t.name || "";
+        if (t.targetType === "FULL" || t.targetType === "INTEIRA" || !t.flavorName) {
+          fullToppings.push(tName);
+        } else {
+          const target = (t.flavorName || "").toLowerCase().replace(/^\d+\s*fatias?\s*/i, "").trim();
+          const matched = flavors.find((f) => {
+            const fn = f.cleanName.toLowerCase().replace(/^\d+\s*fatias?\s*/i, "").trim();
+            return fn === target || fn.includes(target) || target.includes(fn);
+          });
+          const key = matched ? matched.cleanName : flavors[0]?.cleanName || "default";
+          if (!toppingsByFlavor[key]) toppingsByFlavor[key] = [];
+          toppingsByFlavor[key].push(tName);
+        }
+      });
+
+      const width = 310;
+      const cx = 155;
+      const cy = 80;
+      const r = 40;
+
+      const count = flavors.length;
+      let leftFlavors = [];
+      let rightFlavors = [];
+
+      if (count <= 1) {
+        rightFlavors = [{ ...flavors[0], sectorAngle: 0, toppings: toppingsByFlavor[flavors[0]?.cleanName] || [] }];
+      } else if (count === 2) {
+        leftFlavors = [{ ...flavors[0], sectorAngle: 180, toppings: toppingsByFlavor[flavors[0]?.cleanName] || [] }];
+        rightFlavors = [{ ...flavors[1], sectorAngle: 0, toppings: toppingsByFlavor[flavors[1]?.cleanName] || [] }];
+      } else if (count === 3) {
+        leftFlavors = [{ ...flavors[0], sectorAngle: 180, toppings: toppingsByFlavor[flavors[0]?.cleanName] || [] }];
+        rightFlavors = [
+          { ...flavors[1], sectorAngle: 320, toppings: toppingsByFlavor[flavors[1]?.cleanName] || [] },
+          { ...flavors[2], sectorAngle: 50, toppings: toppingsByFlavor[flavors[2]?.cleanName] || [] },
+        ];
+      } else {
+        leftFlavors = [
+          { ...flavors[0], sectorAngle: 225, toppings: toppingsByFlavor[flavors[0]?.cleanName] || [] },
+          { ...flavors[1], sectorAngle: 135, toppings: toppingsByFlavor[flavors[1]?.cleanName] || [] },
+        ];
+        rightFlavors = [
+          { ...flavors[2], sectorAngle: 315, toppings: toppingsByFlavor[flavors[2]?.cleanName] || [] },
+          { ...flavors[3], sectorAngle: 45, toppings: toppingsByFlavor[flavors[3]?.cleanName] || [] },
+        ];
+      }
+
+      // Calcula altura dinamica para comportar perfeitamente todos os adicionais
+      let maxY = 150;
+      leftFlavors.forEach((f, i) => {
+        const callY = leftFlavors.length === 1 ? cy : (i === 0 ? cy - 26 : cy + 32);
+        const bottom = callY + 12 + (f.toppings.length * 11);
+        if (bottom > maxY) maxY = bottom;
+      });
+      rightFlavors.forEach((f, i) => {
+        const callY = rightFlavors.length === 1 ? cy : (i === 0 ? cy - 26 : cy + 32);
+        const bottom = callY + 12 + (f.toppings.length * 11);
+        if (bottom > maxY) maxY = bottom;
+      });
+      const height = maxY + 10;
+
+      const getFontSize = (txt) => {
+        if (!txt) return 10.5;
+        if (txt.length > 17) return 8.5;
+        if (txt.length > 13) return 9.5;
+        return 10.5;
+      };
+
+      let svgElements = "";
+
+      svgElements += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${isDarkUi ? "#201810" : "#ffffff"}" stroke="${crustColor}" stroke-width="2.5" />`;
+      svgElements += `<circle cx="${cx}" cy="${cy}" r="${r - 3.5}" fill="none" stroke="${crustColor}" stroke-width="0.8" stroke-dasharray="2,2" />`;
+
+      if (count <= 1) {
+        const s = flavors[0]?.slices || totalSlices;
+        svgElements += `
+          <text x="${cx}" y="${cy - 3}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="20" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${s}</text>
+          <text x="${cx}" y="${cy + 10}" font-family="Arial, sans-serif" font-size="7.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
+        `;
+      } else if (count === 2) {
+        svgElements += `<line x1="${cx}" y1="${cy - r}" x2="${cx}" y2="${cy + r}" stroke="${strokeColor}" stroke-width="2" />`;
+        svgElements += `
+          <text x="${cx - 18}" y="${cy - 3}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="17" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${flavors[0].slices}</text>
+          <text x="${cx - 18}" y="${cy + 10}" font-family="Arial, sans-serif" font-size="7.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
+        `;
+        svgElements += `
+          <text x="${cx + 18}" y="${cy - 3}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="17" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${flavors[1].slices}</text>
+          <text x="${cx + 18}" y="${cy + 10}" font-family="Arial, sans-serif" font-size="7.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
+        `;
+      } else if (count === 3) {
+        svgElements += `<line x1="${cx}" y1="${cy - r}" x2="${cx}" y2="${cy}" stroke="${strokeColor}" stroke-width="2" />`;
+        svgElements += `<line x1="${cx}" y1="${cy}" x2="${cx + r * Math.cos(0.2 * Math.PI)}" y2="${cy + r * Math.sin(0.2 * Math.PI)}" stroke="${strokeColor}" stroke-width="2" />`;
+        svgElements += `<line x1="${cx}" y1="${cy}" x2="${cx + r * Math.cos(0.68 * Math.PI)}" y2="${cy + r * Math.sin(0.68 * Math.PI)}" stroke="${strokeColor}" stroke-width="2" />`;
+
+        svgElements += `
+          <text x="${cx - 19}" y="${cy - 3}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="17" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${flavors[0].slices}</text>
+          <text x="${cx - 19}" y="${cy + 11}" font-family="Arial, sans-serif" font-size="7.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
+        `;
+        svgElements += `
+          <text x="${cx + 17}" y="${cy - 15}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="15" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${flavors[1].slices}</text>
+          <text x="${cx + 17}" y="${cy - 3}" font-family="Arial, sans-serif" font-size="7" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
+        `;
+        svgElements += `
+          <text x="${cx + 15}" y="${cy + 15}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="15" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${flavors[2].slices}</text>
+          <text x="${cx + 15}" y="${cy + 27}" font-family="Arial, sans-serif" font-size="7" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
+        `;
+      } else {
+        const total = flavors.reduce((a, f) => a + f.slices, 0) || totalSlices;
+        let curr = -90;
+        flavors.forEach((f) => {
+          const sweep = (f.slices / total) * 360;
+          const rad = (curr * Math.PI) / 180;
+          svgElements += `<line x1="${cx}" y1="${cy}" x2="${cx + r * Math.cos(rad)}" y2="${cy + r * Math.sin(rad)}" stroke="${strokeColor}" stroke-width="2" />`;
+          const mid = ((curr + sweep / 2) * Math.PI) / 180;
+          const tx = cx + r * 0.55 * Math.cos(mid);
+          const ty = cy + r * 0.55 * Math.sin(mid);
+          svgElements += `
+            <text x="${tx}" y="${ty - 3}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="14" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${f.slices}</text>
+            <text x="${tx}" y="${ty + 8}" font-family="Arial, sans-serif" font-size="6.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
+          `;
+          curr += sweep;
+        });
+      }
+
+      svgElements += `<circle cx="${cx}" cy="${cy}" r="3" fill="${crustColor}" />`;
+
+      // Callouts Esquerda (Diagonal/apontador + Linha horizontal abaixo do sabor + Adicionais com +)
+      if (leftFlavors.length === 1) {
+        const f = leftFlavors[0];
+        const callY = cy;
+        const px = cx - r;
+        const py = cy;
+        const lineEndX = cx - r - 6;
+        const maxTxt = Math.max(f.cleanName.length * 7.5, ...f.toppings.map(t => (t.length + 1) * 6.5), 45);
+        const lineStartX = Math.max(6, lineEndX - maxTxt - 6);
+        const fSize = getFontSize(f.cleanName);
+
+        svgElements += `<polyline points="${px},${py} ${lineEndX},${callY} ${lineStartX},${callY}" stroke="${pointerColor}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />`;
+        svgElements += `<text x="${lineStartX + 1}" y="${callY - 3}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${fSize}" font-weight="900" fill="${textColor}" text-anchor="start">${f.cleanName.toUpperCase()}</text>`;
+
+        f.toppings.forEach((top, idx) => {
+          svgElements += `<text x="${lineStartX + 3}" y="${callY + 11 + idx * 10}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="8.5" font-weight="bold" fill="${toppingColor}" text-anchor="start">+${top.toUpperCase()}</text>`;
+        });
+      } else if (leftFlavors.length > 1) {
+        leftFlavors.forEach((f, i) => {
+          const callY = i === 0 ? cy - 24 : cy + 30;
+          const rad = (f.sectorAngle * Math.PI) / 180;
+          const px = cx + r * Math.cos(rad);
+          const py = cy + r * Math.sin(rad);
+          const lineEndX = cx - r - 6;
+          const maxTxt = Math.max(f.cleanName.length * 7.5, ...f.toppings.map(t => (t.length + 1) * 6.5), 45);
+          const lineStartX = Math.max(6, lineEndX - maxTxt - 6);
+          const fSize = getFontSize(f.cleanName);
+
+          svgElements += `<polyline points="${px.toFixed(1)},${py.toFixed(1)} ${lineEndX},${callY} ${lineStartX},${callY}" stroke="${pointerColor}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />`;
+          svgElements += `<text x="${lineStartX + 1}" y="${callY - 3}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${fSize}" font-weight="900" fill="${textColor}" text-anchor="start">${f.cleanName.toUpperCase()}</text>`;
+
+          f.toppings.forEach((top, idx) => {
+            svgElements += `<text x="${lineStartX + 3}" y="${callY + 10 + idx * 9}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="8" font-weight="bold" fill="${toppingColor}" text-anchor="start">+${top.toUpperCase()}</text>`;
+          });
+        });
+      }
+
+      // Callouts Direita (Diagonal/apontador + Linha horizontal abaixo do sabor + Adicionais com +)
+      if (rightFlavors.length === 1) {
+        const f = rightFlavors[0];
+        const callY = cy;
+        const px = cx + r;
+        const py = cy;
+        const lineStartX = cx + r + 6;
+        const maxTxt = Math.max(f.cleanName.length * 7.5, ...f.toppings.map(t => (t.length + 1) * 6.5), 45);
+        const lineEndX = Math.min(width - 6, lineStartX + maxTxt + 6);
+        const fSize = getFontSize(f.cleanName);
+
+        svgElements += `<polyline points="${px},${py} ${lineStartX},${callY} ${lineEndX},${callY}" stroke="${pointerColor}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />`;
+        svgElements += `<text x="${lineStartX + 1}" y="${callY - 3}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${fSize}" font-weight="900" fill="${textColor}" text-anchor="start">${f.cleanName.toUpperCase()}</text>`;
+
+        f.toppings.forEach((top, idx) => {
+          svgElements += `<text x="${lineStartX + 3}" y="${callY + 11 + idx * 10}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="8.5" font-weight="bold" fill="${toppingColor}" text-anchor="start">+${top.toUpperCase()}</text>`;
+        });
+      } else if (rightFlavors.length > 1) {
+        rightFlavors.forEach((f, i) => {
+          const callY = i === 0 ? cy - 24 : cy + 30;
+          const rad = (f.sectorAngle * Math.PI) / 180;
+          const px = cx + r * Math.cos(rad);
+          const py = cy + r * Math.sin(rad);
+          const lineStartX = cx + r + 6;
+          const maxTxt = Math.max(f.cleanName.length * 7.5, ...f.toppings.map(t => (t.length + 1) * 6.5), 45);
+          const lineEndX = Math.min(width - 6, lineStartX + maxTxt + 6);
+          const fSize = getFontSize(f.cleanName);
+
+          svgElements += `<polyline points="${px.toFixed(1)},${py.toFixed(1)} ${lineStartX},${callY} ${lineEndX},${callY}" stroke="${pointerColor}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />`;
+          svgElements += `<text x="${lineStartX + 1}" y="${callY - 3}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${fSize}" font-weight="900" fill="${textColor}" text-anchor="start">${f.cleanName.toUpperCase()}</text>`;
+
+          f.toppings.forEach((top, idx) => {
+            svgElements += `<text x="${lineStartX + 3}" y="${callY + 11 + idx * 10}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="8.5" font-weight="bold" fill="${toppingColor}" text-anchor="start">+${top.toUpperCase()}</text>`;
+          });
+        });
+      }
+
+      const pizzaSvg = `
+        <svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="display:block; margin: 4px auto;">
+          ${svgElements}
+        </svg>
+      `;
+
+      return { totalSlices, flavors, fullToppings, pizzaSvg };
+    }
+
+    function createOrderCard(order) {
+      const isTableOrder = order.type === "COMANDA" || Boolean(order.comandaId);
+      const card = document.createElement("div");
+      card.className = `order-card ${isTableOrder ? "mesa" : (order.type ? order.type.toLowerCase() : "delivery")}`;
+
+      // Tag do Card
+      let tagHtml = "";
+      if (isTableOrder) {
+        const tableLabel = order.customerName && order.customerName.includes("Mesa")
+          ? order.customerName
+          : (order.comanda?.number ? `Mesa ${order.comanda.number}` : "Mesa");
+        tagHtml = `<span class="card-tag tag-mesa">🍽️ ${tableLabel}</span>`;
+      } else if (order.type === "RETIRADA") {
+        tagHtml = `<span class="card-tag tag-retirada">🛍️ Retirada</span>`;
+      } else {
+        tagHtml = `<span class="card-tag tag-delivery">🛵 Delivery</span>`;
+      }
+
+      // Itens do Pedido com Pizza Dinâmica e Fatias
+      const itemsHtml = (order.items || []).map((item) => {
+        let pizzaBlock = "";
+        const isPizzaItem = Boolean(item.isPizza) || (item.name && item.name.toLowerCase().includes("pizza")) || (item.flavors && item.flavors.length > 0);
+        if (isPizzaItem) {
+          const parsed = parsePizzaFlavorsWithSlices(item);
+          const svgIcon = generatePizzaSvgUi(parsed.flavors, parsed.totalSlices, 50);
+
+          const flavorsList = parsed.flavors.map((f) => {
+            const fName = f.cleanName.toLowerCase().replace(/^\d+\s*fatias?\s*/i, "").trim();
+            const fTops = (item.toppings || []).filter((t) => {
+              if (t.targetType === "FULL" || t.targetType === "INTEIRA" || !t.flavorName) return false;
+              const tTarget = (t.flavorName || "").toLowerCase().replace(/^\d+\s*fatias?\s*/i, "").trim();
+              return tTarget === fName || tTarget.includes(fName) || fName.includes(tTarget);
+            }).map((t) => t.toppingName || t.name);
+
+            const topsText = fTops.length > 0 ? `<span style="color:#34d399; font-size:10px; margin-left:4px; font-weight:700;">(+ ${fTops.join(", ")})</span>` : "";
+
+            return `
+              <div class="card-pizza-flavor-row" title="${f.slices} fatias - ${f.cleanName}">
+                <span class="slice-badge">${f.slices} FAT</span>
+                <span style="font-weight:700;">${f.cleanName}</span>
+                ${topsText}
+              </div>
+            `;
+          }).join("");
+
+          pizzaBlock = `
+            <div class="card-pizza-box">
+              ${svgIcon}
+              <div class="card-pizza-flavors">
+                ${flavorsList}
+              </div>
+            </div>
+          `;
+        }
+        return `
+          <div class="card-item-line">
+            <div style="font-size:12px; font-weight:700; color:#fff;">
+              <span style="color:var(--yellow);">${item.quantity}x</span> ${item.name}
+            </div>
+            ${pizzaBlock}
+          </div>
+        `;
+      }).join("");
+
+      // Rotulo do Pagamento (Oculto para mesas/comandas)
+      const paymentLabels = {
+        PIX: "PIX",
+        DINHEIRO: "Dinheiro",
+        CREDITO: "Crédito",
+        DEBITO: "Débito",
+        CARTAO: "Cartão",
+      };
+      const payLabel = paymentLabels[order.paymentMethod] || (order.paymentMethod || "Pendente");
+
+      // Endereço (se delivery)
+      const addressHtml = (order.type === "DELIVERY" && order.customerAddress)
+        ? `<div class="card-address-box">📍 ${order.customerAddress}, ${order.addressNumber || ""}${order.reference ? `<span style="display:block; opacity:0.75;">Ref: ${order.reference}</span>` : ""}</div>`
+        : "";
+
+      card.innerHTML = `
+        <!-- Header do Card -->
+        <div class="card-top-row">
+          <div>
+            <span class="card-order-num">#${order.orderNumber}</span>
+            <span class="card-cust-name">${order.customerName || "Cliente"}</span>
+          </div>
+          ${tagHtml}
+        </div>
+
+        <!-- Itens do Pedido -->
+        <div class="card-items-box">
+          ${itemsHtml || '<div style="color:#777; font-size:11px;">Sem itens cadastrados</div>'}
+        </div>
+
+        <!-- Observação da Cozinha (Super Destacada) -->
+        ${order.notes ? `
+          <div class="card-obs-box">
+            <span style="font-size:18px; line-height:1;">⚠️</span>
+            <div style="flex:1;">
+              <div style="font-size:10px; font-weight:900; letter-spacing:0.5px; text-transform:uppercase; color:#34d399;">OBSERVAÇÃO DA COZINHA:</div>
+              <div style="font-size:12px; font-weight:700; color:#ffffff; margin-top:2px;">&quot;${order.notes}&quot;</div>
+            </div>
+          </div>
+        ` : ""}
+
+        <!-- Endereço se Delivery -->
+        ${addressHtml}
+
+        <!-- Pagamento e Total (Mesas nunca mostram forma de pagamento) -->
+        <div class="card-meta-row">
+          ${!isTableOrder ? `<span>Pg: <strong>${payLabel}</strong></span>` : `<span style="color:#d8b4fe; font-weight:700;">🍽️ Pagamento no Balcão</span>`}
+          <span class="card-total-val">Total: R$ ${parseFloat(order.total || 0).toFixed(2)}</span>
+        </div>
+
+        <!-- Ações do Card -->
+        <div class="card-actions-row">
+          ${getActionButtonsHtml(order, isTableOrder)}
+          <button class="btn-card-print" title="Reimprimir cupom térmico" onclick="event.stopPropagation(); handleManualPrint('${order.id}')">🖨️</button>
+        </div>
+      `;
+
+      card.addEventListener("click", () => openOrderDetailsModal(order));
+      return card;
+    }
+
+    function getActionButtonsHtml(order, isTable) {
+      // 1. NOVO -> Preparar
+      if (order.status === "NOVO") {
+        return `<button class="btn-card-action btn-red" onclick="event.stopPropagation(); handleUpdateStatus('${order.id}', 'EM_PREPARO')">Preparar (Cozinha)</button>`;
+      }
+
+      // 2. EM PREPARO
+      if (order.status === "EM_PREPARO") {
+        if (order.type === "DELIVERY") {
+          return `<button class="btn-card-action btn-blue" onclick="event.stopPropagation(); handleUpdateStatus('${order.id}', 'EM_ROTA')">Enviar Rota</button>`;
+        }
+        if (order.type === "RETIRADA") {
+          return `<button class="btn-card-action btn-amber" onclick="event.stopPropagation(); handleUpdateStatus('${order.id}', 'PRONTO_RETIRADA')">Colocar no Balcao</button>`;
+        }
+        // Comanda de mesa pronta
+        return `<button class="btn-card-action btn-purple" onclick="event.stopPropagation(); handleUpdateStatus('${order.id}', 'PRONTO_RETIRADA')"><span>🍽️</span> Pronto p/ Servir (Mesa)</button>`;
+      }
+
+      // 3. EM ROTA (DELIVERY) -> Entregue
+      if (order.status === "EM_ROTA") {
+        return `<button class="btn-card-action btn-green" onclick="event.stopPropagation(); handleUpdateStatus('${order.id}', 'ENTREGUE')">Entregue</button>`;
+      }
+
+      // 4. PRONTO PARA RETIRADA OU CONSUMO NO LOCAL
+      if (order.status === "PRONTO_RETIRADA") {
+        if (isTable) {
+          return `<button class="btn-card-action btn-green" onclick="event.stopPropagation(); handleUpdateStatus('${order.id}', 'ENTREGUE')"><span>✓</span> Servido na Mesa</button>`;
+        }
+        return `<button class="btn-card-action btn-green" onclick="event.stopPropagation(); handleUpdateStatus('${order.id}', 'ENTREGUE')">Cliente Retirou</button>`;
+      }
+
+      // 5. CONCLUÍDOS
+      if (order.status === "ENTREGUE") {
+        return `<div class="btn-card-concluded">✓ Pedido Concluido</div>`;
+      }
+
+      return "";
+    }
+
+    async function handleUpdateStatus(orderId, newStatus) {
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/orders/${orderId}/status`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-print-auth": appSettings.apiKey,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Status atualizado com sucesso!`);
+        } else {
+          alert(data.error || "Erro ao atualizar status");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Erro de conexão ao alterar status do pedido.");
+      }
+    }
+
+    async function handleManualPrint(orderId) {
+      const order = ordersList.find((o) => o.id === orderId);
+      if (!order) return;
+
+      const stageCfg = appSettings.configs?.[order.status] || appSettings.configs?.["NOVO"];
+      const printer = stageCfg?.printer || "";
+
+      try {
+        await fetch("http://localhost:3001/print", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order, status: order.status }),
+        });
+        showToast(`Comando de impressão enviado para #${order.orderNumber}!`);
+      } catch (err) {
+        console.error("Erro manual print:", err);
+        alert("Falha ao se comunicar com o daemon local de impressão na porta 3001.");
+      }
+    }
+
+    // Modal de Detalhes do Pedido
+    function openOrderDetailsModal(order) {
+      document.getElementById("modal-order-title").textContent = `Pedido #${order.orderNumber} - ${order.customerName}`;
+      const isTable = order.type === "COMANDA" || Boolean(order.comandaId);
+
+      const itemsList = (order.items || [])
+        .map((it) => {
+          let pizzaVisual = "";
+          const isPizzaItem = Boolean(it.isPizza) || (it.name && it.name.toLowerCase().includes("pizza")) || (it.flavors && it.flavors.length > 0);
+          if (isPizzaItem) {
+            const { fullToppings, pizzaSvg, totalSlices } = generatePizzaCalloutSvgUi(it, { dark: true });
+
+            let crustInfo = it.crustType ? `<span style="font-size:11px; color:#aaa; margin-left:6px;">| Borda: <strong>${it.crustType}</strong>${it.caracolRequested ? " (Caracol)" : ""}</span>` : "";
+
+            let fullToppingsHtml = "";
+            if (fullToppings.length > 0) {
+              fullToppingsHtml = `
+                <div style="font-size:11px; color:#34d399; font-weight:700; margin-top:6px; border-top:1px dashed #333; padding-top:6px; text-align:center;">
+                  Adicionais na Pizza Toda: ${fullToppings.join(", ")}
+                </div>
+              `;
+            }
+
+            pizzaVisual = `
+              <div style="background:#181818; border:1px solid #333; border-radius:8px; padding:10px; margin-top:8px;">
+                <div style="font-size:11.5px; font-weight:800; color:#fbbf24; text-transform:uppercase; text-align:center; margin-bottom:4px;">
+                  Tamanho ${it.pizzaSize || "G"} (${totalSlices} Fatias)${crustInfo}
+                </div>
+                ${pizzaSvg}
+                ${fullToppingsHtml}
+              </div>
+            `;
+          }
+
+          return `
+            <div style="padding:8px 0; border-bottom:1px solid #282828; font-size:12px;">
+              <div style="display:flex; justify-content:space-between;">
+                <div><strong>${it.quantity}x</strong> ${it.name}</div>
+                <div style="font-family:monospace; font-weight:bold;">R$ ${parseFloat(it.totalPrice || 0).toFixed(2)}</div>
+              </div>
+              ${pizzaVisual}
+            </div>
+          `;
+        })
+        .join("");
+
+      document.getElementById("modal-order-body").innerHTML = `
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px; background:#1e1e1e; padding:12px; border-radius:12px;">
+          <div><span style="color:#999;">Tipo:</span> <strong>${isTable ? "COMANDA / MESA" : order.type}</strong></div>
+          <div><span style="color:#999;">Status:</span> <strong style="color:var(--yellow);">${order.status}</strong></div>
+          <div><span style="color:#999;">Pagamento:</span> <strong style="color:${isTable ? "#c084fc" : "#fff"};">${isTable ? "🍽️ Pagar no Balcão" : (order.paymentMethod || "Pendente")}</strong></div>
+          <div><span style="color:#999;">Horário:</span> <strong>${new Date(order.createdAt).toLocaleTimeString("pt-BR")}</strong></div>
+          ${order.customerAddress ? `<div style="grid-column:1/-1;"><span style="color:#999;">Endereço:</span> <strong>${order.customerAddress}, ${order.addressNumber || ""}</strong></div>` : ""}
+        </div>
+
+        <div style="margin-top:10px;">
+          <h4 style="font-size:12px; text-transform:uppercase; color:#999; margin-bottom:8px;">Itens do Pedido:</h4>
+          ${itemsList}
+        </div>
+
+        ${order.notes ? `
+          <div style="background:rgba(16, 185, 129, 0.15); border:1.5px solid #10b981; border-radius:8px; padding:10px 12px; margin-top:10px;">
+            <div style="font-size:10.5px; font-weight:900; text-transform:uppercase; color:#34d399; margin-bottom:2px;">⚠️ OBSERVAÇÃO DA COZINHA:</div>
+            <div style="font-size:12px; font-weight:700; color:#ffffff;">&quot;${order.notes}&quot;</div>
+          </div>
+        ` : ""}
+
+        <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:bold; padding-top:10px; border-top:1px solid #333;">
+          <span>Total Geral:</span>
+          <span style="color:var(--red); font-family:monospace; font-size:16px;">R$ ${parseFloat(order.total || 0).toFixed(2)}</span>
+        </div>
+      `;
+
+      document.getElementById("modal-order-footer").innerHTML = `
+        <button class="btn-action" onclick="handleManualPrint('${order.id}')">🖨️ Imprimir Cupom</button>
+        <button class="btn-action primary" onclick="closeModal('modal-order')">Fechar</button>
+      `;
+
+      document.getElementById("modal-order").classList.add("active");
+    }
+
+    // 4. FETCH E RENDER DE COMANDAS / MESAS
+    async function fetchComandas() {
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/comandas`, {
+          headers: {
+            "x-print-auth": appSettings.apiKey,
+          },
+        });
+        const data = await res.json();
+        if (data.comandas) {
+          comandasList = data.comandas;
+          renderComandas();
+        }
+      } catch (err) {
+        console.error("Erro ao buscar comandas:", err);
+      }
+    }
+
+    function renderComandas() {
+      const grid = document.getElementById("grid-comandas");
+      grid.innerHTML = "";
+
+      let totalOcupadas = 0;
+      let consumoTotal = 0;
+
+      const filterVal = document.getElementById("search-comanda").value.trim().toLowerCase();
+
+      comandasList.forEach((c) => {
+        if (c.status === "OCUPADA") {
+          totalOcupadas++;
+          consumoTotal += c.currentConsumption || 0;
+        }
+
+        if (filterVal && !String(c.number).includes(filterVal)) {
+          return;
+        }
+
+        const isOcupada = c.status === "OCUPADA";
+
+        const card = document.createElement("div");
+        card.className = `table-card ${isOcupada ? "ocupada" : ""}`;
+        card.innerHTML = `
+          <div class="table-header">
+            <span class="table-badge-num">Mesa ${c.number}</span>
+            <span class="table-status-pill ${isOcupada ? "status-ocupada" : "status-livre"}">
+              ${c.status}
+            </span>
+          </div>
+
+          <div>
+            <div class="table-consumption">R$ ${parseFloat(c.currentConsumption || 0).toFixed(2)}</div>
+            <div class="table-details-text">${c.activeOrdersCount || 0} pedido(s) em aberto</div>
+          </div>
+
+          <button class="btn-qr-card" onclick="event.stopPropagation(); openQrModal(${c.number})">
+            📱 QR Code da Mesa
+          </button>
+        `;
+
+        grid.appendChild(card);
+      });
+
+      document.getElementById("stat-total-mesas").textContent = comandasList.length;
+      document.getElementById("stat-ocupadas").textContent = totalOcupadas;
+      document.getElementById("stat-consumo").textContent = `R$ ${consumoTotal.toFixed(2)}`;
+      document.getElementById("badge-comandas").textContent = totalOcupadas;
+    }
+
+    document.getElementById("search-comanda").addEventListener("input", renderComandas);
+    document.getElementById("btn-sync-comandas").addEventListener("click", fetchComandas);
+
+    // 5. MODAL DE QR CODE DA MESA
+    async function openQrModal(tableNumber) {
+      currentQrTable = tableNumber;
+      const selectedIp = document.getElementById("cfg-network-ip").value || "localhost";
+      const port = "3000";
+      currentQrUrl = `http://${selectedIp}:${port}/mesa/${tableNumber}`;
+
+      document.getElementById("modal-qr-title").textContent = `QR Code - Mesa ${tableNumber}`;
+      document.getElementById("qr-url-input").value = currentQrUrl;
+
+      if (window.electronAPI) {
+        const qrRes = await window.electronAPI.generateQr(currentQrUrl);
+        if (qrRes.success) {
+          currentQrDataUrl = qrRes.dataUrl;
+          document.getElementById("qr-image").src = currentQrDataUrl;
+        }
+      }
+
+      document.getElementById("modal-qr").classList.add("active");
+    }
+
+    document.getElementById("btn-copy-qr-link").addEventListener("click", () => {
+      navigator.clipboard.writeText(currentQrUrl);
+      showToast("Link copiado para a área de transferência!");
+    });
+
+    document.getElementById("btn-print-qr-flyer").addEventListener("click", async () => {
+      if (!window.electronAPI) return;
+      const stageCfg = appSettings.configs?.["NOVO"] || appSettings.configs?.["EM_PREPARO"];
+      const printer = stageCfg?.printer || "";
+
+      showToast("Imprimindo placa QR Code da mesa...");
+      const res = await window.electronAPI.printQrFlyer(
+        printer,
+        currentQrTable,
+        currentQrDataUrl,
+        currentQrUrl
+      );
 
       if (res.success) {
-        printedLog.add(logKey);
-        addLog(`✓ Pedido #${order.orderNumber} IMPRESSO com sucesso para etapa ${status}.`);
+        showToast(`Placa da Mesa ${currentQrTable} impressa com sucesso!`);
       } else {
-        addLog(`✗ FALHA ao imprimir pedido #${order.orderNumber}: ${res.error || 'Erro desconhecido'}.`, "error");
+        alert("Erro ao imprimir placa QR.");
       }
+    });
+
+    // 6. STORE STATUS & ACTIONS
+    async function fetchStoreStatus() {
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/public/store-status`);
+        const data = await res.json();
+        if (data.open !== undefined) {
+          updateStoreButton(data.open);
+        }
+      } catch (err) {}
     }
 
-    // Formatacao do cupom termico (largura 32 chars - compativel com 58mm em font 11.5px)
-    function formatThermalReceipt(order) {
-      const W = 32; // largura total da linha
-      const line   = "-".repeat(W) + "\n";
-      const dline  = "=".repeat(W) + "\n";
+    function updateStoreButton(isOpen) {
+      const headerBtn = document.getElementById("btn-toggle-store");
+      const kanbanBtn = document.getElementById("btn-toggle-store-kanban");
 
-      // Helper: formata valor monetario com seguranca (Prisma Decimal pode vir como string)
-      const money = (v) => `R$${parseFloat(v || 0).toFixed(2)}`;
-
-      // Helper: linha com label e valor alinhados nas extremidades
-      const priceRow = (label, value) => {
-        const valStr = money(value);  // ex: "R$71.00" (7 chars)
-        const maxLabel = W - valStr.length - 1;
-        const labelStr = label.substring(0, maxLabel);
-        const spaces = W - labelStr.length - valStr.length;
-        return labelStr + " ".repeat(Math.max(1, spaces)) + valStr + "\n";
-      };
-
-      // Helper: centraliza texto (trunca se for maior que W)
-      const center = (text) => {
-        const t = text.substring(0, W);
-        const pad = Math.max(0, Math.floor((W - t.length) / 2));
-        return " ".repeat(pad) + t + "\n";
-      };
-
-      // Helper: linha simples que nao ultrapassa W chars
-      const row = (str) => str.substring(0, W) + "\n";
-
-      let out = "";
-      out += dline;
-      out += center("ARTISANAL CRUST & EMBER");
-      out += center("AllDelivery");
-      out += dline;
-
-      const dataStr = new Date(order.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-      out += row(`Pedido: #${order.orderNumber}`);
-      out += row(`Data  : ${dataStr}`);
-      out += row(`Tipo  : ${order.type}`);
-      out += row(`Pagto : ${order.paymentMethod}`);
-      if (order.changeFor && parseFloat(order.changeFor) > 0) {
-        out += row(`Troco : ${money(order.changeFor)}`);
-      }
-
-      out += line;
-      out += row(`Cliente: ${order.customerName}`);
-      out += row(`Tel    : ${order.customerPhone}`);
-      if (order.customerAddress) {
-        const addr = `${order.customerAddress}, ${order.addressNumber || ""}`;
-        out += "Endereco:\n";
-        out += row(`  ${addr}`);
-        if (order.reference) out += row(`Ref: ${order.reference}`);
-      }
-
-      out += line;
-      // Cabecalho da tabela de itens
-      const hQty = "Qtd";
-      const hPrice = "Preco";
-      const hItem = "Item".padEnd(W - hQty.length - hPrice.length - 2, " ");
-      out += `${hQty} ${hItem} ${hPrice}\n`;
-      out += line;
-
-      for (const item of order.items) {
-        const qty   = String(item.quantity).padEnd(3, " ");
-        const price = money(item.totalPrice);  // ex: "R$71.00"
-        const nameMax = W - qty.length - price.length - 2;
-        const name  = (item.name || "").substring(0, nameMax).padEnd(nameMax, " ");
-        out += `${qty} ${name} ${price}\n`;
-
-        if (item.isPizza && item.flavors && item.flavors.length > 0) {
-          if (item.pizzaSize) out += row(`  Tam: ${item.pizzaSize} Borda: ${item.crustType || "Trad"}`);
-          for (const f of item.flavors) {
-            const fn = (f.flavorName || f.name || "").substring(0, W - 5);
-            out += `  - ${fn}\n`;
-          }
+      if (headerBtn) {
+        if (isOpen) {
+          headerBtn.className = "btn-delivery-status open";
+          headerBtn.innerHTML = '<span class="dot online"></span><span>DELIVERY ON</span>';
+        } else {
+          headerBtn.className = "btn-delivery-status closed";
+          headerBtn.innerHTML = '<span class="dot offline"></span><span>DELIVERY OFF</span>';
         }
       }
 
-      out += line;
-      out += priceRow("Subtotal", order.subtotal);
-      if (parseFloat(order.deliveryFee || 0) > 0) {
-        out += priceRow("Taxa Entrega", order.deliveryFee);
-      }
-      out += dline;
-      out += priceRow("TOTAL", order.total);
-      out += dline;
-
-      if (order.notes) {
-        out += "Obs:\n";
-        const notes = order.notes;
-        for (let i = 0; i < notes.length; i += W - 2) {
-          out += `  ${notes.substring(i, i + W - 2)}\n`;
+      if (kanbanBtn) {
+        if (isOpen) {
+          kanbanBtn.className = "btn-delivery-badge open";
+          kanbanBtn.innerHTML = '<span class="dot online"></span><span>DELIVERY: ABERTO (ON)</span>';
+        } else {
+          kanbanBtn.className = "btn-delivery-badge closed";
+          kanbanBtn.innerHTML = '<span class="dot offline"></span><span>DELIVERY: FECHADO (OFF)</span>';
         }
-        out += line;
       }
-
-      out += "\n\n\n\n";
-      return out;
     }
 
-    // Inicializa
-    init();
+    async function handleToggleStore() {
+      const headerBtn = document.getElementById("btn-toggle-store");
+      const isOpen = headerBtn ? headerBtn.classList.contains("open") : true;
+      const next = !isOpen;
+
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/store-status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-print-auth": appSettings.apiKey,
+          },
+          body: JSON.stringify({ open: next }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          updateStoreButton(next);
+          showToast(`Delivery ${next ? "ABERTO" : "FECHADO"}`);
+        }
+      } catch (err) {
+        alert("Erro ao alterar status do delivery");
+      }
+    }
+
+    document.getElementById("btn-toggle-store").addEventListener("click", handleToggleStore);
+    const btnKanbanStore = document.getElementById("btn-toggle-store-kanban");
+    if (btnKanbanStore) {
+      btnKanbanStore.addEventListener("click", handleToggleStore);
+    }
+
+    document.getElementById("btn-refresh").addEventListener("click", () => {
+      showToast("Atualizando dados...");
+      fetchOrders();
+      fetchComandas();
+    });
+
+    document.getElementById("btn-sound-toggle").addEventListener("click", () => {
+      appSettings.soundEnabled = !appSettings.soundEnabled;
+      document.getElementById("btn-sound-toggle").textContent = appSettings.soundEnabled ? "🔔" : "🔕";
+      showToast(`Som de alerta: ${appSettings.soundEnabled ? "ATIVADO" : "DESATIVADO"}`);
+    });
+
+    // 7. TESTE DE IMPRESSÃO
+    async function handleTestPrint(statusKey) {
+      const sel = document.getElementById(`printer-${statusKey}`);
+      const printer = sel ? sel.value : "";
+
+      if (!window.electronAPI) {
+        alert("Electron API não disponível neste ambiente");
+        return;
+      }
+
+      showToast(`Enviando teste para ${printer || "Impressora Padrão"}...`);
+      const res = await window.electronAPI.testPrint(printer, statusKey);
+      if (res.success) {
+        showToast("Teste de impressão concluído com sucesso!");
+      } else {
+        alert("Falha no teste de impressão.");
+      }
+    }
+
+    // 8. SALVAR CONFIGURAÇÕES
+    document.getElementById("btn-save-settings").addEventListener("click", async () => {
+      appSettings.serverUrl = document.getElementById("cfg-server-url").value.trim();
+      appSettings.apiKey = document.getElementById("cfg-api-key").value.trim();
+
+      ["NOVO", "EM_PREPARO", "PRONTO_RETIRADA", "EM_ROTA", "ENTREGUE"].forEach((key) => {
+        appSettings.configs[key] = {
+          auto: document.getElementById(`auto-${key}`).checked,
+          printer: document.getElementById(`printer-${key}`).value,
+          copies: parseInt(document.getElementById(`copies-${key}`).value, 10) || 1,
+        };
+      });
+
+      if (window.electronAPI) {
+        await window.electronAPI.saveSettings(appSettings);
+      }
+
+      connectSSE();
+      fetchOrders();
+      fetchComandas();
+      showToast("Todas as configurações foram salvas com sucesso!");
+    });
+
+    // Teste de conexão
+    document.getElementById("btn-test-connection").addEventListener("click", async () => {
+      const url = document.getElementById("cfg-server-url").value.trim();
+      const key = document.getElementById("cfg-api-key").value.trim();
+      const resSpan = document.getElementById("conn-test-result");
+
+      resSpan.textContent = "Testando conexão...";
+      resSpan.style.color = "var(--yellow)";
+
+      try {
+        const res = await fetch(`${url}/api/admin/orders?days=1`, {
+          headers: { "x-print-auth": key },
+        });
+
+        if (res.ok) {
+          resSpan.textContent = "✓ Conexão bem-sucedida!";
+          resSpan.style.color = "var(--green)";
+        } else {
+          resSpan.textContent = "✕ Falha: chave inválida ou rota não autorizada";
+          resSpan.style.color = "var(--red)";
+        }
+      } catch (err) {
+        resSpan.textContent = `✕ Erro: Servidor inalcançável em ${url}`;
+        resSpan.style.color = "var(--red)";
+      }
+    });
+
+    // Onboarding connect
+    document.getElementById("btn-setup-connect").addEventListener("click", async () => {
+      appSettings.serverUrl = document.getElementById("setup-server-url").value.trim();
+      appSettings.apiKey = document.getElementById("setup-api-key").value.trim();
+
+      if (window.electronAPI) {
+        await window.electronAPI.saveSettings(appSettings);
+      }
+
+      document.getElementById("modal-setup").classList.remove("active");
+      populateSettingsFields();
+      connectSSE();
+      fetchOrders();
+      fetchComandas();
+      showToast("Configurado com sucesso!");
+    });
+
+    // Inicia aplicação
+    window.addEventListener("DOMContentLoaded", initDesktop);
   </script>
 </body>
 </html>

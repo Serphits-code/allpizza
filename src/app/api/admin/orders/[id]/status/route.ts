@@ -1,24 +1,20 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sseManager } from "@/lib/sse";
 import { OrderStatus, OrderType } from "@prisma/client";
+import { authenticateApiRequest } from "@/lib/apiAuth";
 
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  // Autenticação e Autorização RBAC
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  // Autenticação e Autorização RBAC ou API Key do Desktop
+  const auth = await authenticateApiRequest(request, ["ADMIN", "MANAGER", "KITCHEN", "GARCOM"]);
+  if (!auth.authorized || !auth.user) {
+    return NextResponse.json({ error: auth.error || "Não autorizado" }, { status: 401 });
   }
 
-  const userRole = session.user.role;
-  if (!["ADMIN", "MANAGER", "KITCHEN", "GARCOM"].includes(userRole)) {
-    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
-  }
+  const userRole = auth.user.role;
 
   try {
     const { id } = params;
@@ -72,6 +68,7 @@ export async function PATCH(
         items: {
           include: {
             flavors: true,
+            toppings: true,
           },
         },
       },

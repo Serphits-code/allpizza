@@ -1,26 +1,13 @@
 import { sseManager } from "@/lib/sse";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { authenticateApiRequest } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  // Autenticação obrigatória: apenas usuários autenticados da equipe (ou token interno) podem escutar o barramento SSE
-  const session = await getServerSession(authOptions);
-  
-  // Permite autenticação via header secreto ou query param para daemon desktop
-  const { searchParams } = new URL(request.url);
-  const queryToken = searchParams.get("token");
-  const secretHeader = request.headers.get("x-print-auth");
-  const internalSecret = process.env.PRINT_SERVICE_SECRET || "alldelivery_internal_print_secret";
-
-  const isSecretValid =
-    Boolean(internalSecret) &&
-    ((secretHeader && secretHeader === internalSecret) ||
-      (queryToken && queryToken === internalSecret));
-
-  if (!session && !isSecretValid) {
-    return new Response(JSON.stringify({ error: "Não autorizado" }), {
+  // Autenticação obrigatória: sessões de equipe ou chave secreta de API
+  const auth = await authenticateApiRequest(request);
+  if (!auth.authorized) {
+    return new Response(JSON.stringify({ error: auth.error || "Não autorizado" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
     });

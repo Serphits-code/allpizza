@@ -150,14 +150,24 @@ export default function DashboardMetrics() {
     }
   }, [fromDate, toDate, fetchDashboard]);
 
-  // Polling automático em tempo real a cada 4 segundos
+  // Polling com detecção de visibilidade da aba (15s) e atualização imediata ao focar na janela
   useEffect(() => {
     if (!fromDate || !toDate) return;
-    const interval = setInterval(() => {
-      fetchDashboard(fromDate, toDate, true);
-    }, 4000);
 
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      fetchDashboard(fromDate, toDate, true);
+    }, 15000);
+
+    const onFocus = () => {
+      fetchDashboard(fromDate, toDate, true);
+    };
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [fromDate, toDate, fetchDashboard]);
 
   const formatCurrency = (val: number) =>

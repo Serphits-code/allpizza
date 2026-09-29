@@ -99,11 +99,29 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
 
   useEffect(() => {
     fetchOrderDetails();
-    const interval = setInterval(fetchOrderDetails, 5000);
-    return () => clearInterval(interval);
-  }, [orderId]);
 
-  // Polling de Geolocalização do Entregador (a cada 3 segundos, somente se status for EM_ROTA)
+    // Se o pedido já foi finalizado (ENTREGUE ou CANCELADO), não há necessidade de polling contínuo
+    if (order?.status === OrderStatus.ENTREGUE || order?.status === OrderStatus.CANCELADO) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      fetchOrderDetails();
+    }, 6000);
+
+    const onFocus = () => {
+      fetchOrderDetails();
+    };
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [orderId, order?.status]);
+
+  // Polling de Geolocalização do Entregador (a cada 4 segundos, somente se status for EM_ROTA e aba visível)
   useEffect(() => {
     if (!order || order.status !== OrderStatus.EM_ROTA) {
       setDriverActive(false);
@@ -114,6 +132,8 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
     }
 
     const fetchDriverLocation = async () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+
       try {
         const res = await fetch(`/api/public/driver-location?orderId=${orderId}`);
         const data = await res.json();
@@ -137,7 +157,7 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
     };
 
     fetchDriverLocation();
-    const locationInterval = setInterval(fetchDriverLocation, 3000);
+    const locationInterval = setInterval(fetchDriverLocation, 4000);
     return () => clearInterval(locationInterval);
   }, [order?.status, orderId]);
 

@@ -128,8 +128,20 @@ export default function DriverDashboard() {
   useEffect(() => {
     if (sessionStatus === "authenticated") {
       loadOrders();
-      const timer = setInterval(loadOrders, 5000);
-      return () => clearInterval(timer);
+      const timer = setInterval(() => {
+        if (typeof document !== "undefined" && document.hidden) return;
+        loadOrders();
+      }, 7000);
+
+      const onFocus = () => {
+        loadOrders();
+      };
+      window.addEventListener("focus", onFocus);
+
+      return () => {
+        clearInterval(timer);
+        window.removeEventListener("focus", onFocus);
+      };
     }
   }, [sessionStatus]);
 

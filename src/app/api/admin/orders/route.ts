@@ -1,23 +1,59 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sseManager } from "@/lib/sse";
 import { normalizeContactPhoneKey } from "@/lib/phone";
 import { roundCurrency } from "@/lib/pricing";
+import { authenticateApiRequest } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
 
-// POST /api/admin/orders - Cria pedido manual / subpedido de comanda
-export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+// GET /api/admin/orders - Retorna pedidos recentes com todos os detalhes para o Kanban
+export async function GET(request: Request) {
+  const auth = await authenticateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Não autorizado" }, { status: 401 });
   }
 
-  const role = session.user.role;
-  if (!["ADMIN", "MANAGER", "GARCOM", "KITCHEN"].includes(role)) {
-    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
+  try {
+    const url = new URL(request.url);
+    const daysParam = parseInt(url.searchParams.get("days") || "3", 10);
+    const filterDays = isNaN(daysParam) ? 3 : daysParam;
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - filterDays);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+        },
+      },
+      include: {
+        comanda: true,
+        items: {
+          include: {
+            flavors: true,
+            toppings: true,
+          },
+        },
+      },
+      orderBy: {
+        orderNumber: "desc",
+      },
+    });
+
+    return NextResponse.json({ success: true, orders });
+  } catch (error) {
+    console.error("List admin orders error:", error);
+    return NextResponse.json({ error: "Erro interno ao buscar pedidos" }, { status: 500 });
+  }
+}
+
+// POST /api/admin/orders - Cria pedido manual / subpedido de comanda
+export async function POST(request: Request) {
+  const auth = await authenticateApiRequest(request);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Não autorizado" }, { status: 401 });
   }
 
   try {
@@ -67,10 +103,16 @@ export async function POST(request: Request) {
         crustType: item.crustType || null,
         crustPrice,
         flavors: {
-          create: (item.flavors || []).map((f: any) => ({
-            flavorName: typeof f === "string" ? f : f.flavorName || f.name || "Sabor",
-            categoryName: f.categoryName || "Pizza",
-          })),
+          create: (item.flavors || []).map((f: any) => {
+            const rawName = typeof f === "string" ? f : f.flavorName || f.name || "Sabor";
+            const slices = f.slices;
+            const hasSlices = /^\d+\s*fatias?/i.test(rawName);
+            const flavorLabel = (!hasSlices && slices) ? `${slices} fatias ${rawName}` : rawName;
+            return {
+              flavorName: flavorLabel,
+              categoryName: f.categoryName || "Pizza",
+            };
+          }),
         },
         toppings: {
           create: (item.toppings || []).map((t: any) => ({
@@ -108,6 +150,18 @@ export async function POST(request: Request) {
 
     const phoneKey = customerPhone ? normalizeContactPhoneKey(customerPhone) : "00000000000";
 
+    // Reúne observações de itens e do pedido
+    const itemNotes = (items || [])
+      .filter((it: any) => it.notes && it.notes.trim())
+      .map((it: any) => `${(it.name || "Item").split("(")[0].trim()}: "${it.notes.trim()}"`);
+
+    let effectiveNotes = (notes || "").trim();
+    if (itemNotes.length > 0) {
+      effectiveNotes = effectiveNotes
+        ? `${effectiveNotes} | ${itemNotes.join(" | ")}`
+        : itemNotes.join(" | ");
+    }
+
     // Cria o Pedido em transação atômica
     const order = await prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
@@ -124,7 +178,7 @@ export async function POST(request: Request) {
           subtotal,
           deliveryFee: parsedDeliveryFee,
           total,
-          notes: notes || null,
+          notes: effectiveNotes || null,
           comandaId: comandaId || null,
           preparedAt: initialStatus === "EM_PREPARO" ? new Date() : null,
           items: {

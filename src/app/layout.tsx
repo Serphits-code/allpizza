@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -28,11 +24,12 @@ export default async function RootLayout({
 
   return (
     <html lang="pt-BR" className="dark">
-      <body className={`${inter.variable} ${playfair.variable} bg-brand-bg text-white antialiased`}>
+      <body className={`${inter.variable} bg-brand-bg text-white antialiased font-sans`}>
         <style
           dangerouslySetInnerHTML={{
             __html: `
               :root {
+                --font-playfair: var(--font-inter);
                 --brand-primary: ${config.primaryColor};
                 --brand-primary-hover: ${config.primaryColorHover};
               }

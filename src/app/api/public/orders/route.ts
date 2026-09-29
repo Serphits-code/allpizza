@@ -210,8 +210,12 @@ export async function POST(request: Request) {
               priceGG: dbFlavor.category.priceGG,
             },
           });
+          const slicesMatch = rawName.match(/^(\d+)\s*fatias?/i) || rawName.match(/\((\d+)\s*fatias?\)/i);
+          const slicesCount = (f as any).slices || (slicesMatch ? parseInt(slicesMatch[1], 10) : undefined);
+          const flavorLabel = slicesCount ? `${slicesCount} fatias ${dbFlavor.name}` : dbFlavor.name;
+
           validatedFlavorsData.push({
-            flavorName: dbFlavor.name,
+            flavorName: flavorLabel,
             categoryName: dbFlavor.category.name,
           });
         }

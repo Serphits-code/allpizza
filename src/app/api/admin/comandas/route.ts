@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { authenticateApiRequest } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/admin/comandas - Lista todas as comandas/mesas
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER" && session.user.role !== "GARCOM")) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+export async function GET(request: Request) {
+  const auth = await authenticateApiRequest(request, ["ADMIN", "MANAGER", "GARCOM"]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Não autorizado" }, { status: 401 });
   }
 
   try {
@@ -54,9 +53,9 @@ export async function GET() {
 
 // POST /api/admin/comandas - Cria comandas em lote usando transação
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
-    return NextResponse.json({ error: "Apenas administradores e gerentes podem gerar comandas" }, { status: 403 });
+  const auth = await authenticateApiRequest(request, ["ADMIN", "MANAGER"]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Apenas administradores e gerentes podem gerar comandas" }, { status: 403 });
   }
 
   try {

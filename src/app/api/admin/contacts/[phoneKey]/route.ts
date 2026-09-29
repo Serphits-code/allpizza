@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeContactPhoneKey } from "@/lib/phone";
 import { ContactAddress, ContactDetail } from "@/lib/admin-contacts";
 import { roundCurrency } from "@/lib/pricing";
+import { invalidateContactsCache } from "../route";
 
 export const dynamic = "force-dynamic";
 
@@ -178,6 +179,8 @@ export async function PATCH(
         ...(displayNameOverride !== undefined ? { displayNameOverride: String(displayNameOverride).trim() } : {}),
       },
     });
+
+    invalidateContactsCache();
 
     return NextResponse.json({ success: true, profile: updated });
   } catch (error) {

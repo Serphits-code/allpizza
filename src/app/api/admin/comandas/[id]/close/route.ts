@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { roundCurrency } from "@/lib/pricing";
+import { authenticateApiRequest } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +10,9 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER" && session.user.role !== "GARCOM")) {
-    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
+  const auth = await authenticateApiRequest(request, ["ADMIN", "MANAGER", "GARCOM"]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Acesso não autorizado para esta função" }, { status: 403 });
   }
 
   const { id } = params;
