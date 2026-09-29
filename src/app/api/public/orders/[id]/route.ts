@@ -35,6 +35,7 @@ export async function GET(
         items: {
           include: {
             flavors: true,
+            toppings: true,
           },
         },
       },
@@ -53,6 +54,7 @@ export async function GET(
         status: order.status,
         type: order.type,
         customerName: order.customerName,
+        customerPhone: order.customerPhone,
         customerAddress: order.customerAddress,
         addressNumber: order.addressNumber,
         reference: order.reference,

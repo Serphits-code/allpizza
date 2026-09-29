@@ -329,7 +329,21 @@ export default function CheckoutPage() {
 
       if (data.success && data.order) {
         clearCart();
-        router.push(`/checkout/sucesso?orderId=${data.order.id}`);
+        try {
+          if (typeof window !== "undefined") {
+            const rawPhone = customerPhone.replace(/\D/g, "");
+            localStorage.setItem("alldelivery_customer_phone", rawPhone);
+            localStorage.setItem("alldelivery_customer_name", customerName);
+            const savedOrders = JSON.parse(localStorage.getItem("alldelivery_customer_orders") || "[]");
+            if (!savedOrders.includes(data.order.id)) {
+              savedOrders.unshift(data.order.id);
+              localStorage.setItem("alldelivery_customer_orders", JSON.stringify(savedOrders.slice(0, 30)));
+            }
+          }
+        } catch (e) {
+          console.warn("Could not save customer order to localStorage:", e);
+        }
+        router.push(`/pedido/${data.order.id}`);
       } else {
         setSubmitError(data.error || "Erro ao enviar pedido.");
       }

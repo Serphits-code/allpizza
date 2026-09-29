@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, session } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
@@ -761,13 +761,24 @@ async function formatTableQrFlyer(tableNumber, qrDataUrl, mesaUrl) {
 function createWindow() {
   console.log("[Electron] Inicializando janela principal...");
 
+  // Configura partição persistente para o WhatsApp Web (mantém login e sessão salvas)
+  const waSession = session.fromPartition("persist:whatsapp");
+  waSession.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+  );
+  waSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    const allowed = ["notifications", "audioCapture", "media"];
+    if (allowed.includes(permission)) return callback(true);
+    callback(false);
+  });
+
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 850,
-    minWidth: 1024,
+    width: 1380,
+    height: 900,
+    minWidth: 1100,
     minHeight: 700,
     center: true,
-    title: "AllDelivery Desktop | Central de Pedidos, Impressão e Comandas",
+    title: "AllDelivery Desktop | Central de Pedidos, WhatsApp e Impressão",
     backgroundColor: "#121212",
     show: false,
     autoHideMenuBar: true,
@@ -775,6 +786,7 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      webviewTag: true,
     },
   });
 

@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <title>AllDelivery Desktop | Central de Pedidos, Impressão e Comandas</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root {
       --bg: #111111;
@@ -1078,6 +1080,448 @@
       from { transform: translateY(20px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
     }
+
+    /* WHATSAPP & DELIVERY SPLIT TAB (30/70) */
+    #tab-whatsapp {
+      display: none;
+      height: 100%;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #tab-whatsapp.active {
+      display: flex;
+    }
+
+    .wa-split-layout {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* ESQUERDA: PDV DELIVERY (30% - 32%) */
+    .pdv-delivery-pane {
+      flex: 0 0 33%;
+      min-width: 380px;
+      max-width: 500px;
+      height: 100%;
+      background-color: #141414;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 4px 0 16px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+    }
+
+    .pdv-header {
+      padding: 12px 16px;
+      background-color: #1a1a1a;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .pdv-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .pdv-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pdv-type-selector {
+      display: flex;
+      background-color: #222;
+      border-radius: 8px;
+      padding: 3px;
+      border: 1px solid var(--border);
+    }
+
+    .pdv-type-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #999;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .pdv-type-btn.active {
+      background-color: var(--red);
+      color: #fff;
+    }
+
+    .pdv-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .pdv-body::-webkit-scrollbar {
+      width: 6px;
+    }
+    .pdv-body::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 3px;
+    }
+
+    .pdv-section-card {
+      background-color: #1a1a1a;
+      border: 1px solid #282828;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .pdv-card-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #fbbf24;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .pdv-toggle-nav {
+      display: flex;
+      gap: 6px;
+    }
+
+    .pdv-nav-btn {
+      flex: 1;
+      background-color: #222;
+      border: 1px solid #333;
+      color: #aaa;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 7px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+
+    .pdv-nav-btn.active {
+      background-color: #2e2e2e;
+      color: #fff;
+      border-color: #666;
+    }
+
+    .sizes-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .size-btn {
+      background-color: #202020;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 6px 4px;
+      color: #ccc;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .size-btn:hover {
+      background-color: #2a2a2a;
+      border-color: #555;
+    }
+
+    .size-btn.active {
+      background-color: rgba(227, 24, 55, 0.15);
+      border-color: var(--red);
+      color: #fff;
+      box-shadow: 0 0 8px rgba(227, 24, 55, 0.3);
+    }
+
+    .size-letter {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .size-sub {
+      font-size: 9px;
+      color: #888;
+    }
+
+    .flavors-count-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .flavor-count-btn {
+      flex: 1;
+      background-color: #202020;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #aaa;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .flavor-count-btn.active {
+      background-color: #2a2a2a;
+      border-color: #fbbf24;
+      color: #fbbf24;
+    }
+
+    .flavor-slot {
+      background-color: #202020;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .flavor-slot-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #ddd;
+    }
+
+    .pdv-select {
+      background-color: #161616;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      padding: 7px 8px;
+      font-size: 11px;
+      width: 100%;
+      outline: none;
+    }
+
+    .pdv-select:focus {
+      border-color: #fbbf24;
+    }
+
+    .pdv-input {
+      background-color: #161616;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      padding: 7px 10px;
+      font-size: 12px;
+      width: 100%;
+      outline: none;
+    }
+
+    .pdv-input:focus {
+      border-color: var(--red);
+    }
+
+    .pdv-textarea {
+      background-color: #161616;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      padding: 7px 10px;
+      font-size: 12px;
+      width: 100%;
+      outline: none;
+      resize: vertical;
+      min-height: 50px;
+      font-family: inherit;
+    }
+
+    .pdv-textarea:focus {
+      border-color: var(--red);
+    }
+
+    .pdv-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .pdv-item-card {
+      background-color: #202020;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .pdv-item-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+    }
+
+    .pdv-item-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .pdv-item-desc {
+      font-size: 10px;
+      color: #aaa;
+      line-height: 1.3;
+    }
+
+    .pdv-item-price {
+      font-size: 12px;
+      font-weight: 800;
+      color: #fbbf24;
+      white-space: nowrap;
+    }
+
+    .pdv-item-del {
+      background: none;
+      border: none;
+      color: #e31837;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    .pdv-item-del:hover {
+      background-color: rgba(227, 24, 55, 0.15);
+    }
+
+    .pdv-footer {
+      padding: 12px 16px;
+      background-color: #181818;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .pdv-totals-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .pdv-total-val {
+      font-size: 19px;
+      font-weight: 900;
+      color: #fbbf24;
+    }
+
+    .btn-pdv-submit {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .btn-pdv-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45);
+    }
+
+    .btn-pdv-submit:disabled {
+      background: #333;
+      color: #777;
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* DIREITA: WHATSAPP WEB PANE (68% - 70%) */
+    .wa-web-pane {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background-color: #0c1317;
+      overflow: hidden;
+    }
+
+    .wa-pane-header {
+      padding: 10px 16px;
+      background-color: #202c33;
+      border-bottom: 1px solid #374248;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .wa-pane-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #e9edef;
+    }
+
+    .wa-pane-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .wa-webview-container {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background-color: #111b21;
+    }
+
+    #wa-webview {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
   </style>
 </head>
 <body>
@@ -1102,6 +1546,9 @@
       </button>
       <button class="tab-btn" data-tab="comandas">
         🍽️ Comandas / Mesas <span id="badge-comandas" class="tab-badge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="whatsapp">
+        💬 WhatsApp & Atendimento Delivery
       </button>
       <button class="tab-btn" data-tab="config">
         ⚙️ Configurações
@@ -1389,7 +1836,288 @@
         <button id="btn-save-settings" class="btn-save-all">💾 Salvar Todas as Configurações</button>
       </div>
     </div>
+
+    <!-- TAB 4: WHATSAPP WEB & ATENDIMENTO DELIVERY (SPLIT 30/70) -->
+    <div id="tab-whatsapp" class="tab-content">
+      <div class="wa-split-layout">
+        <!-- LADO ESQUERDO: PDV DELIVERY (30% - 33%) -->
+        <div class="pdv-delivery-pane">
+          <!-- CABEÇALHO DO PDV -->
+          <div class="pdv-header">
+            <div class="pdv-title-row">
+              <div class="pdv-title">⚡ Atendimento Rápido</div>
+              <button id="btn-pdv-clear" class="btn-action" style="padding: 4px 8px; font-size: 11px;" onclick="resetPdvForm()">Novo</button>
+            </div>
+            <div class="pdv-type-selector">
+              <button type="button" id="pdv-type-delivery" class="pdv-type-btn active" onclick="setPdvOrderType('DELIVERY')">
+                🛵 Delivery
+              </button>
+              <button type="button" id="pdv-type-retirada" class="pdv-type-btn" onclick="setPdvOrderType('RETIRADA')">
+                🛍️ Retirada
+              </button>
+            </div>
+          </div>
+
+          <!-- CORPO COM SCROLL: ITENS & DADOS DO CLIENTE -->
+          <div class="pdv-body">
+            <!-- ALTERNADOR ENTRE PIZZA E PRODUTOS -->
+            <div class="pdv-toggle-nav">
+              <button type="button" id="pdv-nav-pizza" class="pdv-nav-btn active" onclick="setPdvCatalogMode('pizza')">🍕 Pizza</button>
+              <button type="button" id="pdv-nav-products" class="pdv-nav-btn" onclick="setPdvCatalogMode('products')">🥤 Bebidas & Outros</button>
+            </div>
+
+            <!-- MODO 1: CONSTRUTOR DE PIZZA -->
+            <div id="pdv-section-pizza" class="pdv-section-card">
+              <div class="pdv-card-title">
+                <span>1. Escolha o Tamanho</span>
+                <span id="pdv-pizza-slices-badge" style="font-size: 10px; color: #aaa;">8 fatias</span>
+              </div>
+              <div class="sizes-grid">
+                <div class="size-btn" data-size="P" onclick="selectPdvPizzaSize('P')">
+                  <div class="size-letter">P</div>
+                  <div class="size-sub">4 fat • 1 sab</div>
+                </div>
+                <div class="size-btn" data-size="M" onclick="selectPdvPizzaSize('M')">
+                  <div class="size-letter">M</div>
+                  <div class="size-sub">6 fat • 2 sab</div>
+                </div>
+                <div class="size-btn active" data-size="G" onclick="selectPdvPizzaSize('G')">
+                  <div class="size-letter">G</div>
+                  <div class="size-sub">8 fat • 3 sab</div>
+                </div>
+                <div class="size-btn" data-size="GG" onclick="selectPdvPizzaSize('GG')">
+                  <div class="size-letter">GG</div>
+                  <div class="size-sub">10 fat • 3 sab</div>
+                </div>
+              </div>
+
+              <!-- QUANTIDADE DE SABORES -->
+              <div class="pdv-card-title" style="margin-top: 4px;">
+                <span>2. Quantidade de Sabores</span>
+              </div>
+              <div class="flavors-count-row" id="pdv-flavor-count-buttons">
+                <div class="flavor-count-btn active" data-count="1" onclick="setPdvFlavorCount(1)">1 Sabor</div>
+                <div class="flavor-count-btn" data-count="2" onclick="setPdvFlavorCount(2)">2 Sabores</div>
+                <div class="flavor-count-btn" data-count="3" onclick="setPdvFlavorCount(3)">3 Sabores</div>
+              </div>
+
+              <!-- PREVIEW SVG DINÂMICO DA PIZZA -->
+              <div style="display: flex; justify-content: center; align-items: center; margin: 6px 0;" id="pdv-pizza-svg-container">
+                <!-- SVG gerado dinamicamente -->
+              </div>
+
+              <!-- SLOTS DE SABORES -->
+              <div id="pdv-flavors-container" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Preenchido via Javascript -->
+              </div>
+
+              <!-- BORDA RECHEADA -->
+              <div class="pdv-card-title" style="margin-top: 4px;">
+                <span>3. Borda Recheada</span>
+              </div>
+              <select id="pdv-crust-select" class="pdv-select" onchange="updatePdvPizzaPrice()">
+                <option value="">Sem borda recheada (Massa tradicional)</option>
+              </select>
+
+              <!-- ADICIONAIS / TOPPINGS -->
+              <div class="pdv-card-title" style="margin-top: 4px;">
+                <span>4. Adicionais (Opcional)</span>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <select id="pdv-topping-select" class="pdv-select" style="flex: 2;">
+                  <option value="">-- Selecionar Adicional --</option>
+                </select>
+                <select id="pdv-topping-target" class="pdv-select" style="flex: 1.2;">
+                  <option value="FULL">Inteira</option>
+                  <option value="SAB_1">Sabor 1</option>
+                  <option value="SAB_2">Sabor 2</option>
+                  <option value="SAB_3">Sabor 3</option>
+                </select>
+                <button type="button" class="btn-action" style="padding: 6px 10px;" onclick="addPdvTopping()">➕</button>
+              </div>
+              <div id="pdv-selected-toppings-list" style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;"></div>
+
+              <!-- BOTÃO ADICIONAR PIZZA -->
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                <div style="font-size: 12px; color: #aaa;">
+                  Subtotal: <strong id="pdv-pizza-subtotal" style="color: #fbbf24; font-size: 15px;">R$ 0,00</strong>
+                </div>
+                <button type="button" class="btn-action primary" style="padding: 8px 14px;" onclick="addPdvPizzaToOrder()">
+                  ➕ Adicionar Pizza
+                </button>
+              </div>
+            </div>
+
+            <!-- MODO 2: BEBIDAS E PRODUTOS SIMPLES -->
+            <div id="pdv-section-products" class="pdv-section-card" style="display: none;">
+              <div class="pdv-card-title">
+                <span>Produtos & Bebidas</span>
+              </div>
+              <div class="form-group">
+                <label>Categoria:</label>
+                <select id="pdv-prod-cat-select" class="pdv-select" onchange="filterPdvProductsByCategory()">
+                  <option value="">Todas as categorias</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Item:</label>
+                <select id="pdv-prod-item-select" class="pdv-select" onchange="updatePdvProductSelectedPrice()">
+                  <option value="">-- Selecione o item --</option>
+                </select>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <label>Qtd:</label>
+                  <input type="number" id="pdv-prod-qty" class="pdv-input" value="1" min="1" max="50" style="width: 55px; text-align: center;" onchange="updatePdvProductSelectedPrice()" />
+                </div>
+                <div style="font-size: 12px; color: #aaa;">
+                  Subtotal: <strong id="pdv-prod-subtotal" style="color: #fbbf24; font-size: 15px;">R$ 0,00</strong>
+                </div>
+              </div>
+              <button type="button" class="btn-action primary" style="padding: 8px 14px; margin-top: 4px;" onclick="addPdvProductToOrder()">
+                ➕ Adicionar ao Pedido
+              </button>
+            </div>
+
+            <!-- CARRINHO RÁPIDO DO ATENDIMENTO -->
+            <div class="pdv-section-card">
+              <div class="pdv-card-title">
+                <span>Itens Selecionados</span>
+                <span id="pdv-items-count" style="font-size: 10px; color: var(--green);">0 itens</span>
+              </div>
+              <div id="pdv-items-container" class="pdv-items-list">
+                <div style="text-align: center; color: #666; font-size: 11px; padding: 12px 0;">
+                  Nenhum item adicionado ainda. Adicione uma pizza ou bebida acima.
+                </div>
+              </div>
+            </div>
+
+            <!-- DADOS DO CLIENTE & ENTREGA -->
+            <div class="pdv-section-card">
+              <div class="pdv-card-title">
+                <span>Dados do Cliente</span>
+              </div>
+              <div class="form-group">
+                <input type="text" id="pdv-cust-name" class="pdv-input" placeholder="Nome do Cliente (ex: Carlos Silva)" />
+              </div>
+              <div class="form-group">
+                <input type="text" id="pdv-cust-phone" class="pdv-input" placeholder="WhatsApp (ex: 11999998888)" />
+              </div>
+
+              <!-- CAMPOS ESPECÍFICOS DE DELIVERY -->
+              <div id="pdv-delivery-fields">
+                <div style="display: flex; gap: 6px; margin-top: 6px;">
+                  <input type="text" id="pdv-cust-street" class="pdv-input" placeholder="Rua / Logradouro" style="flex: 3;" />
+                  <input type="text" id="pdv-cust-number" class="pdv-input" placeholder="Nº" style="flex: 1;" />
+                </div>
+                <div style="display: flex; gap: 6px; margin-top: 6px;">
+                  <input type="text" id="pdv-cust-neighborhood" class="pdv-input" placeholder="Bairro" style="flex: 2;" />
+                  <input type="text" id="pdv-cust-ref" class="pdv-input" placeholder="Complemento / Ref." style="flex: 2;" />
+                </div>
+
+                <!-- BOTÃO MAPA DE ZONAS -->
+                <button type="button" id="btn-open-pdv-map" class="btn-action" style="margin-top: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="openPdvMapModal()">
+                  📍 Abrir Mapa de Zonas & Calcular Taxa
+                </button>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                  <span id="pdv-zone-badge" style="font-size: 11px; color: #10b981; font-weight: 700;">Taxa de Entrega:</span>
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <span style="font-size: 11px; color: #888;">R$</span>
+                    <input type="number" id="pdv-delivery-fee" class="pdv-input" value="0.00" step="0.50" min="0" style="width: 75px; text-align: right;" onchange="updatePdvFinalTotal()" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PAGAMENTO & OBSERVAÇÕES -->
+            <div class="pdv-section-card">
+              <div class="pdv-card-title">
+                <span>Pagamento & Observações</span>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <select id="pdv-payment-method" class="pdv-select" style="flex: 2;" onchange="handlePdvPaymentMethodChange()">
+                  <option value="PIX">PIX</option>
+                  <option value="DINHEIRO">Dinheiro</option>
+                  <option value="CREDITO">Cartão de Crédito</option>
+                  <option value="DEBITO">Cartão de Débito</option>
+                </select>
+                <input type="number" id="pdv-change-for" class="pdv-input" placeholder="Troco p/ quanto?" style="flex: 1.5; display: none;" />
+              </div>
+              <textarea id="pdv-notes" class="pdv-textarea" placeholder="Observações do pedido (ex: caprichar no orégano, não tocar campainha)"></textarea>
+            </div>
+          </div>
+
+          <!-- FOOTER FIXO: TOTAIS E BOTÃO DE ENVIAR -->
+          <div class="pdv-footer">
+            <div class="pdv-totals-row">
+              <span style="font-size: 12px; color: #aaa;">Total a Pagar:</span>
+              <span id="pdv-final-total" class="pdv-total-val">R$ 0,00</span>
+            </div>
+            <button type="button" id="btn-submit-pdv-order" class="btn-pdv-submit" onclick="submitPdvOrder()">
+              🚀 Finalizar & Enviar WhatsApp
+            </button>
+          </div>
+        </div>
+
+        <!-- LADO DIREITO: WHATSAPP WEB INTEGRADO (70% - 67%) -->
+        <div class="wa-web-pane">
+          <div class="wa-pane-header">
+            <div class="wa-pane-title">
+              <span>💬 WhatsApp Web Oficial</span>
+              <span style="font-size: 11px; font-weight: normal; color: #8696a0; background: #111b21; padding: 2px 8px; border-radius: 12px; border: 1px solid #374248;">
+                Sessão Persistente (Login Único)
+              </span>
+            </div>
+            <div class="wa-pane-actions">
+              <button class="btn-action" style="padding: 5px 10px; font-size: 12px;" onclick="reloadWhatsAppWeb()" title="Recarregar WhatsApp Web">
+                🔄 Recarregar
+              </button>
+              <button class="btn-action" style="padding: 5px 10px; font-size: 12px;" onclick="openWhatsAppChatPrompt()" title="Abrir conversa por telefone">
+                📱 Abrir Chat
+              </button>
+              <button class="btn-action" style="padding: 5px 10px; font-size: 12px;" onclick="copyLastOrderText()" title="Copiar texto do último pedido gerado">
+                📋 Copiar Mensagem
+              </button>
+            </div>
+          </div>
+          <div class="wa-webview-container">
+            <webview id="wa-webview" src="https://web.whatsapp.com" partition="persist:whatsapp" useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" allowpopups></webview>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
+
+  <!-- MODAL: MAPA DE ZONAS & LOCALIZAÇÃO DO CLIENTE -->
+  <div id="modal-pdv-map" class="modal-overlay">
+    <div class="modal-box" style="max-width: 780px; height: 640px; max-height: 95vh;">
+      <div class="modal-header">
+        <div class="modal-title">📍 Selecionar Localização & Zona de Entrega</div>
+        <button class="btn-close-modal" onclick="closeModal('modal-pdv-map')">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 0; position: relative; flex: 1; display: flex; flex-direction: column;">
+        <div style="padding: 10px 14px; background: #181818; border-bottom: 1px solid #333; display: flex; gap: 8px; align-items: center;">
+          <input type="text" id="map-search-input" class="pdv-input" placeholder="Buscar rua, bairro ou ponto de referência..." onkeydown="if(event.key==='Enter') searchPdvMapAddress()" />
+          <button type="button" class="btn-action" style="padding: 6px 14px; font-size: 12px; white-space: nowrap;" onclick="searchPdvMapAddress()">🔍 Buscar</button>
+        </div>
+        <div id="pdv-leaflet-map" style="flex: 1; width: 100%; min-height: 380px;"></div>
+        <div id="map-zone-banner" style="padding: 12px 16px; background: #161616; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div id="map-zone-name" style="font-size: 13px; font-weight: 800; color: #10b981;">Arraste o pin no mapa para a localização do cliente</div>
+            <div id="map-zone-address" style="font-size: 11px; color: #aaa;">Coordenadas: clique ou arraste o marcador</div>
+          </div>
+          <div id="map-zone-fee" style="font-size: 16px; font-weight: 900; color: #fbbf24;">Taxa: R$ 0,00</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action" onclick="closeModal('modal-pdv-map')">Cancelar</button>
+        <button type="button" id="btn-confirm-map-zone" class="btn-pdv-submit" style="width: auto; padding: 8px 18px; font-size: 12px;" onclick="confirmPdvMapLocation()">
+          ✓ Confirmar Local & Aplicar Taxa
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL: DETALHES DO PEDIDO -->
   <div id="modal-order" class="modal-overlay">
@@ -1519,7 +2247,14 @@
 
         btn.classList.add("active");
         const tabId = "tab-" + btn.dataset.tab;
-        document.getElementById(tabId).classList.add("active");
+        const targetTab = document.getElementById(tabId);
+        if (targetTab) {
+          targetTab.classList.add("active");
+        }
+
+        if (btn.dataset.tab === "whatsapp") {
+          loadPdvCatalogAndZones();
+        }
       });
     });
 
@@ -2725,8 +3460,991 @@
       showToast("Configurado com sucesso!");
     });
 
+    // =========================================================================
+    // 9. WHATSAPP WEB & ATENDIMENTO DELIVERY RÁPIDO (PDV DELIVERY 30/70)
+    // =========================================================================
+    let pdvOrderType = "DELIVERY"; // "DELIVERY" ou "RETIRADA"
+    let pdvCatalogMode = "pizza";  // "pizza" ou "products"
+    let pdvCatalog = {
+      flavors: [],
+      pizzaCategories: [],
+      crusts: [],
+      standardCategories: [],
+      toppingCategories: [],
+    };
+    let pdvZones = [];
+    let pdvPizza = {
+      size: "G",
+      slices: 8,
+      flavorCount: 1,
+      selectedFlavors: [null, null, null],
+      crust: null,
+      toppings: [], // [{ id, name, targetType: "FULL" | "SAB_1" | ..., price, slicesCount, totalSlices }]
+    };
+    let pdvItems = [];
+    let lastOrderMessage = "";
+    let pdvLeafletMap = null;
+    let pdvMapMarker = null;
+    let pdvZonePolygons = [];
+    let currentSelectedZone = null;
+    let currentCustomerLat = null;
+    let currentCustomerLng = null;
+
+    // Regras de tamanhos de pizza
+    const PDV_PIZZA_RULES = {
+      P: { label: "Pequena", slices: 4, maxFlavors: 1 },
+      M: { label: "Média", slices: 6, maxFlavors: 2 },
+      G: { label: "Grande", slices: 8, maxFlavors: 3 },
+      GG: { label: "Gigante", slices: 10, maxFlavors: 3 },
+    };
+
+    // Alternar tipo de pedido (Delivery vs Retirada)
+    function setPdvOrderType(type) {
+      pdvOrderType = type;
+      const btnDel = document.getElementById("pdv-type-delivery");
+      const btnRet = document.getElementById("pdv-type-retirada");
+      const delFields = document.getElementById("pdv-delivery-fields");
+
+      if (type === "DELIVERY") {
+        btnDel.classList.add("active");
+        btnRet.classList.remove("active");
+        if (delFields) delFields.style.display = "block";
+      } else {
+        btnRet.classList.add("active");
+        btnDel.classList.remove("active");
+        if (delFields) delFields.style.display = "none";
+        document.getElementById("pdv-delivery-fee").value = "0.00";
+      }
+      updatePdvFinalTotal();
+    }
+
+    // Alternar modo de catálogo (Pizza vs Produtos)
+    function setPdvCatalogMode(mode) {
+      pdvCatalogMode = mode;
+      const btnPizza = document.getElementById("pdv-nav-pizza");
+      const btnProd = document.getElementById("pdv-nav-products");
+      const secPizza = document.getElementById("pdv-section-pizza");
+      const secProd = document.getElementById("pdv-section-products");
+
+      if (mode === "pizza") {
+        btnPizza.classList.add("active");
+        btnProd.classList.remove("active");
+        secPizza.style.display = "flex";
+        secProd.style.display = "none";
+      } else {
+        btnProd.classList.add("active");
+        btnPizza.classList.remove("active");
+        secPizza.style.display = "none";
+        secProd.style.display = "flex";
+      }
+    }
+
+    // Carregar catálogo de produtos e zonas de entrega
+    async function loadPdvCatalogAndZones() {
+      if (!appSettings.serverUrl) return;
+      try {
+        const [catRes, zonesRes] = await Promise.all([
+          fetch(`${appSettings.serverUrl}/api/admin/menu-catalog`, {
+            headers: { "x-print-auth": appSettings.apiKey },
+          }),
+          fetch(`${appSettings.serverUrl}/api/admin/zones`, {
+            headers: { "x-print-auth": appSettings.apiKey },
+          }),
+        ]);
+
+        if (catRes.ok) {
+          pdvCatalog = await catRes.json();
+          populatePdvCatalogUI();
+        }
+
+        if (zonesRes.ok) {
+          pdvZones = await zonesRes.json();
+        }
+      } catch (err) {
+        console.error("Erro ao carregar catálogo/zonas para o PDV:", err);
+      }
+    }
+
+    function populatePdvCatalogUI() {
+      // 1. Bordas
+      const crustSel = document.getElementById("pdv-crust-select");
+      if (crustSel) {
+        crustSel.innerHTML = '<option value="">Sem borda recheada (Massa tradicional)</option>';
+        (pdvCatalog.crusts || []).forEach((c) => {
+          const opt = document.createElement("option");
+          opt.value = c.id;
+          opt.textContent = `${c.name} ${c.caracol ? "(Caracol)" : ""}`;
+          crustSel.appendChild(opt);
+        });
+      }
+
+      // 2. Adicionais (Toppings)
+      const topSel = document.getElementById("pdv-topping-select");
+      if (topSel) {
+        topSel.innerHTML = '<option value="">-- Selecionar Adicional --</option>';
+        (pdvCatalog.toppingCategories || []).forEach((cat) => {
+          const group = document.createElement("optgroup");
+          group.label = cat.name;
+          (cat.toppings || []).forEach((t) => {
+            const opt = document.createElement("option");
+            opt.value = t.id;
+            opt.textContent = t.name;
+            group.appendChild(opt);
+          });
+          topSel.appendChild(group);
+        });
+      }
+
+      // 3. Categorias e Produtos Gerais
+      const catSel = document.getElementById("pdv-prod-cat-select");
+      if (catSel) {
+        catSel.innerHTML = '<option value="">Todas as categorias</option>';
+        (pdvCatalog.standardCategories || []).forEach((cat) => {
+          const opt = document.createElement("option");
+          opt.value = cat.id;
+          opt.textContent = cat.name;
+          catSel.appendChild(opt);
+        });
+      }
+
+      filterPdvProductsByCategory();
+      renderPdvFlavorSlots();
+      renderPdvPizzaSvg();
+      updatePdvPizzaPrice();
+    }
+
+    // Seleção de tamanho de pizza
+    function selectPdvPizzaSize(size) {
+      pdvPizza.size = size;
+      const rule = PDV_PIZZA_RULES[size] || PDV_PIZZA_RULES.G;
+      pdvPizza.slices = rule.slices;
+
+      document.querySelectorAll(".size-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.size === size);
+      });
+
+      const slicesBadge = document.getElementById("pdv-pizza-slices-badge");
+      if (slicesBadge) {
+        slicesBadge.textContent = `${rule.slices} fatias • até ${rule.maxFlavors} sab`;
+      }
+
+      // Limita a quantidade de sabores permitida para o tamanho
+      if (pdvPizza.flavorCount > rule.maxFlavors) {
+        pdvPizza.flavorCount = rule.maxFlavors;
+      }
+
+      // Atualiza botões de quantidade de sabores
+      const countBtns = document.getElementById("pdv-flavor-count-buttons");
+      if (countBtns) {
+        countBtns.querySelectorAll(".flavor-count-btn").forEach((btn) => {
+          const cnt = parseInt(btn.dataset.count, 10);
+          btn.style.display = cnt <= rule.maxFlavors ? "block" : "none";
+          btn.classList.toggle("active", cnt === pdvPizza.flavorCount);
+        });
+      }
+
+      renderPdvFlavorSlots();
+      renderPdvPizzaSvg();
+      updatePdvPizzaPrice();
+    }
+
+    // Quantidade de sabores da pizza
+    function setPdvFlavorCount(count) {
+      const rule = PDV_PIZZA_RULES[pdvPizza.size] || PDV_PIZZA_RULES.G;
+      if (count > rule.maxFlavors) return;
+
+      pdvPizza.flavorCount = count;
+      document.querySelectorAll(".flavor-count-btn").forEach((btn) => {
+        btn.classList.toggle("active", parseInt(btn.dataset.count, 10) === count);
+      });
+
+      renderPdvFlavorSlots();
+      renderPdvPizzaSvg();
+      updatePdvPizzaPrice();
+    }
+
+    // Distribuição de fatias por sabor
+    function getPdvSlicesDistribution() {
+      const total = pdvPizza.slices;
+      const count = pdvPizza.flavorCount;
+      if (count === 1) return [total];
+      if (count === 2) {
+        const half = Math.floor(total / 2);
+        return [half, total - half];
+      }
+      if (count === 3) {
+        if (total === 6) return [2, 2, 2];
+        if (total === 8) return [3, 3, 2];
+        return [4, 3, 3];
+      }
+      return [total];
+    }
+
+    // Renderiza os slots de sabores
+    function renderPdvFlavorSlots() {
+      const container = document.getElementById("pdv-flavors-container");
+      if (!container) return;
+
+      container.innerHTML = "";
+      const dist = getPdvSlicesDistribution();
+
+      for (let i = 0; i < pdvPizza.flavorCount; i++) {
+        const slices = dist[i];
+        const slot = document.createElement("div");
+        slot.className = "flavor-slot";
+
+        const currentFlavor = pdvPizza.selectedFlavors[i];
+        let optionsHtml = '<option value="">-- Selecione o Sabor --</option>';
+
+        (pdvCatalog.flavors || []).forEach((f) => {
+          const priceKey = `price${pdvPizza.size}`;
+          const price = f.category ? f.category[priceKey] || 0 : 0;
+          const selected = currentFlavor && currentFlavor.id === f.id ? "selected" : "";
+          optionsHtml += `<option value="${f.id}" ${selected}>${f.name} (R$ ${price.toFixed(2)})</option>`;
+        });
+
+        slot.innerHTML = `
+          <div class="flavor-slot-head">
+            <span>🍕 Sabor ${i + 1}</span>
+            <span style="font-size: 10px; color: #fbbf24; background: #262626; padding: 2px 6px; border-radius: 6px;">${slices} fatias</span>
+          </div>
+          <select class="pdv-select" onchange="handlePdvFlavorChange(${i}, this.value)">
+            ${optionsHtml}
+          </select>
+        `;
+        container.appendChild(slot);
+      }
+    }
+
+    function handlePdvFlavorChange(index, flavorId) {
+      const flavor = (pdvCatalog.flavors || []).find((f) => f.id === flavorId) || null;
+      pdvPizza.selectedFlavors[index] = flavor;
+      renderPdvPizzaSvg();
+      updatePdvPizzaPrice();
+    }
+
+    // Renderiza o SVG interativo da pizza
+    function renderPdvPizzaSvg() {
+      const container = document.getElementById("pdv-pizza-svg-container");
+      if (!container) return;
+
+      const dist = getPdvSlicesDistribution();
+      const flavorsList = [];
+
+      for (let i = 0; i < pdvPizza.flavorCount; i++) {
+        const f = pdvPizza.selectedFlavors[i];
+        flavorsList.push({
+          cleanName: f ? f.name : `Sabor ${i + 1}`,
+          slices: dist[i],
+        });
+      }
+
+      container.innerHTML = generatePizzaSvgUi(flavorsList, pdvPizza.slices, 74);
+    }
+
+    // Atualiza preço da pizza em tempo real
+    function updatePdvPizzaPrice() {
+      // 1. Preço base: maior sabor selecionado
+      let maxBasePrice = 0;
+      const priceKey = `price${pdvPizza.size}`;
+
+      for (let i = 0; i < pdvPizza.flavorCount; i++) {
+        const f = pdvPizza.selectedFlavors[i];
+        if (f && f.category) {
+          const p = f.category[priceKey] || 0;
+          if (p > maxBasePrice) maxBasePrice = p;
+        }
+      }
+
+      // Se nenhum sabor foi selecionado ainda, mostra o menor preço do cardápio como referência
+      if (maxBasePrice === 0 && (pdvCatalog.pizzaCategories || []).length > 0) {
+        maxBasePrice = pdvCatalog.pizzaCategories[0][priceKey] || 0;
+      }
+
+      // 2. Borda recheada
+      const crustSel = document.getElementById("pdv-crust-select");
+      let crustPrice = 0;
+      if (crustSel && crustSel.value) {
+        const c = (pdvCatalog.crusts || []).find((x) => x.id === crustSel.value);
+        if (c) {
+          crustPrice = (pdvPizza.size === "P" || pdvPizza.size === "M") ? c.pricePM : c.priceGGG;
+        }
+      }
+
+      // 3. Adicionais selecionados
+      let toppingsTotal = 0;
+      const dist = getPdvSlicesDistribution();
+
+      pdvPizza.toppings.forEach((t) => {
+        if (t.targetType === "FULL") {
+          toppingsTotal += t.price;
+        } else {
+          const match = t.targetType.match(/SAB_(\d+)/);
+          const sIdx = match ? parseInt(match[1], 10) - 1 : 0;
+          const slices = dist[sIdx] || 1;
+          toppingsTotal += (t.price * (slices / pdvPizza.slices));
+        }
+      });
+
+      const totalPizza = maxBasePrice + crustPrice + toppingsTotal;
+      const subtotalEl = document.getElementById("pdv-pizza-subtotal");
+      if (subtotalEl) {
+        subtotalEl.textContent = `R$ ${totalPizza.toFixed(2)}`;
+      }
+
+      return { maxBasePrice, crustPrice, toppingsTotal, totalPizza };
+    }
+
+    // Adiciona adicional (Topping) à pizza
+    function addPdvTopping() {
+      const topSel = document.getElementById("pdv-topping-select");
+      const targetSel = document.getElementById("pdv-topping-target");
+      if (!topSel || !topSel.value) {
+        showToast("Selecione um adicional da lista.");
+        return;
+      }
+
+      let selectedTopping = null;
+      for (const cat of pdvCatalog.toppingCategories || []) {
+        const found = (cat.toppings || []).find((t) => t.id === topSel.value);
+        if (found) {
+          selectedTopping = found;
+          break;
+        }
+      }
+
+      if (!selectedTopping) return;
+
+      const isPM = pdvPizza.size === "P" || pdvPizza.size === "M";
+      const basePrice = isPM ? selectedTopping.pricePM : selectedTopping.priceGGG;
+      const targetType = targetSel.value;
+      const targetLabel = targetSel.options[targetSel.selectedIndex].text;
+
+      pdvPizza.toppings.push({
+        id: selectedTopping.id,
+        name: selectedTopping.name,
+        targetType,
+        targetLabel,
+        price: basePrice,
+      });
+
+      renderPdvSelectedToppings();
+      updatePdvPizzaPrice();
+    }
+
+    function removePdvTopping(index) {
+      pdvPizza.toppings.splice(index, 1);
+      renderPdvSelectedToppings();
+      updatePdvPizzaPrice();
+    }
+
+    function renderPdvSelectedToppings() {
+      const container = document.getElementById("pdv-selected-toppings-list");
+      if (!container) return;
+
+      container.innerHTML = "";
+      pdvPizza.toppings.forEach((t, idx) => {
+        const div = document.createElement("div");
+        div.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: #222; padding: 4px 8px; border-radius: 6px;";
+        div.innerHTML = `
+          <span>+ ${t.name} <em style="color: #aaa;">(${t.targetLabel})</em></span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <strong style="color: #10b981;">R$ ${t.price.toFixed(2)}</strong>
+            <button type="button" style="background: none; border: none; color: #e31837; cursor: pointer; font-size: 13px;" onclick="removePdvTopping(${idx})">✕</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Adiciona a pizza montada ao carrinho rápido do PDV
+    function addPdvPizzaToOrder() {
+      for (let i = 0; i < pdvPizza.flavorCount; i++) {
+        if (!pdvPizza.selectedFlavors[i]) {
+          showToast(`Por favor, selecione o Sabor ${i + 1} da pizza.`);
+          return;
+        }
+      }
+
+      const dist = getPdvSlicesDistribution();
+      const flavorNames = [];
+      const flavorsPayload = [];
+
+      for (let i = 0; i < pdvPizza.flavorCount; i++) {
+        const f = pdvPizza.selectedFlavors[i];
+        const slices = dist[i];
+        flavorNames.push(`${slices} fat. ${f.name}`);
+        flavorsPayload.push({
+          flavorName: `${slices} fatias ${f.name}`,
+          categoryName: f.category ? f.category.name : "Pizza",
+          slices,
+        });
+      }
+
+      const crustSel = document.getElementById("pdv-crust-select");
+      let crustName = null;
+      let crustPrice = 0;
+      if (crustSel && crustSel.value) {
+        const c = (pdvCatalog.crusts || []).find((x) => x.id === crustSel.value);
+        if (c) {
+          crustName = c.name + (c.caracol ? " (Caracol)" : "");
+          crustPrice = (pdvPizza.size === "P" || pdvPizza.size === "M") ? c.pricePM : c.priceGGG;
+        }
+      }
+
+      const toppingsPayload = pdvPizza.toppings.map((t) => {
+        let slicesCount = pdvPizza.slices;
+        let flavorName = null;
+        if (t.targetType !== "FULL") {
+          const match = t.targetType.match(/SAB_(\d+)/);
+          const sIdx = match ? parseInt(match[1], 10) - 1 : 0;
+          slicesCount = dist[sIdx] || 1;
+          flavorName = pdvPizza.selectedFlavors[sIdx] ? pdvPizza.selectedFlavors[sIdx].name : null;
+        }
+        return {
+          toppingName: t.name,
+          targetType: t.targetType === "FULL" ? "INTEIRA" : "SABOR",
+          flavorName,
+          slicesCount,
+          totalSlices: pdvPizza.slices,
+          price: t.price,
+        };
+      });
+
+      const { totalPizza } = updatePdvPizzaPrice();
+
+      const itemDescParts = [flavorNames.join(" / ")];
+      if (crustName) itemDescParts.push(`Borda: ${crustName}`);
+      if (pdvPizza.toppings.length > 0) {
+        itemDescParts.push(`Adic: ${pdvPizza.toppings.map((t) => t.name).join(", ")}`);
+      }
+
+      pdvItems.push({
+        id: "item_" + Date.now(),
+        isPizza: true,
+        name: `Pizza ${pdvPizza.size} (${flavorNames.join(" / ")})`,
+        displayDesc: itemDescParts.join(" • "),
+        pizzaSize: pdvPizza.size,
+        crustType: crustName,
+        crustPrice,
+        flavors: flavorsPayload,
+        toppings: toppingsPayload,
+        quantity: 1,
+        basePrice: totalPizza,
+        totalPrice: totalPizza,
+      });
+
+      // Limpa os adicionais e a borda da pizza montada
+      pdvPizza.toppings = [];
+      renderPdvSelectedToppings();
+      if (crustSel) crustSel.value = "";
+      updatePdvPizzaPrice();
+
+      renderPdvItems();
+      showToast("🍕 Pizza adicionada ao pedido!");
+    }
+
+    // Filtra produtos normais por categoria
+    function filterPdvProductsByCategory() {
+      const catSel = document.getElementById("pdv-prod-cat-select");
+      const itemSel = document.getElementById("pdv-prod-item-select");
+      if (!itemSel) return;
+
+      itemSel.innerHTML = '<option value="">-- Selecione o item --</option>';
+      const catId = catSel ? catSel.value : "";
+
+      (pdvCatalog.standardCategories || []).forEach((cat) => {
+        if (!catId || cat.id === catId) {
+          (cat.products || []).forEach((p) => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.textContent = `${p.name} - R$ ${p.price.toFixed(2)}`;
+            opt.dataset.price = p.price;
+            opt.dataset.name = p.name;
+            itemSel.appendChild(opt);
+          });
+        }
+      });
+
+      updatePdvProductSelectedPrice();
+    }
+
+    function updatePdvProductSelectedPrice() {
+      const itemSel = document.getElementById("pdv-prod-item-select");
+      const qtyInput = document.getElementById("pdv-prod-qty");
+      const subtotalEl = document.getElementById("pdv-prod-subtotal");
+
+      if (!itemSel || !qtyInput || !subtotalEl) return;
+
+      const opt = itemSel.selectedOptions[0];
+      const unitPrice = opt && opt.dataset.price ? parseFloat(opt.dataset.price) : 0;
+      const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+      const total = unitPrice * qty;
+
+      subtotalEl.textContent = `R$ ${total.toFixed(2)}`;
+    }
+
+    function addPdvProductToOrder() {
+      const itemSel = document.getElementById("pdv-prod-item-select");
+      const qtyInput = document.getElementById("pdv-prod-qty");
+      if (!itemSel || !itemSel.value) {
+        showToast("Selecione um produto da lista.");
+        return;
+      }
+
+      const opt = itemSel.selectedOptions[0];
+      const name = opt.dataset.name || "Produto";
+      const unitPrice = parseFloat(opt.dataset.price) || 0;
+      const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+      const total = unitPrice * qty;
+
+      pdvItems.push({
+        id: "item_" + Date.now(),
+        isPizza: false,
+        name,
+        displayDesc: `Qtd: ${qty}x • R$ ${unitPrice.toFixed(2)} un`,
+        quantity: qty,
+        basePrice: unitPrice,
+        totalPrice: total,
+        flavors: [],
+        toppings: [],
+      });
+
+      itemSel.value = "";
+      qtyInput.value = "1";
+      updatePdvProductSelectedPrice();
+      renderPdvItems();
+      showToast(`✓ ${name} adicionado!`);
+    }
+
+    // Renderiza itens no carrinho rápido do PDV
+    function renderPdvItems() {
+      const container = document.getElementById("pdv-items-container");
+      const countEl = document.getElementById("pdv-items-count");
+      if (!container) return;
+
+      container.innerHTML = "";
+      if (pdvItems.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; color: #666; font-size: 11px; padding: 12px 0;">
+            Nenhum item adicionado ainda. Adicione uma pizza ou bebida acima.
+          </div>
+        `;
+        if (countEl) countEl.textContent = "0 itens";
+        updatePdvFinalTotal();
+        return;
+      }
+
+      if (countEl) countEl.textContent = `${pdvItems.length} item(s)`;
+
+      pdvItems.forEach((it, idx) => {
+        const card = document.createElement("div");
+        card.className = "pdv-item-card";
+        card.innerHTML = `
+          <div class="pdv-item-info">
+            <div class="pdv-item-title">${it.name}</div>
+            <div class="pdv-item-desc">${it.displayDesc || ""}</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="pdv-item-price">R$ ${it.totalPrice.toFixed(2)}</div>
+            <button type="button" class="pdv-item-del" onclick="removePdvItem(${idx})">🗑️</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      updatePdvFinalTotal();
+    }
+
+    function removePdvItem(index) {
+      pdvItems.splice(index, 1);
+      renderPdvItems();
+    }
+
+    function updatePdvFinalTotal() {
+      const subtotal = pdvItems.reduce((acc, it) => acc + (it.totalPrice || 0), 0);
+      const feeInput = document.getElementById("pdv-delivery-fee");
+      const fee = pdvOrderType === "DELIVERY" && feeInput ? Math.max(0, parseFloat(feeInput.value) || 0) : 0;
+      const total = subtotal + fee;
+
+      const totalEl = document.getElementById("pdv-final-total");
+      if (totalEl) {
+        totalEl.textContent = `R$ ${total.toFixed(2)}`;
+      }
+    }
+
+    function handlePdvPaymentMethodChange() {
+      const sel = document.getElementById("pdv-payment-method");
+      const changeInput = document.getElementById("pdv-change-for");
+      if (sel && changeInput) {
+        changeInput.style.display = sel.value === "DINHEIRO" ? "block" : "none";
+      }
+    }
+
+    function resetPdvForm() {
+      pdvItems = [];
+      renderPdvItems();
+      document.getElementById("pdv-cust-name").value = "";
+      document.getElementById("pdv-cust-phone").value = "";
+      document.getElementById("pdv-cust-street").value = "";
+      document.getElementById("pdv-cust-number").value = "";
+      document.getElementById("pdv-cust-neighborhood").value = "";
+      document.getElementById("pdv-cust-ref").value = "";
+      document.getElementById("pdv-delivery-fee").value = "0.00";
+      document.getElementById("pdv-notes").value = "";
+      document.getElementById("pdv-change-for").value = "";
+      document.getElementById("pdv-zone-badge").textContent = "Taxa de Entrega:";
+      document.getElementById("pdv-zone-badge").style.color = "#10b981";
+      currentSelectedZone = null;
+      currentCustomerLat = null;
+      currentCustomerLng = null;
+      updatePdvFinalTotal();
+    }
+
+    // =========================================================================
+    // MAPA LEAFLET & ZONAS DE ENTREGA DO SERVIDOR
+    // =========================================================================
+    function openPdvMapModal() {
+      document.getElementById("modal-pdv-map").classList.add("active");
+      setTimeout(initPdvLeafletMap, 150);
+    }
+
+    // Point in polygon Ray-Casting algorithm
+    function isPointInPdvPolygon(pt, ring) {
+      const x = pt[0];
+      const y = pt[1];
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], yi = ring[i][1];
+        const xj = ring[j][0], yj = ring[j][1];
+        const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function initPdvLeafletMap() {
+      if (pdvLeafletMap) {
+        pdvLeafletMap.invalidateSize();
+        return;
+      }
+
+      if (typeof L === "undefined") {
+        console.error("Leaflet não carregado");
+        return;
+      }
+
+      // Centro padrão
+      const defaultCenter = [-23.5505, -46.6333];
+      pdvLeafletMap = L.map("pdv-leaflet-map").setView(defaultCenter, 13);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(pdvLeafletMap);
+
+      // Renderiza polígonos das zonas obtidas do servidor
+      let allCoords = [];
+      pdvZonePolygons = [];
+
+      (pdvZones || []).forEach((zone) => {
+        if (!zone.geometry) return;
+        let coords = [];
+        try {
+          const geom = typeof zone.geometry === "string" ? JSON.parse(zone.geometry) : zone.geometry;
+          if (geom.type === "Polygon" && geom.coordinates) {
+            coords = geom.coordinates[0].map((pt) => [pt[1], pt[0]]);
+          } else if (Array.isArray(geom)) {
+            coords = geom.map((pt) => Array.isArray(pt) ? (pt[0] > 0 ? [pt[0], pt[1]] : [pt[1], pt[0]]) : [pt.lat, pt.lng]);
+          }
+        } catch (e) {}
+
+        if (coords.length > 2) {
+          const poly = L.polygon(coords, {
+            color: "#e31837",
+            weight: 2,
+            fillColor: "#fbbf24",
+            fillOpacity: 0.2,
+          }).addTo(pdvLeafletMap);
+
+          poly.bindPopup(`<strong>${zone.title}</strong><br>Taxa: R$ ${zone.deliveryFee.toFixed(2)}`);
+          pdvZonePolygons.push({ zone, poly, coords });
+          allCoords = allCoords.concat(coords);
+        }
+      });
+
+      if (allCoords.length > 0) {
+        const bounds = L.latLngBounds(allCoords);
+        pdvLeafletMap.fitBounds(bounds, { padding: [20, 20] });
+      }
+
+      // Marcador arrastável do cliente
+      const mapCenter = pdvLeafletMap.getCenter();
+      pdvMapMarker = L.marker(mapCenter, { draggable: true }).addTo(pdvLeafletMap);
+
+      pdvMapMarker.on("dragend", () => {
+        const pos = pdvMapMarker.getLatLng();
+        handlePdvMapPointSelected(pos.lat, pos.lng);
+      });
+
+      pdvLeafletMap.on("click", (e) => {
+        pdvMapMarker.setLatLng(e.latlng);
+        handlePdvMapPointSelected(e.latlng.lat, e.latlng.lng);
+      });
+
+      handlePdvMapPointSelected(mapCenter.lat, mapCenter.lng);
+    }
+
+    function handlePdvMapPointSelected(lat, lng) {
+      currentCustomerLat = lat;
+      currentCustomerLng = lng;
+
+      let matchedZone = null;
+      for (const zp of pdvZonePolygons) {
+        const ring = zp.coords.map((c) => [c[1], c[0]]);
+        if (isPointInPdvPolygon([lng, lat], ring)) {
+          matchedZone = zp.zone;
+          break;
+        }
+      }
+
+      currentSelectedZone = matchedZone;
+      const nameEl = document.getElementById("map-zone-name");
+      const feeEl = document.getElementById("map-zone-fee");
+      const addrEl = document.getElementById("map-zone-address");
+
+      if (matchedZone) {
+        if (nameEl) nameEl.textContent = `✓ Zona Detectada: ${matchedZone.title}`;
+        if (feeEl) feeEl.textContent = `Taxa: R$ ${matchedZone.deliveryFee.toFixed(2)}`;
+      } else {
+        if (nameEl) nameEl.textContent = "⚠️ Fora de raio de entrega das zonas cadastradas";
+        if (feeEl) feeEl.textContent = "Taxa: R$ 0,00";
+      }
+
+      if (addrEl) {
+        addrEl.textContent = `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`;
+      }
+    }
+
+    async function searchPdvMapAddress() {
+      const input = document.getElementById("map-search-input");
+      const q = input ? input.value.trim() : "";
+      if (!q) return;
+
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=br&limit=1`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lng = parseFloat(data[0].lon);
+          if (pdvLeafletMap && pdvMapMarker) {
+            pdvLeafletMap.setView([lat, lng], 15);
+            pdvMapMarker.setLatLng([lat, lng]);
+            handlePdvMapPointSelected(lat, lng);
+          }
+        } else {
+          showToast("Endereço não localizado no mapa.");
+        }
+      } catch (err) {
+        showToast("Erro ao buscar endereço.");
+      }
+    }
+
+    function confirmPdvMapLocation() {
+      if (currentSelectedZone) {
+        const feeInput = document.getElementById("pdv-delivery-fee");
+        if (feeInput) feeInput.value = currentSelectedZone.deliveryFee.toFixed(2);
+
+        const badge = document.getElementById("pdv-zone-badge");
+        if (badge) {
+          badge.textContent = `✓ Zona: ${currentSelectedZone.title} (Taxa R$ ${currentSelectedZone.deliveryFee.toFixed(2)})`;
+          badge.style.color = "#10b981";
+        }
+      } else {
+        showToast("Localização definida (fora de zonas cadastradas).");
+      }
+
+      updatePdvFinalTotal();
+      closeModal("modal-pdv-map");
+    }
+
+    // =========================================================================
+    // FINALIZAR PEDIDO & ENVIAR PARA O WHATSAPP
+    // =========================================================================
+    async function submitPdvOrder() {
+      if (pdvItems.length === 0) {
+        alert("Adicione ao menos um item ao pedido antes de finalizar.");
+        return;
+      }
+
+      const custName = document.getElementById("pdv-cust-name").value.trim();
+      const custPhone = document.getElementById("pdv-cust-phone").value.trim().replace(/\D/g, "");
+
+      if (!custName) {
+        alert("Informe o nome do cliente.");
+        document.getElementById("pdv-cust-name").focus();
+        return;
+      }
+
+      if (!custPhone || custPhone.length < 10) {
+        alert("Informe um telefone de WhatsApp válido com DDD (ex: 11999998888).");
+        document.getElementById("pdv-cust-phone").focus();
+        return;
+      }
+
+      const street = document.getElementById("pdv-cust-street")?.value.trim() || "";
+      const number = document.getElementById("pdv-cust-number")?.value.trim() || "";
+      const neighborhood = document.getElementById("pdv-cust-neighborhood")?.value.trim() || "";
+      const ref = document.getElementById("pdv-cust-ref")?.value.trim() || "";
+
+      if (pdvOrderType === "DELIVERY" && !street) {
+        alert("Informe a rua / endereço de entrega para o delivery.");
+        document.getElementById("pdv-cust-street").focus();
+        return;
+      }
+
+      const paymentMethod = document.getElementById("pdv-payment-method").value;
+      const changeFor = document.getElementById("pdv-change-for").value.trim();
+      const notes = document.getElementById("pdv-notes").value.trim();
+      const feeInput = document.getElementById("pdv-delivery-fee");
+      const deliveryFee = pdvOrderType === "DELIVERY" && feeInput ? Math.max(0, parseFloat(feeInput.value) || 0) : 0;
+
+      const fullAddress = pdvOrderType === "DELIVERY"
+        ? `${street}, ${number || "S/N"}${neighborhood ? ` - ${neighborhood}` : ""}`
+        : null;
+
+      const payload = {
+        type: pdvOrderType,
+        customerName: custName,
+        customerPhone: custPhone,
+        customerAddress: fullAddress,
+        addressNumber: number || null,
+        reference: ref || null,
+        customerLat: currentCustomerLat,
+        customerLng: currentCustomerLng,
+        paymentMethod,
+        changeFor: paymentMethod === "DINHEIRO" && changeFor ? parseFloat(changeFor) : null,
+        deliveryFee,
+        notes: notes || null,
+        items: pdvItems.map((it) => ({
+          name: it.name,
+          quantity: it.quantity,
+          basePrice: it.basePrice,
+          totalPrice: it.totalPrice,
+          isPizza: Boolean(it.isPizza),
+          pizzaSize: it.pizzaSize || null,
+          crustType: it.crustType || null,
+          crustPrice: it.crustPrice || 0,
+          flavors: it.flavors || [],
+          toppings: it.toppings || [],
+        })),
+      };
+
+      const submitBtn = document.getElementById("btn-submit-pdv-order");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "⏳ Cadastrando Pedido...";
+
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/orders`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-print-auth": appSettings.apiKey,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.order) {
+          throw new Error(data.error || "Erro ao salvar pedido");
+        }
+
+        const order = data.order;
+        showToast(`✓ Pedido #${order.orderNumber} criado com sucesso!`);
+        playAlertSound();
+
+        // Formata mensagem caprichada para o WhatsApp do cliente
+        const itensListFormatted = pdvItems
+          .map((it) => `• ${it.quantity}x ${it.name} - R$ ${it.totalPrice.toFixed(2)}`)
+          .join("\n");
+
+        const paymentLabel = paymentMethod === "PIX" ? "PIX" : paymentMethod === "DINHEIRO" ? `Dinheiro ${changeFor ? `(Troco p/ R$ ${parseFloat(changeFor).toFixed(2)})` : "(Sem troco)"}` : paymentMethod === "CREDITO" ? "Cartão de Crédito" : "Cartão de Débito";
+
+        const trackingUrl = `${appSettings.serverUrl}/pedido/${order.id}`;
+
+        const msg = `🍕 *Olá, ${custName}! Seu pedido foi recebido com sucesso na AllDelivery!* 🍕\n\n` +
+          `📋 *Pedido #${order.orderNumber}*\n` +
+          `-----------------------------------------\n` +
+          `${itensListFormatted}\n` +
+          `-----------------------------------------\n` +
+          `🛵 *Tipo:* ${pdvOrderType === "DELIVERY" ? "Entrega (Delivery)" : "Retirada no Balcão"}\n` +
+          (pdvOrderType === "DELIVERY" ? `📍 *Endereço:* ${fullAddress}${ref ? ` (${ref})` : ""}\n` : "") +
+          `💳 *Pagamento:* ${paymentLabel}\n` +
+          `💰 *Total:* R$ ${order.total.toFixed(2)}\n\n` +
+          `🚀 *Acompanhe o status do seu pedido em tempo real pelo link:*\n` +
+          `${trackingUrl}\n\n` +
+          `_Agradecemos pela preferência! Qualquer dúvida, estamos à disposição aqui no WhatsApp._`;
+
+        lastOrderMessage = msg;
+
+        // 1. Copia o texto para a área de transferência
+        navigator.clipboard.writeText(msg).catch(() => {});
+
+        // 2. Direciona o webview do WhatsApp Web para o chat do cliente com o texto
+        const cleanPhone = custPhone.startsWith("55") ? custPhone : "55" + custPhone;
+        const waSendUrl = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
+
+        const webview = document.getElementById("wa-webview");
+        if (webview) {
+          webview.loadURL(waSendUrl);
+        }
+
+        showToast("Mensagem carregada no WhatsApp Web & copiada para a área de transferência!");
+        resetPdvForm();
+      } catch (err) {
+        console.error("Falha ao criar pedido no PDV:", err);
+        alert(`Erro ao criar pedido: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "🚀 Finalizar & Enviar WhatsApp";
+      }
+    }
+
+    function reloadWhatsAppWeb() {
+      const webview = document.getElementById("wa-webview");
+      if (webview) {
+        webview.reload();
+        showToast("Recarregando WhatsApp Web...");
+      }
+    }
+
+    function openWhatsAppChatPrompt() {
+      const tel = prompt("Digite o telefone com DDD (somente números):", "11");
+      if (tel) {
+        const clean = tel.replace(/\D/g, "");
+        const cleanPhone = clean.startsWith("55") ? clean : "55" + clean;
+        const webview = document.getElementById("wa-webview");
+        if (webview) {
+          webview.loadURL(`https://web.whatsapp.com/send?phone=${cleanPhone}`);
+        }
+      }
+    }
+
+    function copyLastOrderText() {
+      if (!lastOrderMessage) {
+        showToast("Nenhum pedido finalizado recentemente.");
+        return;
+      }
+      navigator.clipboard.writeText(lastOrderMessage);
+      showToast("Texto do pedido copiado!");
+    }
+
     // Inicia aplicação
-    window.addEventListener("DOMContentLoaded", initDesktop);
+    window.addEventListener("DOMContentLoaded", () => {
+      initDesktop();
+      // Carrega catálogo e zonas para o PDV
+      loadPdvCatalogAndZones();
+    });
   </script>
 </body>
 </html>

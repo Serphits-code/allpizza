@@ -61,6 +61,12 @@ export default function ClientHeader() {
           >
             Monte sua Pizza
           </Link>
+          <Link
+            href="/meus-pedidos"
+            className="text-xs sm:text-sm font-medium text-brand-lightGray hover:text-amber-400 transition-colors whitespace-nowrap"
+          >
+            Meus Pedidos
+          </Link>
 
           <Link
             href="/carrinho"

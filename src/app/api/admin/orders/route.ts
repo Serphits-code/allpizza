@@ -173,6 +173,8 @@ export async function POST(request: Request) {
           customerAddress: customerAddress || null,
           addressNumber: addressNumber || null,
           reference: reference || null,
+          customerLat: body.customerLat !== undefined && body.customerLat !== null && !isNaN(parseFloat(body.customerLat)) ? parseFloat(body.customerLat) : null,
+          customerLng: body.customerLng !== undefined && body.customerLng !== null && !isNaN(parseFloat(body.customerLng)) ? parseFloat(body.customerLng) : null,
           paymentMethod,
           changeFor: changeFor ? parseFloat(changeFor) : null,
           subtotal,

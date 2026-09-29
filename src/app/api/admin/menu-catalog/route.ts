@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { authenticateApiRequest } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (
-    !session ||
-    !["ADMIN", "MANAGER", "GARCOM", "KITCHEN"].includes(session.user.role)
-  ) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+export async function GET(request: Request) {
+  const auth = await authenticateApiRequest(request, [
+    "ADMIN",
+    "MANAGER",
+    "GARCOM",
+    "KITCHEN",
+  ]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Não autorizado" }, { status: 401 });
   }
 
   try {
