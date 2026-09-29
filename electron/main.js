@@ -244,26 +244,26 @@ function parsePizzaFlavorsWithSlices(item) {
   return { totalSlices, flavors: list };
 }
 
-// Gera o diagrama completo da pizza com setores, fatias em negrito e callouts diagonais com adicionais
-function generatePizzaCalloutSvgReceipt(item, options = {}) {
+// Gera o card completo da pizza no padrão idêntico ao modelo (Círculo central com fatias e FAT + Cards individuais de sabores abaixo)
+function generatePizzaCardReceipt(item, options = {}) {
   const { totalSlices, flavors } = parsePizzaFlavorsWithSlices(item);
-  const isDarkUi = Boolean(options.dark);
+  const isKitchen = Boolean(options.isKitchen);
+  const size = (item.pizzaSize || "G").toUpperCase();
+  const unitLabel = options.totalUnits && options.totalUnits > 1
+    ? ` (${options.unitIndex || 1}/${options.totalUnits})`
+    : "";
 
-  const strokeColor = isDarkUi ? "#ffffff" : "#000000";
-  const crustColor = isDarkUi ? "#d97706" : "#000000";
-  const numColor = isDarkUi ? "#ffffff" : "#000000";
-  const textColor = isDarkUi ? "#ffffff" : "#000000";
-  const toppingColor = isDarkUi ? "#34d399" : "#000000";
-  const pointerColor = isDarkUi ? "#e31837" : "#000000";
-
-  // Mapeia adicionais por sabor e inteira
+  // Mapeia adicionais por sabor e adicionais da pizza toda
   const toppingsByFlavor = {};
   const fullToppings = [];
 
   (item.toppings || []).forEach((t) => {
     const tName = t.toppingName || t.name || "";
+    const qty = t.quantity || 1;
+    const price = parseFloat(t.price || 0);
+
     if (t.targetType === "FULL" || t.targetType === "INTEIRA" || !t.flavorName) {
-      fullToppings.push(tName);
+      fullToppings.push({ name: tName, quantity: qty, price });
     } else {
       const target = (t.flavorName || "").toLowerCase().replace(/^\d+\s*fatias?\s*/i, "").trim();
       const matched = flavors.find((f) => {
@@ -272,207 +272,289 @@ function generatePizzaCalloutSvgReceipt(item, options = {}) {
       });
       const key = matched ? matched.cleanName : flavors[0]?.cleanName || "default";
       if (!toppingsByFlavor[key]) toppingsByFlavor[key] = [];
-      toppingsByFlavor[key].push(tName);
+      toppingsByFlavor[key].push({ name: tName, quantity: qty, price });
     }
   });
 
-  const width = 290;
-  const cx = 145;
-  const cy = 75;
-  const r = 38;
-
+  // GERAÇÃO DO GRÁFICO CIRCULAR SVG DA PIZZA
+  const svgWidth = 160;
+  const svgHeight = 160;
+  const cx = 80;
+  const cy = 80;
+  const r = 64;
   const count = flavors.length;
-  let leftFlavors = [];
-  let rightFlavors = [];
 
-  if (count <= 1) {
-    rightFlavors = [{ ...flavors[0], sectorAngle: 0, toppings: toppingsByFlavor[flavors[0]?.cleanName] || [] }];
-  } else if (count === 2) {
-    leftFlavors = [{ ...flavors[0], sectorAngle: 180, toppings: toppingsByFlavor[flavors[0]?.cleanName] || [] }];
-    rightFlavors = [{ ...flavors[1], sectorAngle: 0, toppings: toppingsByFlavor[flavors[1]?.cleanName] || [] }];
-  } else if (count === 3) {
-    leftFlavors = [{ ...flavors[0], sectorAngle: 180, toppings: toppingsByFlavor[flavors[0]?.cleanName] || [] }];
-    rightFlavors = [
-      { ...flavors[1], sectorAngle: 320, toppings: toppingsByFlavor[flavors[1]?.cleanName] || [] },
-      { ...flavors[2], sectorAngle: 50, toppings: toppingsByFlavor[flavors[2]?.cleanName] || [] },
-    ];
-  } else {
-    leftFlavors = [
-      { ...flavors[0], sectorAngle: 225, toppings: toppingsByFlavor[flavors[0]?.cleanName] || [] },
-      { ...flavors[1], sectorAngle: 135, toppings: toppingsByFlavor[flavors[1]?.cleanName] || [] },
-    ];
-    rightFlavors = [
-      { ...flavors[2], sectorAngle: 315, toppings: toppingsByFlavor[flavors[2]?.cleanName] || [] },
-      { ...flavors[3], sectorAngle: 45, toppings: toppingsByFlavor[flavors[3]?.cleanName] || [] },
-    ];
-  }
+  let svgContent = "";
+  // Círculo base da pizza
+  svgContent += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#ffffff" stroke="#000000" stroke-width="3.2" />`;
 
-  // Calcula altura dinamica para comportar perfeitamente todos os adicionais
-  let maxY = 145;
-  leftFlavors.forEach((f, i) => {
-    const callY = leftFlavors.length === 1 ? cy : (i === 0 ? cy - 26 : cy + 32);
-    const bottom = callY + 12 + (f.toppings.length * 10);
-    if (bottom > maxY) maxY = bottom;
-  });
-  rightFlavors.forEach((f, i) => {
-    const callY = rightFlavors.length === 1 ? cy : (i === 0 ? cy - 26 : cy + 32);
-    const bottom = callY + 12 + (f.toppings.length * 10);
-    if (bottom > maxY) maxY = bottom;
-  });
-  const height = maxY + 8;
-
-  const getFontSize = (txt) => {
-    if (!txt) return 10;
-    if (txt.length > 17) return 8;
-    if (txt.length > 13) return 9;
-    return 10;
-  };
-
-  let svgElements = "";
-
-  // Borda da pizza
-  svgElements += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${isDarkUi ? "#201810" : "#ffffff"}" stroke="${crustColor}" stroke-width="2.5" />`;
-  svgElements += `<circle cx="${cx}" cy="${cy}" r="${r - 3.5}" fill="none" stroke="${crustColor}" stroke-width="0.8" stroke-dasharray="2,2" />`;
-
-  // Divisórias dos setores e números de fatias
   if (count <= 1) {
     const s = flavors[0]?.slices || totalSlices;
-    svgElements += `
-      <text x="${cx}" y="${cy - 3}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="20" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${s}</text>
-      <text x="${cx}" y="${cy + 10}" font-family="Arial, sans-serif" font-size="7.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
+    svgContent += `
+      <text x="${cx}" y="${cy - 7}" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">${s}</text>
+      <text x="${cx}" y="${cy + 13}" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000" letter-spacing="0.5">FAT</text>
     `;
   } else if (count === 2) {
-    svgElements += `<line x1="${cx}" y1="${cy - r}" x2="${cx}" y2="${cy + r}" stroke="${strokeColor}" stroke-width="2" />`;
-    svgElements += `
-      <text x="${cx - 17}" y="${cy - 3}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="17" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${flavors[0].slices}</text>
-      <text x="${cx - 17}" y="${cy + 10}" font-family="Arial, sans-serif" font-size="7.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
-    `;
-    svgElements += `
-      <text x="${cx + 17}" y="${cy - 3}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="17" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${flavors[1].slices}</text>
-      <text x="${cx + 17}" y="${cy + 10}" font-family="Arial, sans-serif" font-size="7.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
-    `;
-  } else if (count === 3) {
-    svgElements += `<line x1="${cx}" y1="${cy - r}" x2="${cx}" y2="${cy}" stroke="${strokeColor}" stroke-width="2" />`;
-    svgElements += `<line x1="${cx}" y1="${cy}" x2="${cx + r * Math.cos(0.2 * Math.PI)}" y2="${cy + r * Math.sin(0.2 * Math.PI)}" stroke="${strokeColor}" stroke-width="2" />`;
-    svgElements += `<line x1="${cx}" y1="${cy}" x2="${cx + r * Math.cos(0.68 * Math.PI)}" y2="${cy + r * Math.sin(0.68 * Math.PI)}" stroke="${strokeColor}" stroke-width="2" />`;
+    const s1 = flavors[0].slices;
+    const s2 = flavors[1].slices;
+    if (s1 === s2) {
+      svgContent += `<line x1="${cx}" y1="${cy - r}" x2="${cx}" y2="${cy + r}" stroke="#000000" stroke-width="2.6" />`;
+      svgContent += `
+        <text x="${cx - 28}" y="${cy - 6}" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">${s1}</text>
+        <text x="${cx - 28}" y="${cy + 13}" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">FAT</text>
+      `;
+      svgContent += `
+        <text x="${cx + 28}" y="${cy - 6}" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">${s2}</text>
+        <text x="${cx + 28}" y="${cy + 13}" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">FAT</text>
+      `;
+    } else {
+      const total = s1 + s2;
+      const angle1 = (s1 / total) * 360;
+      const rad0 = -Math.PI / 2;
+      const rad1 = rad0 + (angle1 * Math.PI) / 180;
+      svgContent += `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy - r}" stroke="#000000" stroke-width="2.6" />`;
+      const x1 = cx + r * Math.cos(rad1);
+      const y1 = cy + r * Math.sin(rad1);
+      svgContent += `<line x1="${cx}" y1="${cy}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="#000000" stroke-width="2.6" />`;
 
-    svgElements += `
-      <text x="${cx - 18}" y="${cy - 3}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="17" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${flavors[0].slices}</text>
-      <text x="${cx - 18}" y="${cy + 11}" font-family="Arial, sans-serif" font-size="7.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
-    `;
-    svgElements += `
-      <text x="${cx + 16}" y="${cy - 15}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="15" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${flavors[1].slices}</text>
-      <text x="${cx + 16}" y="${cy - 3}" font-family="Arial, sans-serif" font-size="7" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
-    `;
-    svgElements += `
-      <text x="${cx + 14}" y="${cy + 15}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="15" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${flavors[2].slices}</text>
-      <text x="${cx + 14}" y="${cy + 26}" font-family="Arial, sans-serif" font-size="7" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
-    `;
+      const midRad1 = rad0 + ((angle1 / 2) * Math.PI) / 180;
+      const tx1 = cx + (r * 0.52) * Math.cos(midRad1);
+      const ty1 = cy + (r * 0.52) * Math.sin(midRad1);
+      svgContent += `
+        <text x="${tx1.toFixed(1)}" y="${(ty1 - 6).toFixed(1)}" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">${s1}</text>
+        <text x="${tx1.toFixed(1)}" y="${(ty1 + 12).toFixed(1)}" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">FAT</text>
+      `;
+
+      const midRad2 = rad1 + (((360 - angle1) / 2) * Math.PI) / 180;
+      const tx2 = cx + (r * 0.52) * Math.cos(midRad2);
+      const ty2 = cy + (r * 0.52) * Math.sin(midRad2);
+      svgContent += `
+        <text x="${tx2.toFixed(1)}" y="${(ty2 - 6).toFixed(1)}" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">${s2}</text>
+        <text x="${tx2.toFixed(1)}" y="${(ty2 + 12).toFixed(1)}" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">FAT</text>
+      `;
+    }
+  } else if (count === 3) {
+    const s1 = flavors[0].slices;
+    const s2 = flavors[1].slices;
+    const s3 = flavors[2].slices;
+
+    if ((s1 === 3 && s2 === 3 && s3 === 2) || (s1 === 3 && s2 === 2 && s3 === 3) || (s1 === 2 && s2 === 3 && s3 === 3)) {
+      svgContent += `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy - r}" stroke="#000000" stroke-width="2.6" />`;
+      const xSE = cx + r * Math.cos((45 * Math.PI) / 180);
+      const ySE = cy + r * Math.sin((45 * Math.PI) / 180);
+      svgContent += `<line x1="${cx}" y1="${cy}" x2="${xSE.toFixed(1)}" y2="${ySE.toFixed(1)}" stroke="#000000" stroke-width="2.6" />`;
+      const xSW = cx + r * Math.cos((135 * Math.PI) / 180);
+      const ySW = cy + r * Math.sin((135 * Math.PI) / 180);
+      svgContent += `<line x1="${cx}" y1="${cy}" x2="${xSW.toFixed(1)}" y2="${ySW.toFixed(1)}" stroke="#000000" stroke-width="2.6" />`;
+
+      let topEsquerdaFlavor = flavors[0];
+      let topDireitaFlavor = flavors[1];
+      let baseFlavor = flavors[2];
+
+      if (flavors[0].slices === 2) {
+        baseFlavor = flavors[0];
+        topDireitaFlavor = flavors[1];
+        topEsquerdaFlavor = flavors[2];
+      } else if (flavors[1].slices === 2) {
+        baseFlavor = flavors[1];
+        topEsquerdaFlavor = flavors[0];
+        topDireitaFlavor = flavors[2];
+      }
+
+      svgContent += `
+        <text x="${cx - 23}" y="${cy - 19}" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">${topEsquerdaFlavor.slices}</text>
+        <text x="${cx - 23}" y="${cy - 2}" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">FAT</text>
+      `;
+      svgContent += `
+        <text x="${cx + 23}" y="${cy - 19}" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">${topDireitaFlavor.slices}</text>
+        <text x="${cx + 23}" y="${cy - 2}" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">FAT</text>
+      `;
+      svgContent += `
+        <text x="${cx}" y="${cy + 22}" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">${baseFlavor.slices}</text>
+        <text x="${cx}" y="${cy + 39}" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">FAT</text>
+      `;
+    } else {
+      const total = s1 + s2 + s3;
+      let currAngle = -90;
+      flavors.forEach((f) => {
+        const sweep = (f.slices / total) * 360;
+        const radLine = (currAngle * Math.PI) / 180;
+        const lx = cx + r * Math.cos(radLine);
+        const ly = cy + r * Math.sin(radLine);
+        svgContent += `<line x1="${cx}" y1="${cy}" x2="${lx.toFixed(1)}" y2="${ly.toFixed(1)}" stroke="#000000" stroke-width="2.6" />`;
+
+        const midAngle = currAngle + sweep / 2;
+        const midRad = (midAngle * Math.PI) / 180;
+        const tx = cx + (r * 0.54) * Math.cos(midRad);
+        const ty = cy + (r * 0.54) * Math.sin(midRad);
+        svgContent += `
+          <text x="${tx.toFixed(1)}" y="${(ty - 5).toFixed(1)}" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">${f.slices}</text>
+          <text x="${tx.toFixed(1)}" y="${(ty + 11).toFixed(1)}" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">FAT</text>
+        `;
+        currAngle += sweep;
+      });
+    }
   } else {
     const total = flavors.reduce((a, f) => a + f.slices, 0) || totalSlices;
-    let curr = -90;
+    let currAngle = -90;
     flavors.forEach((f) => {
       const sweep = (f.slices / total) * 360;
-      const rad = (curr * Math.PI) / 180;
-      svgElements += `<line x1="${cx}" y1="${cy}" x2="${cx + r * Math.cos(rad)}" y2="${cy + r * Math.sin(rad)}" stroke="${strokeColor}" stroke-width="2" />`;
-      const mid = ((curr + sweep / 2) * Math.PI) / 180;
-      const tx = cx + r * 0.55 * Math.cos(mid);
-      const ty = cy + r * 0.55 * Math.sin(mid);
-      svgElements += `
-        <text x="${tx}" y="${ty - 3}" font-family="'Arial Black', Impact, Arial, sans-serif" font-size="14" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">${f.slices}</text>
-        <text x="${tx}" y="${ty + 8}" font-family="Arial, sans-serif" font-size="6.5" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="${numColor}">FAT</text>
+      const radLine = (currAngle * Math.PI) / 180;
+      const lx = cx + r * Math.cos(radLine);
+      const ly = cy + r * Math.sin(radLine);
+      svgContent += `<line x1="${cx}" y1="${cy}" x2="${lx.toFixed(1)}" y2="${ly.toFixed(1)}" stroke="#000000" stroke-width="2.6" />`;
+
+      const midAngle = currAngle + sweep / 2;
+      const midRad = (midAngle * Math.PI) / 180;
+      const tx = cx + (r * 0.58) * Math.cos(midRad);
+      const ty = cy + (r * 0.58) * Math.sin(midRad);
+      const fNumSize = count === 4 ? 20 : 16;
+      const fFatSize = count === 4 ? 10 : 8;
+      svgContent += `
+        <text x="${tx.toFixed(1)}" y="${(ty - 4).toFixed(1)}" font-family="Arial, Helvetica, sans-serif" font-size="${fNumSize}" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">${f.slices}</text>
+        <text x="${tx.toFixed(1)}" y="${(ty + 9).toFixed(1)}" font-family="Arial, Helvetica, sans-serif" font-size="${fFatSize}" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#000000">FAT</text>
       `;
-      curr += sweep;
+      currAngle += sweep;
     });
   }
 
-  // Ponto central da pizza
-  svgElements += `<circle cx="${cx}" cy="${cy}" r="3" fill="${crustColor}" />`;
-
-  // CALLOUTS LADO ESQUERDO (Linha diagonal/apontador + Linha horizontal abaixo do sabor + Adicionais com +)
-  if (leftFlavors.length === 1) {
-    const f = leftFlavors[0];
-    const callY = cy;
-    const px = cx - r;
-    const py = cy;
-    const lineEndX = cx - r - 4;
-    const maxTxt = Math.max(f.cleanName.length * 7.2, ...f.toppings.map(t => (t.length + 1) * 6.2), 40);
-    const lineStartX = Math.max(5, lineEndX - maxTxt - 6);
-    const fSize = getFontSize(f.cleanName);
-
-    svgElements += `<polyline points="${px},${py} ${lineEndX},${callY} ${lineStartX},${callY}" stroke="${pointerColor}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />`;
-    svgElements += `<text x="${lineStartX + 1}" y="${callY - 3}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${fSize}" font-weight="900" fill="${textColor}" text-anchor="start">${f.cleanName.toUpperCase()}</text>`;
-
-    f.toppings.forEach((top, idx) => {
-      svgElements += `<text x="${lineStartX + 2}" y="${callY + 11 + idx * 10}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="8" font-weight="bold" fill="${toppingColor}" text-anchor="start">+${top.toUpperCase()}</text>`;
-    });
-  } else if (leftFlavors.length > 1) {
-    leftFlavors.forEach((f, i) => {
-      const callY = i === 0 ? cy - 24 : cy + 30;
-      const rad = (f.sectorAngle * Math.PI) / 180;
-      const px = cx + r * Math.cos(rad);
-      const py = cy + r * Math.sin(rad);
-      const lineEndX = cx - r - 4;
-      const maxTxt = Math.max(f.cleanName.length * 7.2, ...f.toppings.map(t => (t.length + 1) * 6.2), 40);
-      const lineStartX = Math.max(5, lineEndX - maxTxt - 6);
-      const fSize = getFontSize(f.cleanName);
-
-      svgElements += `<polyline points="${px.toFixed(1)},${py.toFixed(1)} ${lineEndX},${callY} ${lineStartX},${callY}" stroke="${pointerColor}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />`;
-      svgElements += `<text x="${lineStartX + 1}" y="${callY - 3}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${fSize}" font-weight="900" fill="${textColor}" text-anchor="start">${f.cleanName.toUpperCase()}</text>`;
-
-      f.toppings.forEach((top, idx) => {
-        svgElements += `<text x="${lineStartX + 2}" y="${callY + 11 + idx * 10}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="8" font-weight="bold" fill="${toppingColor}" text-anchor="start">+${top.toUpperCase()}</text>`;
-      });
-    });
-  }
-
-  // CALLOUTS LADO DIREITO (Linha diagonal/apontador + Linha horizontal abaixo do sabor + Adicionais com +)
-  if (rightFlavors.length === 1) {
-    const f = rightFlavors[0];
-    const callY = cy;
-    const px = cx + r;
-    const py = cy;
-    const lineStartX = cx + r + 4;
-    const maxTxt = Math.max(f.cleanName.length * 7.2, ...f.toppings.map(t => (t.length + 1) * 6.2), 40);
-    const lineEndX = Math.min(width - 5, lineStartX + maxTxt + 6);
-    const fSize = getFontSize(f.cleanName);
-
-    svgElements += `<polyline points="${px},${py} ${lineStartX},${callY} ${lineEndX},${callY}" stroke="${pointerColor}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />`;
-    svgElements += `<text x="${lineStartX + 1}" y="${callY - 3}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${fSize}" font-weight="900" fill="${textColor}" text-anchor="start">${f.cleanName.toUpperCase()}</text>`;
-
-    f.toppings.forEach((top, idx) => {
-      svgElements += `<text x="${lineStartX + 2}" y="${callY + 11 + idx * 10}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="8" font-weight="bold" fill="${toppingColor}" text-anchor="start">+${top.toUpperCase()}</text>`;
-    });
-  } else if (rightFlavors.length > 1) {
-    rightFlavors.forEach((f, i) => {
-      const callY = i === 0 ? cy - 24 : cy + 30;
-      const rad = (f.sectorAngle * Math.PI) / 180;
-      const px = cx + r * Math.cos(rad);
-      const py = cy + r * Math.sin(rad);
-      const lineStartX = cx + r + 4;
-      const maxTxt = Math.max(f.cleanName.length * 7.2, ...f.toppings.map(t => (t.length + 1) * 6.2), 40);
-      const lineEndX = Math.min(width - 5, lineStartX + maxTxt + 6);
-      const fSize = getFontSize(f.cleanName);
-
-      svgElements += `<polyline points="${px.toFixed(1)},${py.toFixed(1)} ${lineStartX},${callY} ${lineEndX},${callY}" stroke="${pointerColor}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none" />`;
-      svgElements += `<text x="${lineStartX + 1}" y="${callY - 3}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="${fSize}" font-weight="900" fill="${textColor}" text-anchor="start">${f.cleanName.toUpperCase()}</text>`;
-
-      f.toppings.forEach((top, idx) => {
-        svgElements += `<text x="${lineStartX + 2}" y="${callY + 11 + idx * 10}" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="8" font-weight="bold" fill="${toppingColor}" text-anchor="start">+${top.toUpperCase()}</text>`;
-      });
-    });
-  }
+  // Ponto central
+  svgContent += `<circle cx="${cx}" cy="${cy}" r="${2}" fill="#000000" />`;
 
   const pizzaSvg = `
-    <svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="display:block; margin: 2px auto;">
-      ${svgElements}
+    <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" xmlns="http://www.w3.org/2000/svg" style="display:block; margin: 0 auto;">
+      ${svgContent}
     </svg>
   `;
 
-  return { totalSlices, flavors, fullToppings, pizzaSvg };
+  // CARDS DOS SABORES ABAIXO DA PIZZA
+  const flavorCardsHtml = flavors.map((f) => {
+    const fTops = toppingsByFlavor[f.cleanName] || [];
+    let toppingsText = "";
+    let toppingsTotalPrice = 0;
+
+    if (fTops.length > 0) {
+      toppingsText = fTops.map((t) => {
+        toppingsTotalPrice += (t.price || 0) * (t.quantity || 1);
+        const qtyPrefix = t.quantity > 1 ? `+${t.quantity}X - ` : `1X - `;
+        return `(${qtyPrefix}${t.name.toUpperCase()})`;
+      }).join(" ");
+    }
+
+    const hasRightPrice = !isKitchen && toppingsTotalPrice > 0;
+    const priceFormatted = toppingsTotalPrice.toFixed(2).replace(".", ",");
+
+    return `
+      <div style="border: 1.8px solid #000000; border-radius: 12px; margin-top: 7px; display: flex; align-items: stretch; background: #ffffff; min-height: 40px; overflow: hidden;">
+        <div style="padding: 6px 10px; flex: 1; display: flex; flex-direction: column; justify-content: center; font-size: 13px; font-weight: 900; line-height: 1.25; color: #000000;">
+          <div>
+            <strong>${f.slices} FAT ${f.cleanName.toUpperCase()}</strong>
+            ${toppingsText ? `<span style="font-weight: 700; margin-left: 4px;">+ ${toppingsText}</span>` : ""}
+          </div>
+        </div>
+        ${hasRightPrice ? `
+          <div style="border-left: 1.6px solid #000000; width: 58px; padding: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; background: #ffffff;">
+            <div style="font-size: 8px; font-weight: 800; line-height: 1; margin-bottom: 2px;">R$</div>
+            <div style="font-size: 13px; font-weight: 900; line-height: 1; letter-spacing: -0.5px;">${priceFormatted}</div>
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }).join("");
+
+  // Borda Recheada (se houver)
+  let crustHtml = "";
+  if (item.crustType && item.crustType !== "Tradicional") {
+    const cPrice = parseFloat(item.crustPrice || 0);
+    const hasPrice = !isKitchen && cPrice > 0;
+    crustHtml = `
+      <div style="border: 1.8px solid #000000; border-radius: 12px; margin-top: 7px; display: flex; align-items: stretch; background: #ffffff; min-height: 38px; overflow: hidden;">
+        <div style="padding: 6px 10px; flex: 1; display: flex; align-items: center; font-size: 12px; font-weight: 900; color: #000000;">
+          🧀 BORDA: ${item.crustType.toUpperCase()}${item.caracolRequested ? " (CARACOL)" : ""}
+        </div>
+        ${hasPrice ? `
+          <div style="border-left: 1.6px solid #000000; width: 58px; padding: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0;">
+            <div style="font-size: 8px; font-weight: 800; line-height: 1; margin-bottom: 2px;">R$</div>
+            <div style="font-size: 13px; font-weight: 900; line-height: 1;">${cPrice.toFixed(2).replace(".", ",")}</div>
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }
+
+  // Adicionais na Pizza Toda (FULL) se houver
+  let fullToppingsHtml = "";
+  if (fullToppings.length > 0) {
+    const fullTotalPrice = fullToppings.reduce((acc, t) => acc + (t.price || 0) * (t.quantity || 1), 0);
+    const hasPrice = !isKitchen && fullTotalPrice > 0;
+    const fullNames = fullToppings.map(t => `${t.quantity > 1 ? `${t.quantity}X ` : ""}${t.name.toUpperCase()}`).join(", ");
+    fullToppingsHtml = `
+      <div style="border: 1.8px solid #000000; border-radius: 12px; margin-top: 7px; display: flex; align-items: stretch; background: #ffffff; min-height: 38px; overflow: hidden;">
+        <div style="padding: 6px 10px; flex: 1; display: flex; align-items: center; font-size: 11.5px; font-weight: 900; color: #000000;">
+          ✨ ADICIONAIS NA PIZZA TODA: ${fullNames}
+        </div>
+        ${hasPrice ? `
+          <div style="border-left: 1.6px solid #000000; width: 58px; padding: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0;">
+            <div style="font-size: 8px; font-weight: 800; line-height: 1; margin-bottom: 2px;">R$</div>
+            <div style="font-size: 13px; font-weight: 900; line-height: 1;">${fullTotalPrice.toFixed(2).replace(".", ",")}</div>
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }
+
+  // Observações da pizza
+  let notesHtml = "";
+  if (item.notes && item.notes.trim()) {
+    notesHtml = `
+      <div style="border: 1.5px dashed #000000; border-radius: 10px; margin-top: 7px; padding: 6px 10px; font-size: 11px; font-weight: 700; color: #000000; background: #ffffff;">
+        📝 Obs: &quot;${item.notes}&quot;
+      </div>
+    `;
+  }
+
+  // CARD COMPLETO DA PIZZA NO PADRÃO EXATO DA IMAGEM
+  return `
+    <div style="border: 2.8px solid #000000; border-radius: 18px; padding: 12px 10px; background: #ffffff; color: #000000; box-sizing: border-box; width: 100%; margin: 8px 0;">
+      <!-- CABEÇALHO -->
+      <div style="text-align: center; font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; font-size: 15px; font-weight: 900; letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 8px; color: #000000;">
+        TAMANHO ${size} (${totalSlices} FATIAS)${unitLabel}
+      </div>
+
+      <!-- LINHA TRACEJADA -->
+      <div style="border-top: 2px dashed #000000; margin: 0 0 10px 0;"></div>
+
+      <!-- GRÁFICO CIRCULAR DA PIZZA -->
+      ${pizzaSvg}
+
+      <!-- CARDS DOS SABORES -->
+      <div style="margin-top: 9px;">
+        ${flavorCardsHtml}
+      </div>
+
+      <!-- BORDA -->
+      ${crustHtml}
+
+      <!-- ADICIONAIS NA PIZZA TODA -->
+      ${fullToppingsHtml}
+
+      <!-- OBSERVAÇÕES -->
+      ${notesHtml}
+    </div>
+  `;
 }
 
-// Formatador de cupom térmico completo com Pizza Dinâmica e alta legibilidade
+// Compatibilidade retroativa
+function generatePizzaCalloutSvgReceipt(item, options = {}) {
+  const { totalSlices, flavors } = parsePizzaFlavorsWithSlices(item);
+  return {
+    totalSlices,
+    flavors,
+    fullToppings: [],
+    pizzaSvg: generatePizzaCardReceipt(item, options),
+  };
+}
+
 function formatThermalReceipt(order, layout = "completo") {
   const isTable = order.type === "COMANDA" || Boolean(order.comandaId);
   const tableNum = order.comanda?.number || order.comandaNumber;
@@ -485,76 +567,42 @@ function formatThermalReceipt(order, layout = "completo") {
 
   const money = (v) => `R$ ${parseFloat(v || 0).toFixed(2)}`;
 
-  // Itens HTML com Pizza Dinâmica e Apontadores de Sabores e Adicionais
+  // Itens HTML com Card Oficial da Pizza para cada Pizza do pedido
   const itemsHtml = (order.items || []).map((item) => {
-    const qty = item.quantity || 1;
+    const qty = Math.max(1, item.quantity || 1);
     const priceStr = money(item.totalPrice);
 
-    let pizzaBlock = "";
     const isPizzaItem = Boolean(item.isPizza) || (item.name && item.name.toLowerCase().includes("pizza")) || (item.flavors && item.flavors.length > 0);
+    
     if (isPizzaItem) {
-      const { fullToppings, pizzaSvg, totalSlices } = generatePizzaCalloutSvgReceipt(item, { dark: false });
-
-      let crustInfo = "";
-      if (item.crustType && item.crustType !== "Tradicional") {
-        const cPrice = parseFloat(item.crustPrice || 0);
-        const cPriceStr = cPrice > 0 && !isKitchen ? ` (+${money(cPrice)})` : "";
-        crustInfo = ` | BORDA: <strong>${item.crustType}${cPriceStr}</strong>`;
-      }
-      if (item.caracolRequested) {
-        crustInfo += ` <span style="font-weight:900; border:1px solid #000; padding:0 3px;">(CARACOL)</span>`;
+      // Se tiver mais de 1 pizza do mesmo item, gera um card para cada pizza
+      let pizzaCards = "";
+      for (let q = 1; q <= qty; q++) {
+        pizzaCards += generatePizzaCardReceipt(item, {
+          isKitchen,
+          unitIndex: q,
+          totalUnits: qty,
+        });
       }
 
-      let fullToppingsHtml = "";
-      if (fullToppings.length > 0) {
-        fullToppingsHtml = `
-          <div style="font-size:10px; font-weight:bold; border-top:1px dashed #000; margin-top:2px; padding-top:2px; text-align:center;">
-            ADICIONAIS INTEIRA: ${fullToppings.map((t) => `<strong>+ ${t}</strong>`).join(" | ")}
+      return `
+        <div style="margin: 6px 0 10px 0; padding-bottom: 6px; border-bottom: 1px dashed #777;">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; font-weight: 900; margin-bottom: 2px;">
+            <div>[ ${qty}x ] ${item.name}</div>
+            ${!isKitchen ? `<div>${priceStr}</div>` : ""}
           </div>
-        `;
-      }
-
-      let toppingsBreakdownHtml = "";
-      if (item.toppings && item.toppings.length > 0 && !isKitchen) {
-        toppingsBreakdownHtml = `
-          <div style="font-size:10px; font-weight:normal; border-top:1px dashed #777; margin-top:3px; padding-top:2px;">
-            <div style="font-weight:900; font-size:10px; text-transform:uppercase; margin-bottom:1px;">ADICIONAIS / EXTRAS:</div>
-            ${item.toppings.map((t) => {
-              const tName = t.toppingName || t.name || "Adicional";
-              const targetDesc = t.targetType === "FULL" || t.targetType === "INTEIRA" || !t.flavorName
-                ? "Inteira"
-                : `${t.slicesCount || 1} fat. ${t.flavorName.replace(/^\d+\s*fatias?\s*/i, "")}`;
-              const tPrice = parseFloat(t.price || 0);
-              return `
-                <div style="display:flex; justify-content:space-between; font-size:9.5px;">
-                  <span>+ ${tName} (${targetDesc})</span>
-                  <span>${tPrice > 0 ? money(tPrice) : "Incluso"}</span>
-                </div>
-              `;
-            }).join("")}
-          </div>
-        `;
-      }
-
-      pizzaBlock = `
-        <div style="border:2px solid #000; border-radius:6px; padding:4px 5px; margin:5px 0 6px 0; background:#fff;">
-          <div style="text-align:center; font-size:10.5px; font-weight:900; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px dashed #000; padding-bottom:2px; margin-bottom:2px;">
-            TAMANHO: <strong>${item.pizzaSize || "G"}</strong> (${totalSlices} FATIAS)${crustInfo}
-          </div>
-          ${pizzaSvg}
-          ${fullToppingsHtml}
-          ${toppingsBreakdownHtml}
+          ${pizzaCards}
         </div>
       `;
     }
 
+    // Itens que não são pizza (bebidas, porções, etc.)
     return `
-      <div style="margin:6px 0; padding-bottom:4px; border-bottom:1px dashed #aaa;">
+      <div style="margin: 6px 0; padding-bottom: 4px; border-bottom: 1px dashed #aaa;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; font-size:12px; font-weight:900;">
           <div>[ ${qty}x ] ${item.name}</div>
           ${!isKitchen ? `<div>${priceStr}</div>` : ""}
         </div>
-        ${pizzaBlock}
         ${item.notes ? `<div style="font-size:11px; font-style:italic; margin-top:2px;">Obs Item: "${item.notes}"</div>` : ""}
       </div>
     `;
