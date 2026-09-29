@@ -36,10 +36,16 @@ export default function CartPage() {
           <p className="text-brand-lightGray text-sm">
             Seu carrinho está vazio no momento.
           </p>
-          <div>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/monte-sua-pizza"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-red hover:bg-brand-redHover px-6 py-3 font-semibold text-xs text-white transition-colors cursor-pointer shadow-lg shadow-brand-red/20"
+            >
+              <span>🍕 Montar uma Pizza</span>
+            </Link>
             <Link
               href="/"
-              className="inline-block rounded-xl bg-brand-red hover:bg-brand-redHover px-6 py-3 font-semibold text-xs text-white transition-colors cursor-pointer"
+              className="inline-block rounded-xl border border-brand-mediumGray hover:border-white px-6 py-3 font-semibold text-xs text-brand-lightGray hover:text-white transition-colors cursor-pointer"
             >
               Voltar ao Cardápio
             </Link>
@@ -122,13 +128,37 @@ export default function CartPage() {
               </div>
             ))}
 
+            {/* CARD: PEDIR MAIS UMA PIZZA */}
+            <div className="rounded-xl border border-dashed border-brand-red/40 bg-brand-darkGray/70 hover:bg-brand-red/5 hover:border-brand-red p-4 sm:p-5 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-black/20">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-brand-red/15 border border-brand-red/30 flex items-center justify-center text-2xl shrink-0 shadow-inner shadow-brand-red/20">
+                  🍕
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">
+                    Que tal mais uma pizza no seu pedido?
+                  </h4>
+                  <p className="text-xs text-brand-lightGray">
+                    Monte outra combinação exclusiva com seus sabores, bordas e adicionais favoritos.
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/monte-sua-pizza"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-brand-red hover:bg-brand-redHover text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-brand-red/20 transition-all hover:scale-105 active:scale-95 whitespace-nowrap cursor-pointer"
+              >
+                <span>+ Pedir mais uma pizza</span>
+              </Link>
+            </div>
+
             {/* Ações Auxiliares do Carrinho */}
             <div className="flex items-center justify-between pt-2">
               <Link
                 href="/"
                 className="text-xs font-semibold text-brand-lightGray hover:text-white transition-colors"
               >
-                ← Adicionar mais itens
+                ← Adicionar outros itens do cardápio
               </Link>
               <button
                 onClick={() => {
