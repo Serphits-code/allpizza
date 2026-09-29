@@ -2032,6 +2032,37 @@
       height: 100%;
       border: none;
     }
+
+    /* ESTILOS GERENCIAMENTO DE COMANDA */
+    .manage-pay-method-btn {
+      background: #1e1e1e;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      padding: 8px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .manage-pay-method-btn:hover {
+      background: #252525;
+      color: #fff;
+    }
+    .manage-pay-method-btn.active {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: var(--green);
+      color: var(--green);
+    }
+    .manage-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141414;
+      border: 1px solid #282828;
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
   </style>
 </head>
 <body>
@@ -2901,6 +2932,8 @@
       <div class="modal-body" id="modal-order-body"></div>
       <div class="modal-footer" id="modal-order-footer"></div>
     </div>
+  </div>
+
   <!-- MODAL: GERENCIAMENTO COMPLETO DE COMANDA / MESA -->
   <div id="modal-manage-comanda" class="modal-overlay">
     <div class="modal-box" style="max-width: 680px; width: 95%; max-height: 92vh; display: flex; flex-direction: column;">
@@ -4339,30 +4372,43 @@
     let transferItemId = null;
 
     async function openManageComandaModal(comandaId) {
-      currentManageComandaId = comandaId;
-      const comanda = comandasList.find((c) => c.id === comandaId);
-      currentManageComanda = comanda;
+      try {
+        currentManageComandaId = comandaId;
+        const comanda = comandasList.find((c) => c.id === comandaId);
+        currentManageComanda = comanda;
 
-      const modal = document.getElementById("modal-manage-comanda");
-      if (!modal) return;
-      modal.classList.add("active");
+        const modal = document.getElementById("modal-manage-comanda");
+        if (!modal) {
+          console.error("Modal modal-manage-comanda não encontrado no DOM!");
+          return;
+        }
+        modal.classList.add("active");
 
-      const numText = comanda ? comanda.number : "--";
-      document.getElementById("manage-comanda-title").textContent = `Mesa #${String(numText).padStart(2, "0")}`;
-      const statusPill = document.getElementById("manage-comanda-status");
-      const isOcupada = comanda && comanda.status === "OCUPADA";
-      statusPill.textContent = comanda ? comanda.status : "LIVRE";
-      statusPill.className = `table-status-pill ${isOcupada ? "status-ocupada" : "status-livre"}`;
+        const numText = comanda ? comanda.number : "--";
+        const titleEl = document.getElementById("manage-comanda-title");
+        if (titleEl) titleEl.textContent = `Mesa #${String(numText).padStart(2, "0")}`;
+        const statusPill = document.getElementById("manage-comanda-status");
+        const isOcupada = comanda && comanda.status === "OCUPADA";
+        if (statusPill) {
+          statusPill.textContent = comanda ? comanda.status : "LIVRE";
+          statusPill.className = `table-status-pill ${isOcupada ? "status-ocupada" : "status-livre"}`;
+        }
 
-      const respInput = document.getElementById("manage-comanda-responsible");
-      respInput.value = (comanda && comanda.responsibleName) || "";
+        const respInput = document.getElementById("manage-comanda-responsible");
+        if (respInput) respInput.value = (comanda && comanda.responsibleName) || "";
 
-      document.getElementById("manage-pay-amount").value = "";
-      document.getElementById("manage-pay-change-for").value = "";
-      document.getElementById("manage-troco-badge").style.display = "none";
-      setManagePayMethod("PIX");
+        const amtInput = document.getElementById("manage-pay-amount");
+        if (amtInput) amtInput.value = "";
+        const chgInput = document.getElementById("manage-pay-change-for");
+        if (chgInput) chgInput.value = "";
+        const trocoBadge = document.getElementById("manage-troco-badge");
+        if (trocoBadge) trocoBadge.style.display = "none";
+        setManagePayMethod("PIX");
 
-      await loadManageComandaData(comandaId);
+        await loadManageComandaData(comandaId);
+      } catch (err) {
+        console.error("Erro ao abrir modal de gerenciar comanda:", err);
+      }
     }
 
     async function loadManageComandaData(comandaId) {
@@ -4382,6 +4428,22 @@
           const dataOrders = await resOrders.json();
           orders = dataOrders.comanda?.orders || [];
           currentManageOrders = orders;
+          if (dataOrders.comanda) {
+            currentManageComanda = dataOrders.comanda;
+            const comNum = dataOrders.comanda.number;
+            const titleEl = document.getElementById("manage-comanda-title");
+            if (titleEl) titleEl.textContent = `Mesa #${String(comNum).padStart(2, "0")}`;
+            const isOcupada = dataOrders.comanda.status === "OCUPADA";
+            const statusPill = document.getElementById("manage-comanda-status");
+            if (statusPill) {
+              statusPill.textContent = dataOrders.comanda.status;
+              statusPill.className = `table-status-pill ${isOcupada ? "status-ocupada" : "status-livre"}`;
+            }
+            const respInput = document.getElementById("manage-comanda-responsible");
+            if (respInput && (!respInput.value || respInput.value === "")) {
+              respInput.value = dataOrders.comanda.responsibleName || "";
+            }
+          }
         }
 
         let payments = [];
