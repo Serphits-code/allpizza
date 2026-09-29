@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { roundCurrency } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -71,12 +72,14 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    const total = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-    const count = orders.length;
-    const finishedCount = orders.filter(
+    const billableOrders = orders.filter((o) => o.status !== "CANCELADO");
+    const total = roundCurrency(billableOrders.reduce((sum, o) => sum + (o.total || 0), 0));
+    const count = billableOrders.length;
+    const canceledCount = orders.filter((o) => o.status === "CANCELADO").length;
+    const finishedCount = billableOrders.filter(
       (o) => o.status === "ENTREGUE" || o.status === "PRONTO_RETIRADA"
     ).length;
-    const averageTicket = count > 0 ? total / count : 0;
+    const averageTicket = count > 0 ? roundCurrency(total / count) : 0;
 
     const now = new Date();
     const stalledDeliveryAlert = stalledOrders.map((o) => {
@@ -104,6 +107,7 @@ export async function GET(request: Request) {
       date: startOfDay.toISOString().split("T")[0],
       total,
       count,
+      canceledCount,
       finishedCount,
       averageTicket,
       orders,

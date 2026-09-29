@@ -2351,13 +2351,36 @@
           if (isPizzaItem) {
             const { fullToppings, pizzaSvg, totalSlices } = generatePizzaCalloutSvgUi(it, { dark: true });
 
-            let crustInfo = it.crustType ? `<span style="font-size:11px; color:#aaa; margin-left:6px;">| Borda: <strong>${it.crustType}</strong>${it.caracolRequested ? " (Caracol)" : ""}</span>` : "";
+            const cPrice = parseFloat(it.crustPrice || 0);
+            let crustInfo = it.crustType ? `<span style="font-size:11px; color:#aaa; margin-left:6px;">| Borda: <strong>${it.crustType}</strong>${cPrice > 0 ? ` (+R$ ${cPrice.toFixed(2)})` : ""}${it.caracolRequested ? " (Caracol)" : ""}</span>` : "";
 
             let fullToppingsHtml = "";
             if (fullToppings.length > 0) {
               fullToppingsHtml = `
                 <div style="font-size:11px; color:#34d399; font-weight:700; margin-top:6px; border-top:1px dashed #333; padding-top:6px; text-align:center;">
                   Adicionais na Pizza Toda: ${fullToppings.join(", ")}
+                </div>
+              `;
+            }
+
+            let toppingsBreakdownHtml = "";
+            if (it.toppings && it.toppings.length > 0) {
+              toppingsBreakdownHtml = `
+                <div style="font-size:11px; color:#bbb; margin-top:6px; border-top:1px dashed #333; padding-top:6px;">
+                  <div style="font-weight:bold; color:#fbbf24; text-transform:uppercase; font-size:10px; margin-bottom:2px;">Adicionais Selecionados:</div>
+                  ${it.toppings.map((t) => {
+                    const tName = t.toppingName || t.name || "Adicional";
+                    const targetDesc = t.targetType === "FULL" || t.targetType === "INTEIRA" || !t.flavorName
+                      ? "Pizza Inteira"
+                      : `${t.slicesCount || 1} fat. ${t.flavorName.replace(/^\d+\s*fatias?\s*/i, "")}`;
+                    const tPrice = parseFloat(t.price || 0);
+                    return `
+                      <div style="display:flex; justify-content:space-between; margin-bottom:1px;">
+                        <span>+ ${tName} (${targetDesc})</span>
+                        <span style="font-family:monospace; color:#34d399;">${tPrice > 0 ? "R$ " + tPrice.toFixed(2) : "Incluso"}</span>
+                      </div>
+                    `;
+                  }).join("")}
                 </div>
               `;
             }
@@ -2369,6 +2392,7 @@
                 </div>
                 ${pizzaSvg}
                 ${fullToppingsHtml}
+                ${toppingsBreakdownHtml}
               </div>
             `;
           }
@@ -2389,7 +2413,7 @@
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px; background:#1e1e1e; padding:12px; border-radius:12px;">
           <div><span style="color:#999;">Tipo:</span> <strong>${isTable ? "COMANDA / MESA" : order.type}</strong></div>
           <div><span style="color:#999;">Status:</span> <strong style="color:var(--yellow);">${order.status}</strong></div>
-          <div><span style="color:#999;">Pagamento:</span> <strong style="color:${isTable ? "#c084fc" : "#fff"};">${isTable ? "🍽️ Pagar no Balcão" : (order.paymentMethod || "Pendente")}</strong></div>
+          <div><span style="color:#999;">Pagamento:</span> <strong style="color:${isTable ? "#c084fc" : "#fff"};">${isTable ? "🍽️ Pagar no Balcão" : (order.paymentMethod || "Pendente")}${!isTable && order.paymentMethod === "DINHEIRO" && parseFloat(order.changeFor || 0) > 0 ? ` (Troco p/ R$ ${parseFloat(order.changeFor).toFixed(2)})` : ""}</strong></div>
           <div><span style="color:#999;">Horário:</span> <strong>${new Date(order.createdAt).toLocaleTimeString("pt-BR")}</strong></div>
           ${order.customerAddress ? `<div style="grid-column:1/-1;"><span style="color:#999;">Endereço:</span> <strong>${order.customerAddress}, ${order.addressNumber || ""}</strong></div>` : ""}
         </div>

@@ -497,7 +497,9 @@ function formatThermalReceipt(order, layout = "completo") {
 
       let crustInfo = "";
       if (item.crustType && item.crustType !== "Tradicional") {
-        crustInfo = ` | BORDA: <strong>${item.crustType}</strong>`;
+        const cPrice = parseFloat(item.crustPrice || 0);
+        const cPriceStr = cPrice > 0 && !isKitchen ? ` (+${money(cPrice)})` : "";
+        crustInfo = ` | BORDA: <strong>${item.crustType}${cPriceStr}</strong>`;
       }
       if (item.caracolRequested) {
         crustInfo += ` <span style="font-weight:900; border:1px solid #000; padding:0 3px;">(CARACOL)</span>`;
@@ -512,6 +514,28 @@ function formatThermalReceipt(order, layout = "completo") {
         `;
       }
 
+      let toppingsBreakdownHtml = "";
+      if (item.toppings && item.toppings.length > 0 && !isKitchen) {
+        toppingsBreakdownHtml = `
+          <div style="font-size:10px; font-weight:normal; border-top:1px dashed #777; margin-top:3px; padding-top:2px;">
+            <div style="font-weight:900; font-size:10px; text-transform:uppercase; margin-bottom:1px;">ADICIONAIS / EXTRAS:</div>
+            ${item.toppings.map((t) => {
+              const tName = t.toppingName || t.name || "Adicional";
+              const targetDesc = t.targetType === "FULL" || t.targetType === "INTEIRA" || !t.flavorName
+                ? "Inteira"
+                : `${t.slicesCount || 1} fat. ${t.flavorName.replace(/^\d+\s*fatias?\s*/i, "")}`;
+              const tPrice = parseFloat(t.price || 0);
+              return `
+                <div style="display:flex; justify-content:space-between; font-size:9.5px;">
+                  <span>+ ${tName} (${targetDesc})</span>
+                  <span>${tPrice > 0 ? money(tPrice) : "Incluso"}</span>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+      }
+
       pizzaBlock = `
         <div style="border:2px solid #000; border-radius:6px; padding:4px 5px; margin:5px 0 6px 0; background:#fff;">
           <div style="text-align:center; font-size:10.5px; font-weight:900; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px dashed #000; padding-bottom:2px; margin-bottom:2px;">
@@ -519,6 +543,7 @@ function formatThermalReceipt(order, layout = "completo") {
           </div>
           ${pizzaSvg}
           ${fullToppingsHtml}
+          ${toppingsBreakdownHtml}
         </div>
       `;
     }
@@ -600,6 +625,12 @@ function formatThermalReceipt(order, layout = "completo") {
       <div style="font-size: 11.5px; margin: 4px 0;">
         <div class="row"><span>Pedido: #${order.orderNumber}</span><span>${dateStr}</span></div>
         <div class="row"><span>Tipo  : <strong>${isTable ? "COMANDA / MESA" : order.type}</strong></span><span>${!isKitchen && !isTable ? `Pg: ${order.paymentMethod || "Pendente"}` : (isTable ? `PAGAR NO BALCÃO` : "")}</span></div>
+        ${!isKitchen && order.paymentMethod === "DINHEIRO" && parseFloat(order.changeFor || 0) > 0 ? `
+          <div class="row" style="background:#000; color:#fff; padding:2px 4px; margin:3px 0; font-size:11px; font-weight:900;">
+            <span>TROCO P/: ${money(order.changeFor)}</span>
+            <span>LEVAR: ${money(Math.max(0, parseFloat(order.changeFor) - parseFloat(order.total || 0)))}</span>
+          </div>
+        ` : ""}
       </div>
 
       <div class="sline"></div>

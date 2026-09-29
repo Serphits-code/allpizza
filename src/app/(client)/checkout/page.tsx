@@ -306,7 +306,16 @@ export default function CheckoutPage() {
           pizzaSize: item.pizzaSize,
           crustType: item.crustType,
           crustPrice: item.crustPrice,
+          caracolRequested: Boolean(item.caracolRequested),
           flavors: item.flavors,
+          toppings: item.toppings?.map((t) => ({
+            toppingName: t.toppingName,
+            targetType: t.targetType,
+            flavorName: t.flavorName || null,
+            slicesCount: t.slicesCount || 1,
+            totalSlices: t.totalSlices || 1,
+            price: t.price,
+          })),
         })),
       };
 

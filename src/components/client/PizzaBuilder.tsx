@@ -236,8 +236,14 @@ export default function PizzaBuilder({
   // Preço Total Calculado em Tempo Real
   const currentTotal = useMemo(() => {
     if (pricingFlavorsInput.length === 0) return 0;
-    return calcPizzaItemTotal(size, pricingFlavorsInput, pricingCrustInput, caracolRequested);
-  }, [size, pricingFlavorsInput, pricingCrustInput, caracolRequested]);
+    return calcPizzaItemTotal(
+      size,
+      pricingFlavorsInput,
+      pricingCrustInput,
+      caracolRequested,
+      selectedToppings
+    );
+  }, [size, pricingFlavorsInput, pricingCrustInput, caracolRequested, selectedToppings]);
 
   // Abre a planilha de seleção para um determinado setor e reseta o scroll para o topo
   const handleOpenSheet = (index: number) => {
