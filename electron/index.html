@@ -1672,6 +1672,262 @@
       transform: none;
     }
 
+    /* PIZZA DINÂMICA REALÍSTICA SVG (IDÊNTICO AO COMPONENTE PIZZASVG E PRINTS) */
+    .pdv-pizza-outer-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 2px 0 6px 0;
+    }
+
+    .pdv-pizza-container {
+      position: relative;
+      width: 250px;
+      height: 250px;
+      max-width: 100%;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .pdv-pizza-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.65));
+      border-radius: 50%;
+    }
+
+    .pdv-pizza-hint {
+      font-size: 11px;
+      color: #888;
+      text-align: center;
+      margin-top: 6px;
+      max-width: 280px;
+      line-height: 1.3;
+    }
+
+    /* BADGES FLUTUANTES DA PIZZA (CENTROIDES) */
+    .pdv-pizza-badge {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      outline: none;
+      border: none;
+    }
+
+    .pdv-pizza-badge.empty {
+      background: rgba(18, 18, 18, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      color: #fff;
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 20px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+    }
+
+    .pdv-pizza-badge.empty:hover {
+      background: #e31837;
+      border-color: #ff3344;
+      transform: translate(-50%, -50%) scale(1.08) !important;
+      box-shadow: 0 4px 16px rgba(227, 24, 55, 0.5);
+    }
+
+    .pdv-pizza-badge.has-flavor {
+      background: rgba(12, 12, 12, 0.86);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      color: #fff;
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 20px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pdv-pizza-badge.has-flavor:hover {
+      background: #00e676;
+      border-color: #00e676;
+      color: #000;
+      transform: translate(-50%, -50%) scale(1.08) !important;
+      box-shadow: 0 4px 16px rgba(0, 230, 118, 0.5);
+    }
+
+    /* CARD: DISTRIBUIÇÃO DAS FATIAS (IDÊNTICO AO PRINT 2) */
+    .pdv-dist-badge {
+      font-family: monospace;
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(0, 230, 118, 0.12);
+      color: #00e676;
+      border: 1px solid rgba(0, 230, 118, 0.3);
+    }
+
+    .pdv-dist-badge.incomplete {
+      background: rgba(227, 24, 55, 0.12);
+      color: #ff5252;
+      border-color: rgba(227, 24, 55, 0.3);
+    }
+
+    .pdv-dist-status {
+      font-size: 11px;
+      font-weight: 800;
+      color: #00e676;
+    }
+
+    .pdv-dist-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e1e1e;
+      border: 1px solid #2e2e2e;
+      border-radius: 10px;
+      padding: 8px 12px;
+      transition: border-color 0.2s;
+    }
+
+    .pdv-dist-row:hover {
+      border-color: #444;
+    }
+
+    .pdv-dist-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: #2a2a2a;
+      border: 1px solid #3d3d3d;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+
+    .pdv-dist-btn:hover:not(:disabled) {
+      background: #00e676;
+      color: #000;
+      border-color: #00e676;
+    }
+
+    .pdv-dist-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+    }
+
+    /* PILLS DE ALVO DE ADICIONAL (PRINT 1) */
+    .pdv-target-pill {
+      background: #1a1a1a;
+      border: 1.5px solid #2e2e2e;
+      color: #aaa;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      user-select: none;
+    }
+
+    .pdv-target-pill:hover {
+      background: #242424;
+      border-color: #444;
+      color: #fff;
+    }
+
+    .pdv-target-pill.active {
+      background: #11281a;
+      border-color: #00e676;
+      color: #00e676;
+      box-shadow: 0 0 12px rgba(0, 230, 118, 0.25);
+    }
+
+    /* MODAL DE SELEÇÃO DE SABORES (DRAWER / CATALOG PICKER) */
+    .pdv-flavor-pick-card {
+      background: #181818;
+      border: 1.5px solid #282828;
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pdv-flavor-pick-card:hover {
+      background: #222;
+      border-color: #00e676;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    }
+
+    .pdv-flavor-pick-img {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #333;
+      flex-shrink: 0;
+      background: #2a2a2a;
+    }
+
+    .pdv-flavor-pick-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .pdv-flavor-pick-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pdv-flavor-pick-desc {
+      font-size: 10.5px;
+      color: #777;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.25;
+    }
+
+    .pdv-flavor-pick-price {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #00e676;
+      margin-top: 2px;
+    }
+
     /* DIREITA: WHATSAPP WEB PANE (68% - 70%) */
     .wa-web-pane {
       flex: 1;
@@ -2162,51 +2418,83 @@
             </div>
 
             <!-- ======================================================== -->
-            <!-- PASSO 2: ESCOLHA OS SABORES & BORDA -->
+            <!-- PASSO 2: ESCOLHA OS SABORES & BORDA (IDÊNTICO AO PRINT 2) -->
             <!-- ======================================================== -->
             <div id="pdv-step-pane-2" class="pdv-step-pane">
-              <div class="pdv-step-title-box">
-                <div class="pdv-step-main-title">
-                  <span>🍕</span>
-                  <span>Escolha os Sabores da Pizza</span>
-                </div>
-                <div class="pdv-step-sub-title">
-                  Quantos sabores vai querer na sua pizza?
+              <!-- QUANTIDADE DE SABORES (PRINT 2) -->
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 2px;">
+                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; letter-spacing: 0.5px;">
+                  SELECIONE A QUANTIDADE DE SABORES
+                </span>
+                <div class="flavors-count-row" id="pdv-flavor-count-buttons">
+                  <div class="flavor-count-btn active" data-count="1" onclick="setPdvFlavorCount(1)">1 Sabor</div>
+                  <div class="flavor-count-btn" data-count="2" onclick="setPdvFlavorCount(2)">2 Sabores</div>
+                  <div class="flavor-count-btn" data-count="3" onclick="setPdvFlavorCount(3)">3 Sabores</div>
                 </div>
               </div>
 
-              <!-- QUANTIDADE DE SABORES -->
-              <div class="flavors-count-row" id="pdv-flavor-count-buttons">
-                <div class="flavor-count-btn active" data-count="1" onclick="setPdvFlavorCount(1)">1 Sabor</div>
-                <div class="flavor-count-btn" data-count="2" onclick="setPdvFlavorCount(2)">2 Sabores</div>
-                <div class="flavor-count-btn" data-count="3" onclick="setPdvFlavorCount(3)">3 Sabores</div>
+              <!-- PIZZA DINÂMICA REALÍSTICA SVG (PRINT 2) -->
+              <div class="pdv-pizza-outer-wrap">
+                <div class="pdv-pizza-container" id="pdv-pizza-svg-container"></div>
+                <div class="pdv-pizza-hint">Toque nos botões ou fatias da pizza para escolher o sabor</div>
               </div>
 
-              <!-- PREVIEW SVG DINÂMICO DA PIZZA -->
-              <div style="display: flex; justify-content: center; align-items: center; margin: 4px 0;" id="pdv-pizza-svg-container"></div>
-
-              <!-- SLOTS DE SABORES -->
-              <div id="pdv-flavors-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+              <!-- CARD: DISTRIBUIÇÃO DAS FATIAS (IDÊNTICO AO PRINT 2) -->
+              <div class="pdv-section-card" id="pdv-slice-dist-card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #ddd; letter-spacing: 0.5px;">
+                      DISTRIBUIÇÃO DAS FATIAS
+                    </div>
+                    <div style="font-size: 10px; color: #888; margin-top: 1px;">
+                      Cada sabor deve ter pelo menos 2 fatias.
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span id="pdv-dist-badge" class="pdv-dist-badge">8 / 8 fatias</span>
+                    <span id="pdv-dist-status" class="pdv-dist-status">✅ Completa</span>
+                  </div>
+                </div>
+                <div id="pdv-dist-content" style="display: flex; flex-direction: column; gap: 8px;"></div>
+              </div>
 
               <!-- BORDA RECHEADA -->
-              <div class="pdv-section-card" style="padding: 10px; margin-top: 2px;">
+              <div class="pdv-section-card" style="padding: 12px;">
                 <div class="pdv-card-title">
                   <span>🧀 Borda Recheada</span>
                 </div>
                 <select id="pdv-crust-select" class="pdv-select" onchange="updatePdvPizzaPrice()">
                   <option value="">Sem borda recheada (Massa tradicional)</option>
                 </select>
+                <div id="pdv-caracol-box" style="display: none; align-items: center; justify-content: space-between; padding: 8px 10px; background: #222; border-radius: 8px; border: 1px solid #333; margin-top: 6px;">
+                  <div>
+                    <span style="font-size: 11px; font-weight: 800; color: #fff; display: block;">Opção Caracol</span>
+                    <span style="font-size: 10px; color: #888;">Preparo em espiral com recheio extra (+ R$ 5,00)</span>
+                  </div>
+                  <input type="checkbox" id="pdv-caracol-check" style="width: 16px; height: 16px; accent-color: #00e676; cursor: pointer;" onchange="handlePdvCaracolChange()" />
+                </div>
+              </div>
+
+              <!-- OBSERVAÇÕES DA PIZZA -->
+              <div class="pdv-section-card" style="padding: 12px;">
+                <div class="pdv-card-title">
+                  <span>📝 Observações da Pizza</span>
+                </div>
+                <textarea id="pdv-pizza-notes" class="pdv-textarea" placeholder="Ex: Sem cebola, massa bem crocante, etc."></textarea>
               </div>
 
               <!-- SUB-TOTAL DA PIZZA -->
-              <div style="display: flex; justify-content: space-between; align-items: center; background: #1b1b1b; padding: 10px 14px; border-radius: 10px; border: 1px solid #282828;">
-                <span style="font-size: 12px; color: #aaa;">Preço da Pizza:</span>
-                <strong id="pdv-pizza-subtotal" style="color: #00e676; font-size: 16px;">R$ 0,00</strong>
+              <div style="display: flex; justify-content: space-between; align-items: center; background: #1b1b1b; padding: 12px 16px; border-radius: 12px; border: 1px solid #2e2e2e;">
+                <div>
+                  <span style="font-size: 10px; text-transform: uppercase; color: #888; font-weight: 700; display: block;">Subtotal da Pizza</span>
+                  <span id="pdv-pizza-desc-preview" style="font-size: 11px; color: #bbb;">Pizza Grande</span>
+                </div>
+                <strong id="pdv-pizza-subtotal" style="color: #00e676; font-size: 18px;">R$ 0,00</strong>
               </div>
 
               <div class="pdv-nav-actions">
                 <button type="button" class="btn-step-prev" onclick="goToPdvStep(1)">
-                  <span>←</span> Voltar
+                  <span>←</span> Mudar Tamanho
                 </button>
                 <button type="button" class="btn-step-next" onclick="goToPdvStep(3)">
                   <span>Avançar para Adicionais (Passo 3)</span>
@@ -2216,42 +2504,53 @@
             </div>
 
             <!-- ======================================================== -->
-            <!-- PASSO 3: ADICIONAIS / TOPPINGS DA PIZZA -->
+            <!-- PASSO 3: ADICIONAIS / TOPPINGS DA PIZZA (IDÊNTICO AO PRINT 1) -->
             <!-- ======================================================== -->
             <div id="pdv-step-pane-3" class="pdv-step-pane">
-              <div class="pdv-step-title-box">
-                <div class="pdv-step-main-title">
+              <!-- PIZZA DINÂMICA MONTADA NO TOPO (PRINT 1) -->
+              <div class="pdv-pizza-outer-wrap">
+                <div class="pdv-pizza-container" id="pdv-pizza-toppings-svg-container"></div>
+              </div>
+
+              <div class="pdv-step-title-box" style="margin-top: -2px;">
+                <div class="pdv-step-main-title" style="color: #fff; font-size: 17px;">
                   <span>✨</span>
-                  <span>Adicionais da Pizza</span>
+                  <span>Que tal turbinar sua pizza?</span>
                 </div>
                 <div class="pdv-step-sub-title">
-                  Toppings opcionais para deixar a pizza ainda mais especial
+                  Selecione adicionais para deixar sua pizza ainda mais irresistível!
                 </div>
               </div>
 
+              <!-- SELETOR DA PARTE DA PIZZA (PRINT 1) -->
+              <div class="pdv-section-card">
+                <span style="font-size: 10.5px; font-weight: 800; text-transform: uppercase; color: #aaa; letter-spacing: 0.5px;">
+                  SELECIONE A PARTE DA PIZZA QUE DESEJA COLOCAR ADICIONAL:
+                </span>
+                <div id="pdv-topping-target-pills" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;"></div>
+              </div>
+
+              <!-- SELEÇÃO DE ADICIONAL -->
               <div class="pdv-section-card">
                 <div class="pdv-card-title">
-                  <span>Adicionar Topping</span>
+                  <span>Adicionais Disponíveis</span>
                 </div>
                 <div style="display: flex; gap: 6px;">
-                  <select id="pdv-topping-select" class="pdv-select" style="flex: 2;">
-                    <option value="">-- Selecionar Adicional --</option>
+                  <select id="pdv-topping-select" class="pdv-select" style="flex: 1;" onchange="updatePdvToppingPricePreview()">
+                    <option value="">-- Selecione o Adicional --</option>
                   </select>
-                  <select id="pdv-topping-target" class="pdv-select" style="flex: 1.2;">
-                    <option value="FULL">Inteira</option>
-                    <option value="SAB_1">Sabor 1</option>
-                    <option value="SAB_2">Sabor 2</option>
-                    <option value="SAB_3">Sabor 3</option>
-                  </select>
-                  <button type="button" class="btn-action primary" style="padding: 6px 12px; font-weight: 800;" onclick="addPdvTopping()">➕</button>
+                  <button type="button" class="btn-action primary" style="padding: 6px 14px; font-weight: 800; font-size: 12px; white-space: nowrap;" onclick="addPdvTopping()">
+                    ➕ Adicionar
+                  </button>
                 </div>
-                <div id="pdv-selected-toppings-list" style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;"></div>
+                <div id="pdv-topping-price-preview" style="font-size: 11px; color: #00e676; font-weight: 700; margin-top: 2px;"></div>
+                <div id="pdv-selected-toppings-list" style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;"></div>
               </div>
 
               <!-- BOTAO ADICIONAR PIZZA / PROXIMO -->
               <div class="pdv-nav-actions">
                 <button type="button" class="btn-step-prev" onclick="goToPdvStep(2)">
-                  <span>←</span> Voltar
+                  <span>←</span> Voltar aos Sabores
                 </button>
                 <button type="button" class="btn-step-next" onclick="commitPizzaAndGoStep4()">
                   <span>Avançar para Bebidas (Passo 4)</span>
@@ -2464,6 +2763,30 @@
           ✓ Confirmar Local & Aplicar Taxa
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ESCOLHA DE SABORES DA PIZZA (FLAVOR PICKER) -->
+  <div id="pdv-flavor-picker-modal" class="modal-overlay" style="z-index: 10000;">
+    <div class="modal-box" style="max-width: 580px; height: 600px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="background: #181818;">
+        <div class="modal-title" id="pdv-picker-title" style="display: flex; align-items: center; gap: 8px;">
+          <span>🍕</span>
+          <span>Escolha o Sabor da Pizza</span>
+        </div>
+        <button class="btn-close-modal" onclick="closePdvFlavorPicker()">✕</button>
+      </div>
+      <div style="padding: 10px 14px; background: #141414; border-bottom: 1px solid #282828; display: flex; flex-direction: column; gap: 8px;">
+        <input
+          type="text"
+          id="pdv-picker-search"
+          class="pdv-input"
+          placeholder="🔍 Buscar sabor por nome ou ingrediente..."
+          oninput="filterPdvFlavorPicker()"
+        />
+        <div id="pdv-picker-categories" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;"></div>
+      </div>
+      <div id="pdv-picker-grid" style="flex: 1; overflow-y: auto; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; background: #111;"></div>
     </div>
   </div>
 
@@ -3885,9 +4208,15 @@
       slices: 8,
       flavorCount: 1,
       selectedFlavors: [null, null, null],
+      slicesDistribution: [8],
       crust: null,
+      caracolRequested: false,
+      notes: "",
       toppings: [],
     };
+    let pdvActiveSectorIndex = 0;
+    let pdvSelectedCategoryFilter = "ALL";
+    let pdvActiveToppingTarget = "FULL";
     let pdvItems = [];
     let lastOrderMessage = "";
 
@@ -3926,7 +4255,15 @@
         prog.style.width = `calc(${pct}% * 0.9)`;
       }
 
-      if (stepNum === 4) {
+      if (stepNum === 2) {
+        renderPdvPizzaSvg();
+        renderPdvSliceDistribution();
+        updatePdvPizzaPrice();
+      } else if (stepNum === 3) {
+        renderPdvToppingsPizzaSvg();
+        renderPdvToppingTargetPills();
+        updatePdvToppingPricePreview();
+      } else if (stepNum === 4) {
         renderPdvProductsList();
       } else if (stepNum === 5) {
         renderPdvItems();
@@ -4074,9 +4411,32 @@
       }
 
       selectPdvPizzaSize("G");
-      renderPdvFlavorSlots();
-      renderPdvPizzaSvg();
       updatePdvPizzaPrice();
+    }
+
+    function getPdvFlavorImageUrl(url) {
+      if (!url) return "";
+      if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+        return url;
+      }
+      const base = (appSettings.serverUrl || "http://localhost:3001").replace(/\/+$/, "");
+      return base + (url.startsWith("/") ? url : "/" + url);
+    }
+
+    function getDefaultSlicesDistribution(size, flavorCount) {
+      const rule = PDV_PIZZA_RULES[size] || PDV_PIZZA_RULES.G;
+      const total = rule.slices;
+      if (flavorCount === 1) return [total];
+      if (flavorCount === 2) {
+        const half = Math.floor(total / 2);
+        return [half, total - half];
+      }
+      if (flavorCount === 3) {
+        if (total === 6) return [2, 2, 2];
+        if (total === 8) return [3, 3, 2];
+        if (total === 10) return [4, 3, 3];
+      }
+      return [total];
     }
 
     // PASSO 1: Seleção de Tamanho
@@ -4107,8 +4467,17 @@
         });
       }
 
-      renderPdvFlavorSlots();
+      pdvPizza.slicesDistribution = getDefaultSlicesDistribution(pdvPizza.size, pdvPizza.flavorCount);
+
+      const caracolBox = document.getElementById("pdv-caracol-box");
+      if (caracolBox) {
+        const crustSel = document.getElementById("pdv-crust-select");
+        const crust = (pdvCatalog.crusts || []).find((c) => c.id === crustSel?.value);
+        caracolBox.style.display = crust && crust.caracol ? "flex" : "none";
+      }
+
       renderPdvPizzaSvg();
+      renderPdvSliceDistribution();
       updatePdvPizzaPrice();
     }
 
@@ -4122,90 +4491,436 @@
         btn.classList.toggle("active", parseInt(btn.dataset.count, 10) === count);
       });
 
-      renderPdvFlavorSlots();
+      pdvPizza.slicesDistribution = getDefaultSlicesDistribution(pdvPizza.size, pdvPizza.flavorCount);
+
       renderPdvPizzaSvg();
+      renderPdvSliceDistribution();
       updatePdvPizzaPrice();
     }
 
     function getPdvSlicesDistribution() {
-      const total = pdvPizza.slices;
-      const count = pdvPizza.flavorCount;
-      if (count === 1) return [total];
-      if (count === 2) {
-        const half = Math.floor(total / 2);
-        return [half, total - half];
+      if (pdvPizza.slicesDistribution && pdvPizza.slicesDistribution.length === pdvPizza.flavorCount) {
+        return pdvPizza.slicesDistribution;
       }
-      if (count === 3) {
-        if (total === 6) return [2, 2, 2];
-        if (total === 8) return [3, 3, 2];
-        return [4, 3, 3];
-      }
-      return [total];
+      return getDefaultSlicesDistribution(pdvPizza.size, pdvPizza.flavorCount);
     }
 
-    function renderPdvFlavorSlots() {
-      const container = document.getElementById("pdv-flavors-container");
+    // MOTOR SVG DA PIZZA DINÂMICA (IDÊNTICO AO COMPONENTE PIZZASVG E PRINTS)
+    function renderRealisticPizzaSvg(opts) {
+      const container = document.getElementById(opts.containerId);
       if (!container) return;
 
-      container.innerHTML = "";
-      const dist = getPdvSlicesDistribution();
+      const slicesDist = opts.slicesDistribution || [8];
+      const totalSlices = slicesDist.reduce((a, b) => a + b, 0) || 1;
+      const radius = 45;
+      const cx = 50;
+      const cy = 50;
 
-      for (let i = 0; i < pdvPizza.flavorCount; i++) {
-        const slices = dist[i];
-        const slot = document.createElement("div");
-        slot.className = "flavor-slot";
+      let currentAngle = 0;
+      const sectors = slicesDist.map((slices, idx) => {
+        const angle = (slices / totalSlices) * 360;
+        const isFullCircle = angle >= 359.9;
+        const startAngle = currentAngle;
+        const endAngle = currentAngle + angle;
+        currentAngle = endAngle;
 
-        const currentFlavor = pdvPizza.selectedFlavors[i];
-        let optionsHtml = '<option value="">-- Selecione o Sabor --</option>';
+        const startRad = ((startAngle - 90) * Math.PI) / 180;
+        const endRad = ((endAngle - 90) * Math.PI) / 180;
 
-        (pdvCatalog.flavors || []).forEach((f) => {
-          const priceKey = `price${pdvPizza.size}`;
-          const price = f.category ? f.category[priceKey] || 0 : 0;
-          const selected = currentFlavor && currentFlavor.id === f.id ? "selected" : "";
-          optionsHtml += `<option value="${f.id}" ${selected}>${f.name} (R$ ${price.toFixed(2)})</option>`;
-        });
+        const x1 = cx + radius * Math.cos(startRad);
+        const y1 = cy + radius * Math.sin(startRad);
+        const x2 = cx + radius * Math.cos(endRad);
+        const y2 = cy + radius * Math.sin(endRad);
 
-        slot.innerHTML = `
-          <div class="flavor-slot-head">
-            <span>🍕 Sabor ${i + 1}</span>
-            <span style="font-size: 10px; color: #00e676; background: #17241b; border: 1px solid #00e676; padding: 2px 7px; border-radius: 6px; font-weight: 800;">${slices} fatias</span>
-          </div>
-          <select class="pdv-select" onchange="handlePdvFlavorChange(${i}, this.value)">
-            ${optionsHtml}
-          </select>
-        `;
-        container.appendChild(slot);
-      }
-    }
+        const largeArcFlag = angle > 180 ? 1 : 0;
+        const pathData = isFullCircle
+          ? ""
+          : "M " + cx + " " + cy + " L " + x1 + " " + y1 + " A " + radius + " " + radius + " 0 " + largeArcFlag + " 1 " + x2 + " " + y2 + " Z";
 
-    function handlePdvFlavorChange(index, flavorId) {
-      const flavor = (pdvCatalog.flavors || []).find((f) => f.id === flavorId) || null;
-      pdvPizza.selectedFlavors[index] = flavor;
-      renderPdvPizzaSvg();
-      updatePdvPizzaPrice();
+        const middleAngle = startAngle + angle / 2;
+        const middleRad = ((middleAngle - 90) * Math.PI) / 180;
+        const labelDist = radius * 0.55;
+        const labelX = cx + labelDist * Math.cos(middleRad);
+        const labelY = cy + labelDist * Math.sin(middleRad);
+
+        const divX = cx + (radius + 2) * Math.cos(startRad);
+        const divY = cy + (radius + 2) * Math.sin(startRad);
+
+        return {
+          idx,
+          slices,
+          isFullCircle,
+          pathData,
+          centroid: { x: labelX, y: labelY },
+          dividerLine: { x2: divX, y2: divY },
+        };
+      });
+
+      const clipDefs = sectors.map((s) => {
+        return '<clipPath id="' + opts.containerId + '-clip-' + s.idx + '">' +
+          (s.isFullCircle ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + radius + '" />' : '<path d="' + s.pathData + '" />') +
+          '</clipPath>';
+      }).join("");
+
+      const sectorsSvg = sectors.map((s) => {
+        const flavor = (opts.selectedFlavors || [])[s.idx];
+        const isActive = opts.activeSectorIndex === s.idx;
+        const clickAttr = opts.interactive ? 'onclick="' + opts.onSectorClickFnName + '(' + s.idx + ')"' : "";
+        const cursorStyle = opts.interactive ? 'style="cursor: pointer;"' : "";
+
+        if (flavor) {
+          const imgUrl = getPdvFlavorImageUrl(flavor.imageUrl);
+          return (
+            '<g ' + clickAttr + ' ' + cursorStyle + '>' +
+              (s.isFullCircle
+                ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + radius + '" fill="#e31837" fill-opacity="0.08" />'
+                : '<path d="' + s.pathData + '" fill="#e31837" fill-opacity="0.08" />') +
+              (imgUrl
+                ? '<image href="' + imgUrl + '" x="' + (cx - radius) + '" y="' + (cy - radius) + '" width="' + (radius * 2) + '" height="' + (radius * 2) + '" preserveAspectRatio="xMidYMid slice" clip-path="url(#' + opts.containerId + '-clip-' + s.idx + ')" />'
+                : '<path d="' + s.pathData + '" fill="#e2a63b" />') +
+            '</g>'
+          );
+        } else {
+          return (
+            '<g ' + clickAttr + ' ' + cursorStyle + '>' +
+              (s.isFullCircle
+                ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + radius + '" fill="rgba(42, 42, 42, 0.2)" stroke="#3f2302" stroke-width="0.5" stroke-dasharray="2,2" />'
+                : '<path d="' + s.pathData + '" fill="rgba(42, 42, 42, 0.2)" stroke="#3f2302" stroke-width="0.5" stroke-dasharray="2,2" />') +
+            '</g>'
+          );
+        }
+      }).join("");
+
+      const dividerLines = (opts.flavorCount > 1) ? sectors.map((s) => {
+        if (!s.dividerLine) return "";
+        return (
+          '<line x1="' + cx + '" y1="' + cy + '" x2="' + s.dividerLine.x2 + '" y2="' + s.dividerLine.y2 + '" stroke="#3f2302" stroke-width="0.9" stroke-linecap="round" opacity="0.9" pointer-events="none" />'
+        );
+      }).join("") : "";
+
+      const badgesHtml = sectors.map((s) => {
+        const flavor = (opts.selectedFlavors || [])[s.idx];
+        const isActive = opts.activeSectorIndex === s.idx;
+        const clickAttr = opts.interactive ? 'onclick="' + opts.onSectorClickFnName + '(' + s.idx + ')"' : "";
+        const labelText = flavor ? flavor.name : "Selecionar";
+        const badgeClass = flavor ? "pdv-pizza-badge has-flavor" : "pdv-pizza-badge empty";
+
+        return (
+          '<button type="button" class="' + badgeClass + (isActive ? ' active' : '') + '" style="top: ' + s.centroid.y + '%; left: ' + s.centroid.x + '%;" ' + clickAttr + ' title="' + (flavor ? flavor.name : 'Selecionar Sabor') + '">' +
+            '<span>' + labelText + '</span>' +
+          '</button>'
+        );
+      }).join("");
+
+      container.innerHTML = (
+        '<svg class="pdv-pizza-svg" viewBox="0 0 100 100">' +
+          '<defs>' +
+            '<filter id="' + opts.containerId + '-shadow" x="-20%" y="-20%" width="140%" height="140%">' +
+              '<feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.6" />' +
+            '</filter>' +
+            '<radialGradient id="' + opts.containerId + '-crust" cx="50%" cy="50%" r="50%">' +
+              '<stop offset="86%" stop-color="#dca153" />' +
+              '<stop offset="93%" stop-color="#b4782b" />' +
+              '<stop offset="97%" stop-color="#875113" />' +
+              '<stop offset="100%" stop-color="#552c00" />' +
+            '</radialGradient>' +
+            '<radialGradient id="' + opts.containerId + '-cheese" cx="50%" cy="50%" r="50%">' +
+              '<stop offset="0%" stop-color="#fff3d1" />' +
+              '<stop offset="70%" stop-color="#ffd875" />' +
+              '<stop offset="100%" stop-color="#e2a63b" />' +
+            '</radialGradient>' +
+            clipDefs +
+          '</defs>' +
+          '<!-- Borda Dourada / Crust -->' +
+          '<circle cx="' + cx + '" cy="' + cy + '" r="' + (radius + 3) + '" fill="url(#' + opts.containerId + '-crust)" filter="url(#' + opts.containerId + '-shadow)" />' +
+          '<!-- Queijo Base -->' +
+          '<circle cx="' + cx + '" cy="' + cy + '" r="' + radius + '" fill="url(#' + opts.containerId + '-cheese)" />' +
+          '<!-- Setores / Sabores -->' +
+          sectorsSvg +
+          '<!-- Divisórias -->' +
+          dividerLines +
+        '</svg>' +
+        badgesHtml
+      );
     }
 
     function renderPdvPizzaSvg() {
-      const container = document.getElementById("pdv-pizza-svg-container");
-      if (!container) return;
+      renderRealisticPizzaSvg({
+        containerId: "pdv-pizza-svg-container",
+        size: pdvPizza.size,
+        flavorCount: pdvPizza.flavorCount,
+        selectedFlavors: pdvPizza.selectedFlavors,
+        slicesDistribution: getPdvSlicesDistribution(),
+        activeSectorIndex: pdvActiveSectorIndex,
+        onSectorClickFnName: "openPdvFlavorPicker",
+        interactive: true,
+      });
+    }
+
+    function renderPdvToppingsPizzaSvg() {
+      renderRealisticPizzaSvg({
+        containerId: "pdv-pizza-toppings-svg-container",
+        size: pdvPizza.size,
+        flavorCount: pdvPizza.flavorCount,
+        selectedFlavors: pdvPizza.selectedFlavors,
+        slicesDistribution: getPdvSlicesDistribution(),
+        activeSectorIndex: null,
+        onSectorClickFnName: "openPdvFlavorPicker",
+        interactive: false,
+      });
+    }
+
+    // DISTRIBUIÇÃO DAS FATIAS (IDÊNTICO AO PRINT 2)
+    function renderPdvSliceDistribution() {
+      const card = document.getElementById("pdv-slice-dist-card");
+      if (!card) return;
+
+      const totalSlices = pdvPizza.slices;
+      const isDynamic = pdvPizza.size !== "P" && pdvPizza.flavorCount > 1;
+
+      if (!isDynamic) {
+        card.style.display = "none";
+        return;
+      }
+      card.style.display = "flex";
 
       const dist = getPdvSlicesDistribution();
-      const flavorsList = [];
+      const currentSum = dist.reduce((a, b) => a + b, 0);
+      const isComplete = currentSum === totalSlices;
 
-      for (let i = 0; i < pdvPizza.flavorCount; i++) {
-        const f = pdvPizza.selectedFlavors[i];
-        flavorsList.push({
-          cleanName: f ? f.name : `Sabor ${i + 1}`,
-          slices: dist[i],
-        });
+      const badge = document.getElementById("pdv-dist-badge");
+      const status = document.getElementById("pdv-dist-status");
+      if (badge) {
+        badge.textContent = currentSum + " / " + totalSlices + " fatias";
+        badge.classList.toggle("incomplete", !isComplete);
+      }
+      if (status) {
+        status.textContent = isComplete ? "✅ Completa" : "⚠️ Incompleta";
+        status.style.color = isComplete ? "#00e676" : "#ff5252";
       }
 
-      container.innerHTML = generatePizzaSvgUi(flavorsList, pdvPizza.slices, 74);
+      const content = document.getElementById("pdv-dist-content");
+      if (!content) return;
+
+      const activeFlavors = pdvPizza.selectedFlavors.slice(0, pdvPizza.flavorCount);
+      const allSelected = activeFlavors.every((f) => f !== null);
+
+      if (!allSelected) {
+        content.innerHTML = (
+          '<div style="text-align: center; padding: 12px; background: rgba(0,0,0,0.25); border: 1px dashed #333; border-radius: 10px; font-size: 10.5px; font-weight: 700; color: #888; text-transform: uppercase;">' +
+            '🍕 Selecione todos os ' + pdvPizza.flavorCount + ' sabores para ajustar a distribuição' +
+          '</div>'
+        );
+        return;
+      }
+
+      content.innerHTML = activeFlavors.map((flavor, idx) => {
+        const slices = dist[idx] || 2;
+        const canDecrease = slices > 2;
+        const canIncrease = activeFlavors.some((_, otherIdx) => otherIdx !== idx && dist[otherIdx] > 2);
+
+        return (
+          '<div class="pdv-dist-row">' +
+            '<div>' +
+              '<div style="font-size: 12.5px; font-weight: 800; color: #fff;">' + flavor.name + '</div>' +
+              '<div style="font-size: 10.5px; color: #00e676; font-weight: 700;">🍕 ' + slices + ' fatias</div>' +
+            '</div>' +
+            '<div style="display: flex; align-items: center; gap: 8px;">' +
+              '<button type="button" class="pdv-dist-btn" onclick="stepPdvSlice(' + idx + ', -1)" ' + (!canDecrease ? 'disabled' : '') + '>-</button>' +
+              '<span style="font-size: 13px; font-weight: 900; color: #fff; min-width: 18px; text-align: center;">' + slices + '</span>' +
+              '<button type="button" class="pdv-dist-btn" onclick="stepPdvSlice(' + idx + ', 1)" ' + (!canIncrease ? 'disabled' : '') + '>+</button>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join("");
+    }
+
+    function stepPdvSlice(flavorIdx, delta) {
+      if (pdvPizza.flavorCount <= 1 || pdvPizza.size === "P") return;
+
+      const dist = [...getPdvSlicesDistribution()];
+      const count = pdvPizza.flavorCount;
+
+      if (delta > 0) {
+        let otherIdx = -1;
+        for (let i = 0; i < count; i++) {
+          if (i !== flavorIdx && dist[i] > 2) {
+            otherIdx = i;
+            break;
+          }
+        }
+        if (otherIdx !== -1) {
+          dist[flavorIdx] += 1;
+          dist[otherIdx] -= 1;
+        }
+      } else if (delta < 0) {
+        if (dist[flavorIdx] > 2) {
+          let otherIdx = -1;
+          for (let i = 0; i < count; i++) {
+            if (i !== flavorIdx) {
+              otherIdx = i;
+              break;
+            }
+          }
+          if (otherIdx !== -1) {
+            dist[flavorIdx] -= 1;
+            dist[otherIdx] += 1;
+          }
+        }
+      }
+
+      pdvPizza.slicesDistribution = dist;
+      renderPdvPizzaSvg();
+      renderPdvSliceDistribution();
+      updatePdvPizzaPrice();
+    }
+
+    // MODAL DE SELEÇÃO DE SABORES (DRAWER / CATALOG PICKER)
+    function openPdvFlavorPicker(sectorIndex) {
+      pdvActiveSectorIndex = sectorIndex;
+      const modal = document.getElementById("pdv-flavor-picker-modal");
+      const title = document.getElementById("pdv-picker-title");
+      if (!modal) return;
+
+      let sectorName = "";
+      if (pdvPizza.flavorCount === 1) {
+        sectorName = "Pizza Inteira";
+      } else if (pdvPizza.flavorCount === 2) {
+        sectorName = sectorIndex === 0 ? "Metade Esquerda (Sabor 1)" : "Metade Direita (Sabor 2)";
+      } else {
+        sectorName = "Sabor " + (sectorIndex + 1);
+      }
+
+      if (title) {
+        title.innerHTML = '<span>🍕</span> <span>Escolha o Sabor (' + sectorName + ')</span>';
+      }
+
+      const searchInput = document.getElementById("pdv-picker-search");
+      if (searchInput) searchInput.value = "";
+      pdvSelectedCategoryFilter = "ALL";
+
+      renderPdvFlavorPickerCategories();
+      renderPdvFlavorPickerGrid();
+
+      modal.classList.add("active");
+      if (searchInput) searchInput.focus();
+    }
+
+    function closePdvFlavorPicker() {
+      const modal = document.getElementById("pdv-flavor-picker-modal");
+      if (modal) modal.classList.remove("active");
+    }
+
+    function renderPdvFlavorPickerCategories() {
+      const catBox = document.getElementById("pdv-picker-categories");
+      if (!catBox) return;
+
+      const cats = [{ id: "ALL", name: "Todos" }];
+      (pdvCatalog.pizzaCategories || []).forEach((c) => {
+        cats.push({ id: c.id, name: c.name });
+      });
+
+      catBox.innerHTML = cats.map((c) => {
+        return (
+          '<button type="button" class="btn-action ' + (pdvSelectedCategoryFilter === c.id ? 'primary' : '') + '" style="padding: 4px 10px; font-size: 11px; white-space: nowrap; border-radius: 14px;" onclick="setPickerCategoryFilter(\'' + c.id + '\')">' +
+            c.name +
+          '</button>'
+        );
+      }).join("");
+    }
+
+    function setPickerCategoryFilter(catId) {
+      pdvSelectedCategoryFilter = catId;
+      renderPdvFlavorPickerCategories();
+      renderPdvFlavorPickerGrid();
+    }
+
+    function filterPdvFlavorPicker() {
+      renderPdvFlavorPickerGrid();
+    }
+
+    function renderPdvFlavorPickerGrid() {
+      const grid = document.getElementById("pdv-picker-grid");
+      if (!grid) return;
+
+      const search = (document.getElementById("pdv-picker-search")?.value || "").toLowerCase().trim();
+      const priceKey = "price" + pdvPizza.size;
+
+      const filtered = (pdvCatalog.flavors || []).filter((f) => {
+        if (pdvSelectedCategoryFilter !== "ALL") {
+          if (f.categoryId !== pdvSelectedCategoryFilter && (!f.category || f.category.id !== pdvSelectedCategoryFilter)) {
+            return false;
+          }
+        }
+        if (search) {
+          const matchName = (f.name || "").toLowerCase().includes(search);
+          const matchDesc = (f.description || "").toLowerCase().includes(search);
+          return matchName || matchDesc;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = (
+          '<div style="grid-column: 1 / -1; text-align: center; color: #777; padding: 30px; font-size: 12px;">' +
+            'Nenhum sabor encontrado com esse termo.' +
+          '</div>'
+        );
+        return;
+      }
+
+      grid.innerHTML = filtered.map((f) => {
+        const imgUrl = getPdvFlavorImageUrl(f.imageUrl);
+        const price = f.category ? (f.category[priceKey] || 0) : 0;
+
+        return (
+          '<div class="pdv-flavor-pick-card" onclick="selectPdvFlavorFromPicker(\'' + f.id + '\')">' +
+            '<img src="' + imgUrl + '" class="pdv-flavor-pick-img" alt="' + f.name + '" onerror="this.src=\'data:image/svg+xml;utf8,<svg xmlns=\\\'http://www.w3.org/2000/svg\\\' width=\\\'' + 50 + '\\\' height=\\\'' + 50 + '\\\' viewBox=\\\'' + '0 0 50 50' + '\\\'><circle cx=\\\'' + 25 + '\\\' cy=\\\'' + 25 + '\\\' r=\\\'' + 25 + '\\\' fill=\\\'%23dca153\\\'/></svg>\'" />' +
+            '<div class="pdv-flavor-pick-info">' +
+              '<div class="pdv-flavor-pick-name">' + f.name + '</div>' +
+              '<div class="pdv-flavor-pick-desc">' + (f.description || '') + '</div>' +
+              '<div class="pdv-flavor-pick-price">R$ ' + price.toFixed(2) + '</div>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join("");
+    }
+
+    function selectPdvFlavorFromPicker(flavorId) {
+      const flavor = (pdvCatalog.flavors || []).find((f) => f.id === flavorId) || null;
+      if (!flavor) return;
+
+      pdvPizza.selectedFlavors[pdvActiveSectorIndex] = flavor;
+      closePdvFlavorPicker();
+
+      renderPdvPizzaSvg();
+      renderPdvSliceDistribution();
+      updatePdvPizzaPrice();
+
+      // Se ainda houver outro sabor vazio, convida ou abre para o próximo automaticamente
+      let nextEmpty = -1;
+      for (let i = 0; i < pdvPizza.flavorCount; i++) {
+        if (!pdvPizza.selectedFlavors[i]) {
+          nextEmpty = i;
+          break;
+        }
+      }
+      if (nextEmpty !== -1) {
+        setTimeout(() => {
+          openPdvFlavorPicker(nextEmpty);
+        }, 250);
+      }
+    }
+
+    function handlePdvCaracolChange() {
+      const chk = document.getElementById("pdv-caracol-check");
+      pdvPizza.caracolRequested = chk ? chk.checked : false;
+      updatePdvPizzaPrice();
     }
 
     function updatePdvPizzaPrice() {
       let maxBasePrice = 0;
-      const priceKey = `price${pdvPizza.size}`;
+      const priceKey = "price" + pdvPizza.size;
 
       for (let i = 0; i < pdvPizza.flavorCount; i++) {
         const f = pdvPizza.selectedFlavors[i];
@@ -4221,11 +4936,18 @@
 
       const crustSel = document.getElementById("pdv-crust-select");
       let crustPrice = 0;
+      const caracolBox = document.getElementById("pdv-caracol-box");
       if (crustSel && crustSel.value) {
         const c = (pdvCatalog.crusts || []).find((x) => x.id === crustSel.value);
         if (c) {
           crustPrice = (pdvPizza.size === "P" || pdvPizza.size === "M") ? c.pricePM : c.priceGGG;
+          if (caracolBox) caracolBox.style.display = c.caracol ? "flex" : "none";
+          if (c.caracol && pdvPizza.caracolRequested) {
+            crustPrice += 5.0; // Adicional opção caracol
+          }
         }
+      } else {
+        if (caracolBox) caracolBox.style.display = "none";
       }
 
       let toppingsTotal = 0;
@@ -4245,16 +4967,90 @@
       const totalPizza = maxBasePrice + crustPrice + toppingsTotal;
       const subtotalEl = document.getElementById("pdv-pizza-subtotal");
       if (subtotalEl) {
-        subtotalEl.textContent = `R$ ${totalPizza.toFixed(2)}`;
+        subtotalEl.textContent = "R$ " + totalPizza.toFixed(2);
+      }
+
+      const descPreview = document.getElementById("pdv-pizza-desc-preview");
+      if (descPreview) {
+        const rule = PDV_PIZZA_RULES[pdvPizza.size] || PDV_PIZZA_RULES.G;
+        const flNames = pdvPizza.selectedFlavors.slice(0, pdvPizza.flavorCount).filter(Boolean).map(f => f.name);
+        descPreview.textContent = "Pizza " + rule.label + (flNames.length > 0 ? " (" + flNames.join(" / ") + ")" : "");
       }
 
       return { maxBasePrice, crustPrice, toppingsTotal, totalPizza };
     }
 
     // PASSO 3: Adicionais (Toppings)
+    function renderPdvToppingTargetPills() {
+      const box = document.getElementById("pdv-topping-target-pills");
+      if (!box) return;
+
+      const pills = [{ id: "FULL", label: "🍕 Pizza Inteira" }];
+      const dist = getPdvSlicesDistribution();
+
+      for (let i = 0; i < pdvPizza.flavorCount; i++) {
+        const f = pdvPizza.selectedFlavors[i];
+        const slices = dist[i] || 2;
+        const label = f ? f.name : "Sabor " + (i + 1);
+        const prefix = pdvPizza.flavorCount === 2 ? (i === 0 ? "Metade 1" : "Metade 2") : "Sabor " + (i + 1);
+        pills.push({
+          id: "SAB_" + (i + 1),
+          label: "🍕 " + prefix + ": " + label + " (" + slices + " fat.)",
+        });
+      }
+
+      box.innerHTML = pills.map((p) => {
+        return (
+          '<div class="pdv-target-pill ' + (pdvActiveToppingTarget === p.id ? 'active' : '') + '" onclick="setPdvToppingTarget(\'' + p.id + '\')">' +
+            p.label +
+          '</div>'
+        );
+      }).join("");
+    }
+
+    function setPdvToppingTarget(targetId) {
+      pdvActiveToppingTarget = targetId;
+      renderPdvToppingTargetPills();
+      updatePdvToppingPricePreview();
+    }
+
+    function updatePdvToppingPricePreview() {
+      const sel = document.getElementById("pdv-topping-select");
+      const preview = document.getElementById("pdv-topping-price-preview");
+      if (!sel || !preview) return;
+
+      if (!sel.value) {
+        preview.textContent = "";
+        return;
+      }
+
+      let topping = null;
+      for (const cat of pdvCatalog.toppingCategories || []) {
+        const found = (cat.toppings || []).find((t) => t.id === sel.value);
+        if (found) {
+          topping = found;
+          break;
+        }
+      }
+      if (!topping) return;
+
+      const isPM = pdvPizza.size === "P" || pdvPizza.size === "M";
+      const fullPrice = isPM ? topping.pricePM : topping.priceGGG;
+
+      if (pdvActiveToppingTarget === "FULL") {
+        preview.textContent = "Adicional na Pizza Inteira: + R$ " + fullPrice.toFixed(2);
+      } else {
+        const match = pdvActiveToppingTarget.match(/SAB_(\d+)/);
+        const sIdx = match ? parseInt(match[1], 10) - 1 : 0;
+        const dist = getPdvSlicesDistribution();
+        const slices = dist[sIdx] || 1;
+        const propPrice = fullPrice * (slices / pdvPizza.slices);
+        preview.textContent = "Adicional proporcional (" + slices + " fatias): + R$ " + propPrice.toFixed(2);
+      }
+    }
+
     function addPdvTopping() {
       const topSel = document.getElementById("pdv-topping-select");
-      const targetSel = document.getElementById("pdv-topping-target");
       if (!topSel || !topSel.value) {
         showToast("Selecione um adicional da lista.");
         return;
@@ -4273,8 +5069,15 @@
 
       const isPM = pdvPizza.size === "P" || pdvPizza.size === "M";
       const basePrice = isPM ? selectedTopping.pricePM : selectedTopping.priceGGG;
-      const targetType = targetSel.value;
-      const targetLabel = targetSel.options[targetSel.selectedIndex].text;
+      const targetType = pdvActiveToppingTarget || "FULL";
+
+      let targetLabel = "Inteira";
+      if (targetType !== "FULL") {
+        const match = targetType.match(/SAB_(\d+)/);
+        const sIdx = match ? parseInt(match[1], 10) - 1 : 0;
+        const f = pdvPizza.selectedFlavors[sIdx];
+        targetLabel = f ? f.name : "Sabor " + (sIdx + 1);
+      }
 
       pdvPizza.toppings.push({
         id: selectedTopping.id,
@@ -4286,6 +5089,7 @@
 
       renderPdvSelectedToppings();
       updatePdvPizzaPrice();
+      showToast("Adicional " + selectedTopping.name + " adicionado!");
     }
 
     function removePdvTopping(index) {
@@ -4299,16 +5103,26 @@
       if (!container) return;
 
       container.innerHTML = "";
+      const dist = getPdvSlicesDistribution();
+
       pdvPizza.toppings.forEach((t, idx) => {
+        let calcPrice = t.price;
+        if (t.targetType !== "FULL") {
+          const match = t.targetType.match(/SAB_(\d+)/);
+          const sIdx = match ? parseInt(match[1], 10) - 1 : 0;
+          const slices = dist[sIdx] || 1;
+          calcPrice = t.price * (slices / pdvPizza.slices);
+        }
+
         const div = document.createElement("div");
-        div.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: #222; padding: 4px 8px; border-radius: 6px;";
-        div.innerHTML = `
-          <span>+ ${t.name} <em style="color: #aaa;">(${t.targetLabel})</em></span>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <strong style="color: #00e676;">R$ ${t.price.toFixed(2)}</strong>
-            <button type="button" style="background: none; border: none; color: #e31837; cursor: pointer; font-size: 13px;" onclick="removePdvTopping(${idx})">✕</button>
-          </div>
-        `;
+        div.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: #222; padding: 6px 10px; border-radius: 8px; border: 1px solid #333;";
+        div.innerHTML = (
+          '<span style="font-size: 11.5px; color: #fff;">+ ' + t.name + ' <em style="color: #00e676; font-style: normal; font-size: 10px;">(' + t.targetLabel + ')</em></span>' +
+          '<div style="display: flex; align-items: center; gap: 8px;">' +
+            '<strong style="color: #00e676; font-size: 11.5px;">R$ ' + calcPrice.toFixed(2) + '</strong>' +
+            '<button type="button" style="background: none; border: none; color: #e31837; cursor: pointer; font-size: 14px; font-weight: 800;" onclick="removePdvTopping(' + idx + ')">✕</button>' +
+          '</div>'
+        );
         container.appendChild(div);
       });
     }
