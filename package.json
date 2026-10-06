@@ -8,6 +8,8 @@
     "start": "next start -p 3001 -H 0.0.0.0",
     "desktop": "cd electron && npm start",
     "electron": "cd electron && npm start",
+    "db:backup": "scripts\\backup-banco.bat",
+    "db:restore": "scripts\\restaurar-banco.bat",
     "lint": "next lint"
   },
   "dependencies": {

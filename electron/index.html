@@ -2063,6 +2063,151 @@
       border-radius: 8px;
       padding: 8px 10px;
     }
+
+    /* ESTILOS GLOBAIS DE BOTÕES MODERNOS */
+    button {
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .btn-action {
+      background: #222222;
+      color: #eeeeee;
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-family: inherit;
+      user-select: none;
+      outline: none;
+    }
+
+    .btn-action:hover {
+      background: #2a2a2a;
+      border-color: #555555;
+      color: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-action:active {
+      transform: translateY(0);
+    }
+
+    .btn-action.primary {
+      background: linear-gradient(135deg, var(--red), #b91c1c);
+      color: #ffffff;
+      border-color: rgba(227, 24, 55, 0.5);
+      box-shadow: 0 2px 10px rgba(227, 24, 55, 0.35);
+    }
+
+    .btn-action.primary:hover {
+      background: linear-gradient(135deg, #ff2a4b, var(--red));
+      border-color: #ff4d68;
+      box-shadow: 0 4px 16px rgba(227, 24, 55, 0.55);
+    }
+
+    .btn-action.success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      border-color: rgba(16, 185, 129, 0.4);
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-action.success:hover {
+      background: linear-gradient(135deg, #34d399, #10b981);
+      border-color: #6ee7b7;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
+    }
+
+    .btn-action.warning {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #ffffff;
+      border-color: rgba(245, 158, 11, 0.4);
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-action.warning:hover {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.5);
+    }
+
+    /* PÁGINA DEDICADA DA MESA */
+    .mesa-page-container {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 84px);
+      overflow: hidden;
+      gap: 12px;
+    }
+
+    .mesa-page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #181818;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 16px;
+      flex-shrink: 0;
+    }
+
+    .mesa-page-split {
+      display: grid;
+      grid-template-columns: 1.18fr 1fr;
+      gap: 14px;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .mesa-order-col {
+      background: #141414;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .mesa-account-col {
+      background: #161616;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 14px;
+      gap: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .mesa-order-stepper-header {
+      padding: 10px 14px;
+      background: #181818;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .mesa-order-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
   </style>
 </head>
 <body>
@@ -2198,29 +2343,503 @@
 
     <!-- TAB 2: COMANDAS / MESAS -->
     <div id="tab-comandas" class="tab-content">
-      <div class="comandas-header">
-        <div class="stats-row">
-          <div class="stat-card">
-            <span class="stat-label">Total de Mesas</span>
-            <span id="stat-total-mesas" class="stat-val">0</span>
+      <!-- 1. VISÃO DO MAPA DE MESAS (GRID) -->
+      <div id="comandas-grid-container" style="display: flex; flex-direction: column; width: 100%;">
+        <div class="comandas-header">
+          <div class="stats-row">
+            <div class="stat-card">
+              <span class="stat-label">Total de Mesas</span>
+              <span id="stat-total-mesas" class="stat-val">0</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Mesas Ocupadas</span>
+              <span id="stat-ocupadas" class="stat-val" style="color: var(--yellow);">0</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Consumo no Salão</span>
+              <span id="stat-consumo" class="stat-val" style="color: var(--green);">R$ 0,00</span>
+            </div>
           </div>
-          <div class="stat-card">
-            <span class="stat-label">Mesas Ocupadas</span>
-            <span id="stat-ocupadas" class="stat-val" style="color: var(--yellow);">0</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">Consumo no Salão</span>
-            <span id="stat-consumo" class="stat-val" style="color: var(--green);">R$ 0,00</span>
+
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="text" id="search-comanda" placeholder="Filtrar por mesa..." style="width: 180px;" />
+            <button id="btn-sync-comandas" class="btn-action">🔄 Recarregar Mesas</button>
           </div>
         </div>
 
-        <div style="display: flex; gap: 10px; align-items: center;">
-          <input type="text" id="search-comanda" placeholder="Filtrar por mesa..." style="width: 180px;" />
-          <button id="btn-sync-comandas" class="btn-action">🔄 Recarregar Mesas</button>
-        </div>
+        <div id="grid-comandas" class="comandas-grid"></div>
       </div>
 
-      <div id="grid-comandas" class="comandas-grid"></div>
+      <!-- 2. PÁGINA DEDICADA DA MESA (SEM MODAL - TELA CHEIA INTEGRADA) -->
+      <div id="comandas-detail-container" class="mesa-page-container" style="display: none;">
+        <!-- CABEÇALHO DA MESA -->
+        <div class="mesa-page-header">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <button type="button" class="btn-action" onclick="closeManageComandaView()" style="padding: 8px 14px; font-weight: 800;">
+              ← Voltar para as Mesas
+            </button>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span id="manage-comanda-title" style="font-size: 20px; font-weight: 900; color: #fff; letter-spacing: -0.5px;">Mesa #--</span>
+              <span id="manage-comanda-status" class="table-status-pill status-livre">LIVRE</span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+              <span class="dot online"></span>
+              <span>Atendimento Salão & Pedidos de Mesa</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CORPO DA MESA: 2 COLUNAS (LANÇAMENTO ESQUERDA + CONTA/FINANCEIRO DIREITA) -->
+        <div class="mesa-page-split">
+          <!-- COLUNA ESQUERDA: LANÇADOR DE PEDIDOS IDENTICO AO WHATSAPP -->
+          <div class="mesa-order-col">
+            <div class="mesa-order-stepper-header">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="pdv-status-badge">
+                  <span class="pdv-status-dot"></span>
+                  <span id="mesa-active-title-badge">Mesa: Lançar na Cozinha</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted);">
+                  Monte pizzas e bebidas. O pedido vai direto para a Cozinha!
+                </span>
+              </div>
+              <button type="button" class="btn-action" style="padding: 4px 10px; font-size: 11px;" onclick="resetMesaOrderBuilder()">
+                Limpar Lançador
+              </button>
+            </div>
+
+            <!-- STEPPER HORIZONTAL DA MESA (IDÊNTICO AO WHATSAPP PDV) -->
+            <div class="pdv-stepper">
+              <div class="pdv-stepper-line"></div>
+              <div id="mesa-stepper-progress" class="pdv-stepper-progress" style="width: 0%;"></div>
+
+              <!-- PASSO 1: TAMANHO -->
+              <div class="pdv-step-item active" id="mesa-step-nav-1" onclick="goToMesaStep(1)">
+                <div class="pdv-step-circle">📏</div>
+                <span class="pdv-step-label">Tamanho</span>
+              </div>
+
+              <!-- PASSO 2: SABORES -->
+              <div class="pdv-step-item" id="mesa-step-nav-2" onclick="goToMesaStep(2)">
+                <div class="pdv-step-circle">🍕</div>
+                <span class="pdv-step-label">Sabores</span>
+              </div>
+
+              <!-- PASSO 3: ADICIONAIS -->
+              <div class="pdv-step-item" id="mesa-step-nav-3" onclick="goToMesaStep(3)">
+                <div class="pdv-step-circle">✨</div>
+                <span class="pdv-step-label">Adicionais</span>
+              </div>
+
+              <!-- PASSO 4: BEBIDAS / ENVIO -->
+              <div class="pdv-step-item" id="mesa-step-nav-4" onclick="goToMesaStep(4)">
+                <div class="pdv-step-circle">🥤</div>
+                <span class="pdv-step-label">Bebidas/Envio</span>
+              </div>
+            </div>
+
+            <!-- CORPO DO LANÇADOR DE PEDIDOS DA MESA (COM SCROLL PADRONIZADO) -->
+            <div class="pdv-body mesa-order-body" id="mesa-order-body">
+              <!-- ======================================================== -->
+              <!-- PASSO 1: ESCOLHA O TAMANHO DA SUA PIZZA (IDÊNTICO AO WHATSAPP) -->
+              <!-- ======================================================== -->
+              <div id="mesa-step-pane-1" class="pdv-step-pane active">
+                <div class="pdv-step-title-box">
+                  <div class="pdv-step-main-title">
+                    <span>📏</span>
+                    <span>Escolha o tamanho da sua pizza</span>
+                  </div>
+                  <div class="pdv-step-sub-title">
+                    Selecione a proporção ideal para você ou para compartilhar!
+                  </div>
+                </div>
+
+                <!-- GRID 2x2 DE CARDS P, M, G, GG (IDÊNTICO AO WHATSAPP) -->
+                <div class="pdv-size-cards">
+                  <!-- P -->
+                  <div class="pdv-size-card" data-size="P" onclick="selectMesaPizzaSize('P')">
+                    <div class="pdv-size-letter">P</div>
+                    <div class="pdv-size-fatias">4 fatias</div>
+                    <div class="pdv-size-sabores">Até 2 sabores</div>
+                    <div class="pdv-size-divider"></div>
+                    <div class="pdv-size-radio"></div>
+                  </div>
+
+                  <!-- M -->
+                  <div class="pdv-size-card" data-size="M" onclick="selectMesaPizzaSize('M')">
+                    <div class="pdv-size-letter">M</div>
+                    <div class="pdv-size-fatias">6 fatias</div>
+                    <div class="pdv-size-sabores">Até 3 sabores</div>
+                    <div class="pdv-size-divider"></div>
+                    <div class="pdv-size-radio"></div>
+                  </div>
+
+                  <!-- G (MAIS PEDIDA) -->
+                  <div class="pdv-size-card active" data-size="G" onclick="selectMesaPizzaSize('G')">
+                    <div class="pdv-size-card-badge">★ MAIS PEDIDA</div>
+                    <div class="pdv-size-letter">G</div>
+                    <div class="pdv-size-fatias">8 fatias</div>
+                    <div class="pdv-size-sabores">Até 3 sabores</div>
+                    <div class="pdv-size-divider"></div>
+                    <div class="pdv-size-radio">✓</div>
+                  </div>
+
+                  <!-- GG -->
+                  <div class="pdv-size-card" data-size="GG" onclick="selectMesaPizzaSize('GG')">
+                    <div class="pdv-size-letter">GG</div>
+                    <div class="pdv-size-fatias">10 fatias</div>
+                    <div class="pdv-size-sabores">Até 3 sabores</div>
+                    <div class="pdv-size-divider"></div>
+                    <div class="pdv-size-radio"></div>
+                  </div>
+                </div>
+
+                <div class="pdv-nav-actions" style="margin-top: 10px;">
+                  <button type="button" class="btn-step-prev" onclick="goToMesaStep(4)" style="color: #60a5fa; border-color: rgba(96,165,250,0.3); font-size: 11px;">
+                    Pular para Bebidas 🥤
+                  </button>
+                  <button type="button" class="btn-step-next" onclick="goToMesaStep(2)">
+                    <span>Avançar para Sabores (Passo 2)</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- ======================================================== -->
+              <!-- PASSO 2: ESCOLHA OS SABORES & BORDA (IDÊNTICO AO WHATSAPP) -->
+              <!-- ======================================================== -->
+              <div id="mesa-step-pane-2" class="pdv-step-pane">
+                <!-- QUANTIDADE DE SABORES -->
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 2px;">
+                  <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; letter-spacing: 0.5px;">
+                    SELECIONE A QUANTIDADE DE SABORES
+                  </span>
+                  <div class="flavors-count-row" id="mesa-flavor-count-buttons">
+                    <div class="flavor-count-btn active" data-count="1" onclick="setMesaFlavorCount(1)">1 Sabor</div>
+                    <div class="flavor-count-btn" data-count="2" onclick="setMesaFlavorCount(2)">2 Sabores</div>
+                    <div class="flavor-count-btn" data-count="3" onclick="setMesaFlavorCount(3)">3 Sabores</div>
+                  </div>
+                </div>
+
+                <!-- PIZZA DINÂMICA REALÍSTICA SVG -->
+                <div class="pdv-pizza-outer-wrap">
+                  <div class="pdv-pizza-container" id="mesa-pizza-svg-container"></div>
+                  <div class="pdv-pizza-hint">Toque nos botões ou fatias da pizza para escolher o sabor</div>
+                </div>
+
+                <!-- CARD: DISTRIBUIÇÃO DAS FATIAS -->
+                <div class="pdv-section-card" id="mesa-slice-dist-card">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #ddd; letter-spacing: 0.5px;">
+                        DISTRIBUIÇÃO DAS FATIAS
+                      </div>
+                      <div style="font-size: 10px; color: #888; margin-top: 1px;">
+                        Cada sabor deve ter pelo menos 2 fatias.
+                      </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span id="mesa-dist-badge" class="pdv-dist-badge">8 / 8 fatias</span>
+                      <span id="mesa-dist-status" class="pdv-dist-status">✅ Completa</span>
+                    </div>
+                  </div>
+                  <div id="mesa-dist-content" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+
+                <!-- BORDA RECHEADA -->
+                <div class="pdv-section-card" style="padding: 12px;">
+                  <div class="pdv-card-title">
+                    <span>🧀 Borda Recheada</span>
+                  </div>
+                  <select id="mesa-crust-select" class="pdv-select" onchange="updateMesaPizzaPrice()">
+                    <option value="">Sem borda recheada (Massa tradicional)</option>
+                  </select>
+                  <div id="mesa-caracol-box" style="display: none; align-items: center; justify-content: space-between; padding: 8px 10px; background: #222; border-radius: 8px; border: 1px solid #333; margin-top: 6px;">
+                    <div>
+                      <span style="font-size: 11px; font-weight: 800; color: #fff; display: block;">Opção Caracol</span>
+                      <span style="font-size: 10px; color: #888;">Preparo em espiral com recheio extra (+ R$ 5,00)</span>
+                    </div>
+                    <input type="checkbox" id="mesa-caracol-check" style="width: 16px; height: 16px; accent-color: #00e676; cursor: pointer;" onchange="handleMesaCaracolChange()" />
+                  </div>
+                </div>
+
+                <!-- OBSERVAÇÕES DA PIZZA -->
+                <div class="pdv-section-card" style="padding: 12px;">
+                  <div class="pdv-card-title">
+                    <span>📝 Observações da Pizza</span>
+                  </div>
+                  <textarea id="mesa-pizza-notes" class="pdv-textarea" placeholder="Ex: Sem cebola, massa bem crocante, etc."></textarea>
+                </div>
+
+                <!-- SUB-TOTAL DA PIZZA -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #1b1b1b; padding: 12px 16px; border-radius: 12px; border: 1px solid #2e2e2e;">
+                  <div>
+                    <span style="font-size: 10px; text-transform: uppercase; color: #888; font-weight: 700; display: block;">Subtotal da Pizza</span>
+                    <span id="mesa-pizza-desc-preview" style="font-size: 11px; color: #bbb;">Pizza Grande</span>
+                  </div>
+                  <strong id="mesa-pizza-subtotal" style="color: #00e676; font-size: 18px;">R$ 0,00</strong>
+                </div>
+
+                <div class="pdv-nav-actions">
+                  <button type="button" class="btn-step-prev" onclick="goToMesaStep(1)">
+                    <span>←</span> Mudar Tamanho
+                  </button>
+                  <button type="button" class="btn-step-next" onclick="goToMesaStep(3)">
+                    <span>Avançar para Adicionais (Passo 3)</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- ======================================================== -->
+              <!-- PASSO 3: ADICIONAIS / TOPPINGS DA PIZZA (IDÊNTICO AO WHATSAPP) -->
+              <!-- ======================================================== -->
+              <div id="mesa-step-pane-3" class="pdv-step-pane">
+                <!-- PIZZA DINÂMICA MONTADA NO TOPO -->
+                <div class="pdv-pizza-outer-wrap">
+                  <div class="pdv-pizza-container" id="mesa-pizza-toppings-svg-container"></div>
+                </div>
+
+                <div class="pdv-step-title-box" style="margin-top: -2px;">
+                  <div class="pdv-step-main-title" style="color: #fff; font-size: 17px;">
+                    <span>✨</span>
+                    <span>Que tal turbinar sua pizza?</span>
+                  </div>
+                  <div class="pdv-step-sub-title">
+                    Selecione adicionais para deixar sua pizza ainda mais irresistível!
+                  </div>
+                </div>
+
+                <!-- SELETOR DA PARTE DA PIZZA -->
+                <div class="pdv-section-card">
+                  <span style="font-size: 10.5px; font-weight: 800; text-transform: uppercase; color: #aaa; letter-spacing: 0.5px;">
+                    SELECIONE A PARTE DA PIZZA QUE DESEJA COLOCAR ADICIONAL:
+                  </span>
+                  <div id="mesa-topping-target-pills" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;"></div>
+                </div>
+
+                <!-- SELEÇÃO DE ADICIONAL -->
+                <div class="pdv-section-card">
+                  <div class="pdv-card-title">
+                    <span>Adicionais Disponíveis</span>
+                  </div>
+                  <div style="display: flex; gap: 6px;">
+                    <select id="mesa-topping-select" class="pdv-select" style="flex: 1;" onchange="updateMesaToppingPricePreview()">
+                      <option value="">-- Selecione o Adicional --</option>
+                    </select>
+                    <button type="button" class="btn-action primary" style="padding: 6px 14px; font-weight: 800; font-size: 12px; white-space: nowrap;" onclick="addMesaTopping()">
+                      ➕ Adicionar
+                    </button>
+                  </div>
+                  <div id="mesa-topping-price-preview" style="font-size: 11px; color: #00e676; font-weight: 700; margin-top: 2px;"></div>
+                  <div id="mesa-selected-toppings-list" style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;"></div>
+                </div>
+
+                <!-- BOTÕES DE NAVEGAÇÃO -->
+                <div class="pdv-nav-actions">
+                  <button type="button" class="btn-step-prev" onclick="goToMesaStep(2)">
+                    <span>←</span> Voltar aos Sabores
+                  </button>
+                  <button type="button" class="btn-step-next" onclick="commitMesaPizzaAndGoStep4()">
+                    <span>Avançar para Bebidas (Passo 4)</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- ======================================================== -->
+              <!-- PASSO 4: BEBIDAS, ITENS & ENVIO PARA A COZINHA -->
+              <!-- ======================================================== -->
+              <div id="mesa-step-pane-4" class="pdv-step-pane">
+                <div class="pdv-step-title-box">
+                  <div class="pdv-step-main-title">
+                    <span>🥤</span>
+                    <span>Bebidas & Envio para a Cozinha</span>
+                  </div>
+                  <div class="pdv-step-sub-title">
+                    Adicione bebidas, acompanhamentos e lance diretamente para a Cozinha!
+                  </div>
+                </div>
+
+                <!-- BEBIDAS E PRODUTOS GERAIS (COM FILTRO E BUSCA) -->
+                <div class="pdv-section-card">
+                  <div class="pdv-card-title">
+                    <span>🥤 Bebidas & Acompanhamentos</span>
+                  </div>
+                  <div style="display: flex; gap: 6px;">
+                    <select id="mesa-prod-cat-select" class="pdv-select" style="flex: 1;" onchange="renderMesaProductsList()">
+                      <option value="">Todas as categorias</option>
+                    </select>
+                    <input type="text" id="mesa-prod-search" class="pdv-input" placeholder="🔍 Filtrar produtos..." style="flex: 1;" oninput="renderMesaProductsList()" />
+                  </div>
+                  <div id="mesa-products-list-container" style="display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; margin-top: 4px;"></div>
+                </div>
+
+                <!-- ITENS PREPARADOS PARA ESTE LANÇAMENTO -->
+                <div class="pdv-section-card">
+                  <div class="pdv-card-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>📦 Itens a Lançar na Mesa</span>
+                    <span id="mesa-items-count-badge" style="color: #00e676; font-size: 10px;">0 itens</span>
+                  </div>
+                  <div id="mesa-draft-items-list" class="pdv-items-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto;">
+                    <div style="text-align: center; color: #666; font-size: 11px; padding: 12px 0;">
+                      Nenhum item adicionado ainda. Monte a pizza ou adicione bebidas acima.
+                    </div>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #282828; padding-top: 8px; margin-top: 4px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase;">Total do Lançamento:</span>
+                    <strong id="mesa-draft-total-val" style="color: #00e676; font-size: 18px; font-family: monospace;">R$ 0,00</strong>
+                  </div>
+                </div>
+
+                <!-- OBSERVAÇÕES PARA A COZINHA -->
+                <div class="pdv-section-card" style="padding: 10px;">
+                  <div class="pdv-card-title">
+                    <span>⚠️ Observações Gerais para a Cozinha</span>
+                  </div>
+                  <input type="text" id="mesa-order-notes" class="pdv-input" placeholder="Ex: Caprichar no orégano / Servir bebidas primeiro" />
+                </div>
+
+                <!-- BOTÃO FINAL DE LANÇAMENTO DIRETO NA COZINHA -->
+                <div style="margin-top: 4px; display: flex; flex-direction: column; gap: 8px;">
+                  <button type="button" id="btn-submit-mesa-order" class="btn-step-next" style="width: 100%; padding: 14px; font-size: 14px; font-weight: 900; background: linear-gradient(135deg, #00e676, #00c853); box-shadow: 0 4px 16px rgba(0, 230, 118, 0.35); color: #000;" onclick="submitMesaOrderToKitchen()">
+                    <span>🚀 Lançar Pedido Direto na Cozinha</span>
+                  </button>
+                  <div class="pdv-nav-actions">
+                    <button type="button" class="btn-step-prev" onclick="goToMesaStep(3)" style="flex: 1;">
+                      <span>←</span> Voltar aos Adicionais
+                    </button>
+                    <button type="button" class="btn-step-prev" onclick="resetMesaPizzaAndNew()" style="flex: 1; border-color: #3b82f6; color: #60a5fa;">
+                      <span>＋</span> Montar Outra Pizza
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- COLUNA DIREITA: CONTA DA MESA, BAIXAS E ITENS -->
+          <div class="mesa-account-col">
+            <!-- 1. IDENTIFICAÇÃO DO RESPONSÁVEL -->
+            <div style="background: #181818; border: 1px solid var(--border); border-radius: 12px; padding: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                  👤 Titular / Responsável da Mesa
+                </label>
+                <span id="manage-resp-saved-hint" style="font-size: 10px; color: var(--green); display: none;">Salvo!</span>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="manage-comanda-responsible" placeholder="Ex: João Silva / Família Almeida" style="flex: 1; padding: 8px 12px; font-size: 12px; background: #111; border: 1px solid var(--border); border-radius: 8px; color: #fff;" />
+                <button id="btn-save-manage-resp" class="btn-action" style="padding: 8px 14px; font-size: 12px;" onclick="handleSaveManageResponsible()">Salvar</button>
+              </div>
+            </div>
+
+            <!-- 2. RESUMO FINANCEIRO (3 CARDS) -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+              <div style="background: #181818; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;">
+                <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Consumo Total</span>
+                <span id="manage-stat-consumption" style="font-size: 17px; font-weight: 900; color: var(--yellow); font-family: monospace; display: block; margin: 4px 0;">R$ 0,00</span>
+                <span id="manage-stat-orders-count" style="font-size: 10px; color: var(--text-muted);">0 subpedido(s)</span>
+              </div>
+
+              <div style="background: #181818; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;">
+                <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Total Pago (Baixas)</span>
+                <span id="manage-stat-paid" style="font-size: 17px; font-weight: 900; color: var(--green); font-family: monospace; display: block; margin: 4px 0;">R$ 0,00</span>
+                <span id="manage-stat-payments-count" style="font-size: 10px; color: var(--text-muted);">0 baixa(s)</span>
+              </div>
+
+              <div id="manage-stat-card-balance" style="background: #181818; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Saldo Restante</span>
+                  <span id="manage-badge-quitado" style="display: none; font-size: 9px; background: rgba(16,185,129,0.25); color: var(--green); padding: 1px 6px; border-radius: 10px; font-weight: 800; border: 1px solid var(--green);">QUITADO</span>
+                </div>
+                <span id="manage-stat-balance" style="font-size: 17px; font-weight: 900; color: var(--red); font-family: monospace; display: block; margin: 4px 0;">R$ 0,00</span>
+                <span id="manage-stat-balance-desc" style="font-size: 10px; color: var(--text-muted);">Aguardando baixa</span>
+              </div>
+            </div>
+
+            <!-- 3. BARRA DE AÇÕES RÁPIDAS -->
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <button id="btn-manage-print-bill" class="btn-action" style="flex: 1; padding: 9px 12px; font-size: 12px; border-color: var(--yellow); color: var(--yellow);" onclick="handlePrintManageComanda()">
+                <span>🖨️</span> Imprimir Pré-Conta
+              </button>
+              <button id="btn-manage-transfer-table" class="btn-action" style="flex: 1; padding: 9px 12px; font-size: 12px; border-color: var(--purple); color: var(--purple);" onclick="openTransferTableModal()">
+                <span>🔄</span> Transferir Mesa
+              </button>
+              <button id="btn-manage-release" class="btn-action success" style="flex: 1.5; padding: 9px 14px; font-size: 12px; font-weight: 800;" onclick="handleReleaseComanda()">
+                <span>🏁</span> Fechar Comanda & Liberar p/ Novo Consumo
+              </button>
+            </div>
+
+            <!-- 4. PAINEL DE MÚLTIPLAS BAIXAS NA CONTA -->
+            <div style="background: #141414; border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+                <div>
+                  <span style="font-size: 12px; font-weight: 800; color: #fff;">💳 Baixas na Conta (Múltiplos Pagamentos)</span>
+                  <span style="font-size: 10px; color: var(--text-muted); display: block;">Abata pagamentos em PIX, Dinheiro, Débito ou Crédito até zerar</span>
+                </div>
+                <button id="btn-manage-fill-remaining" class="btn-action" style="font-size: 10px; padding: 4px 8px; color: var(--yellow); border-color: var(--yellow);" onclick="handleFillRemainingBalance()">
+                  ⚡ Quitar Saldo
+                </button>
+              </div>
+
+              <!-- FORMAS DE PAGAMENTO -->
+              <div>
+                <label style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">
+                  Forma de Pagamento:
+                </label>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;" id="manage-pay-methods-group">
+                  <button type="button" class="manage-pay-method-btn active" data-method="PIX" onclick="setManagePayMethod('PIX')">⚡ PIX</button>
+                  <button type="button" class="manage-pay-method-btn" data-method="DINHEIRO" onclick="setManagePayMethod('DINHEIRO')">💵 Dinheiro</button>
+                  <button type="button" class="manage-pay-method-btn" data-method="DEBITO" onclick="setManagePayMethod('DEBITO')">💳 Débito</button>
+                  <button type="button" class="manage-pay-method-btn" data-method="CREDITO" onclick="setManagePayMethod('CREDITO')">💳 Crédito</button>
+                </div>
+              </div>
+
+              <!-- INPUTS DE VALOR E TROCO -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div>
+                  <label style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">
+                    Valor a Abater (R$):
+                  </label>
+                  <input type="number" id="manage-pay-amount" step="0.01" min="0.01" placeholder="0.00" style="width: 100%; padding: 8px 10px; font-size: 13px; font-weight: 800; font-family: monospace; background: #111; border: 1px solid var(--border); border-radius: 8px; color: #fff;" oninput="updateManageTrocoDisplay()" />
+                </div>
+
+                <div id="manage-change-box" style="display: none;">
+                  <label style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">
+                    Valor Entregue (R$):
+                  </label>
+                  <input type="number" id="manage-pay-change-for" step="0.01" placeholder="Ex: 50.00" style="width: 100%; padding: 8px 10px; font-size: 13px; font-weight: 800; font-family: monospace; background: #111; border: 1px solid var(--border); border-radius: 8px; color: #fff;" oninput="updateManageTrocoDisplay()" />
+                  <div id="manage-troco-badge" style="margin-top: 4px; font-size: 11px; font-weight: 800; color: var(--green); font-family: monospace; display: none;"></div>
+                </div>
+              </div>
+
+              <button id="btn-submit-comanda-payment" class="btn-action success" style="width: 100%; padding: 9px; font-size: 12px; font-weight: 800;" onclick="handleComandaAddPayment()">
+                ✔ Confirmar Baixa na Conta
+              </button>
+
+              <!-- HISTÓRICO DE BAIXAS -->
+              <div>
+                <span style="font-size: 10.5px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; display: block;">
+                  Histórico de Baixas Desta Mesa:
+                </span>
+                <div id="manage-payments-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 120px; overflow-y: auto;"></div>
+              </div>
+            </div>
+
+            <!-- 5. ITENS CONSUMIDOS NA MESA -->
+            <div style="background: #141414; border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; font-weight: 800; color: #fff;">📋 Itens Lançados na Cozinha</span>
+                <span id="manage-items-count-badge" style="font-size: 10px; color: var(--text-muted);">0 item(ns)</span>
+              </div>
+              <div id="manage-items-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- TAB 3: CONFIGURAÇÕES -->
@@ -2258,6 +2877,33 @@
           <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
             Configure separadamente qual impressora térmica imprimirá automaticamente em cada etapa do fluxo.
           </p>
+
+          <!-- IMPRESSORA PADRÃO GERAL (PRÉ-CONTA, RELATÓRIOS E AVULSOS) -->
+          <div class="stage-card" style="border: 1.5px solid var(--yellow); background: rgba(234, 179, 8, 0.05); margin-bottom: 16px;">
+            <div class="stage-top">
+              <span class="stage-title" style="color: var(--yellow); font-size: 14px;">⭐ Impressora Padrão (Pré-Conta, Recibos Avulsos e Resumos)</span>
+              <span style="font-size: 10px; color: var(--yellow); font-weight: 800; background: rgba(234,179,8,0.15); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(234,179,8,0.3);">
+                PADRÃO DO SISTEMA
+              </span>
+            </div>
+            <p style="font-size: 11.5px; color: #bbb; margin: 4px 0 10px 0;">
+              Selecione a impressora padrão para os botões "Imprimir Pré-Conta", comprovantes de fechamento e impressões avulsas do sistema.
+            </p>
+            <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 12px; align-items: flex-end;">
+              <div class="form-group">
+                <label>Impressora Padrão:</label>
+                <select id="printer-DEFAULT" class="printer-select"></select>
+              </div>
+              <div class="form-group">
+                <label>Cópias:</label>
+                <select id="copies-DEFAULT">
+                  <option value="1">1 via</option>
+                  <option value="2">2 vias</option>
+                </select>
+              </div>
+              <button class="btn-action" style="padding: 10px 16px;" onclick="handleTestPrint('DEFAULT')">Testar Impressão</button>
+            </div>
+          </div>
 
           <div class="printers-grid">
             <!-- 1. NOVOS -->
@@ -2397,19 +3043,12 @@
                 Novo Pedido
               </button>
             </div>
-            <div id="pdv-comanda-banner" style="display: none; background: rgba(227,24,55,0.15); border: 1px solid var(--red); padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; color: #fff; justify-content: space-between; align-items: center; margin: 8px 0;">
-              <span id="pdv-comanda-banner-text">🍽️ Lançando Pedido na Mesa #--</span>
-              <button type="button" class="btn-action" style="padding: 2px 8px; font-size: 10px;" onclick="cancelPdvComandaMode()">Voltar ao Delivery</button>
-            </div>
             <div class="pdv-type-selector">
               <button type="button" id="pdv-type-delivery" class="pdv-type-btn active" onclick="setPdvOrderType('DELIVERY')">
                 🛵 Delivery
               </button>
               <button type="button" id="pdv-type-retirada" class="pdv-type-btn" onclick="setPdvOrderType('RETIRADA')">
                 🛍️ Retirada
-              </button>
-              <button type="button" id="pdv-type-comanda" class="pdv-type-btn" style="display: none;" onclick="setPdvOrderType('COMANDA')">
-                🍽️ Mesa
               </button>
             </div>
           </div>
@@ -2934,144 +3573,6 @@
     </div>
   </div>
 
-  <!-- MODAL: GERENCIAMENTO COMPLETO DE COMANDA / MESA -->
-  <div id="modal-manage-comanda" class="modal-overlay">
-    <div class="modal-box" style="max-width: 680px; width: 95%; max-height: 92vh; display: flex; flex-direction: column;">
-      <div class="modal-header">
-        <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
-          <span id="manage-comanda-title">Mesa #--</span>
-          <span id="manage-comanda-status" class="table-status-pill status-livre">LIVRE</span>
-        </div>
-        <button class="btn-close-modal" onclick="closeModal('modal-manage-comanda')">✕</button>
-      </div>
-
-      <div class="modal-body" style="overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 16px;">
-        <!-- 1. IDENTIFICAÇÃO DO RESPONSÁVEL -->
-        <div style="background: #1e1e1e; border: 1px solid var(--border); border-radius: 12px; padding: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
-              👤 Titular / Responsável da Mesa
-            </label>
-            <span id="manage-resp-saved-hint" style="font-size: 10px; color: var(--green); display: none;">Salvo!</span>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="manage-comanda-responsible" placeholder="Ex: João Silva / Família Almeida" style="flex: 1; padding: 8px 12px; font-size: 12px; background: #141414; border: 1px solid var(--border); border-radius: 8px; color: #fff;" />
-            <button id="btn-save-manage-resp" class="btn-action" style="padding: 8px 14px; font-size: 12px;" onclick="handleSaveManageResponsible()">Salvar</button>
-          </div>
-        </div>
-
-        <!-- 2. RESUMO FINANCEIRO (3 CARDS) -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-          <div style="background: #1e1e1e; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px;">
-            <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Consumo Total</span>
-            <span id="manage-stat-consumption" style="font-size: 18px; font-weight: 900; color: var(--yellow); font-family: monospace; display: block; margin: 4px 0;">R$ 0,00</span>
-            <span id="manage-stat-orders-count" style="font-size: 10px; color: var(--text-muted);">0 pedido(s)</span>
-          </div>
-
-          <div style="background: #1e1e1e; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px;">
-            <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Total Pago (Baixas)</span>
-            <span id="manage-stat-paid" style="font-size: 18px; font-weight: 900; color: var(--green); font-family: monospace; display: block; margin: 4px 0;">R$ 0,00</span>
-            <span id="manage-stat-payments-count" style="font-size: 10px; color: var(--text-muted);">0 baixa(s)</span>
-          </div>
-
-          <div id="manage-stat-card-balance" style="background: #1e1e1e; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Saldo Restante</span>
-              <span id="manage-badge-quitado" style="display: none; font-size: 9px; background: rgba(16,185,129,0.2); color: var(--green); padding: 1px 6px; border-radius: 10px; font-weight: 800;">QUITADO</span>
-            </div>
-            <span id="manage-stat-balance" style="font-size: 18px; font-weight: 900; color: var(--red); font-family: monospace; display: block; margin: 4px 0;">R$ 0,00</span>
-            <span id="manage-stat-balance-desc" style="font-size: 10px; color: var(--text-muted);">Aguardando baixa</span>
-          </div>
-        </div>
-
-        <!-- 3. BARRA DE AÇÕES RÁPIDAS -->
-        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-          <button id="btn-manage-add-order" class="btn-action primary" style="flex: 1; padding: 9px 12px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="handleAddOrderFromComandaModal()">
-            <span>＋</span> Adicionar Pedido na Mesa
-          </button>
-          <button id="btn-manage-print-bill" class="btn-action" style="padding: 9px 12px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; border-color: var(--yellow); color: var(--yellow);" onclick="handlePrintManageComanda()">
-            <span>🖨️</span> Imprimir Pré-Conta
-          </button>
-          <button id="btn-manage-transfer-table" class="btn-action" style="padding: 9px 12px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; border-color: var(--purple); color: var(--purple);" onclick="openTransferTableModal()">
-            <span>🔄</span> Transferir Mesa
-          </button>
-          <button id="btn-manage-release" class="btn-action" style="padding: 9px 12px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; border-color: var(--green); color: var(--green);" onclick="handleReleaseComanda()">
-            <span>🏁</span> Liberar Mesa
-          </button>
-        </div>
-
-        <!-- 4. PAINEL DE MÚLTIPLAS BAIXAS NA CONTA -->
-        <div style="background: #181818; border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
-            <div>
-              <span style="font-size: 12px; font-weight: 800; color: #fff;">💳 Baixas na Conta (Múltiplos Pagamentos)</span>
-              <span style="font-size: 10px; color: var(--text-muted); display: block;">Abata pagamentos em PIX, Dinheiro, Débito ou Crédito até zerar</span>
-            </div>
-            <button id="btn-manage-fill-remaining" class="btn-action" style="font-size: 10px; padding: 4px 8px; color: var(--yellow); border-color: var(--yellow);" onclick="handleFillRemainingBalance()">
-              ⚡ Quitar Saldo
-            </button>
-          </div>
-
-          <!-- Métodos de Pagamento -->
-          <div>
-            <label style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">
-              Forma de Pagamento:
-            </label>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;" id="manage-pay-methods-group">
-              <button type="button" class="manage-pay-method-btn active" data-method="PIX" onclick="setManagePayMethod('PIX')">⚡ PIX</button>
-              <button type="button" class="manage-pay-method-btn" data-method="DINHEIRO" onclick="setManagePayMethod('DINHEIRO')">💵 Dinheiro</button>
-              <button type="button" class="manage-pay-method-btn" data-method="DEBITO" onclick="setManagePayMethod('DEBITO')">💳 Débito</button>
-              <button type="button" class="manage-pay-method-btn" data-method="CREDITO" onclick="setManagePayMethod('CREDITO')">💳 Crédito</button>
-            </div>
-          </div>
-
-          <!-- Inputs de Valor e Troco -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div>
-              <label style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">
-                Valor a Abater / Baixar (R$):
-              </label>
-              <input type="number" id="manage-pay-amount" step="0.01" min="0.01" placeholder="0.00" style="width: 100%; padding: 8px 10px; font-size: 14px; font-weight: 800; font-family: monospace; background: #121212; border: 1px solid var(--border); border-radius: 8px; color: #fff;" oninput="updateManageTrocoDisplay()" />
-            </div>
-
-            <div id="manage-change-box" style="display: none;">
-              <label style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">
-                Valor Entregue pelo Cliente (R$):
-              </label>
-              <input type="number" id="manage-pay-change-for" step="0.01" placeholder="Ex: 50.00" style="width: 100%; padding: 8px 10px; font-size: 14px; font-weight: 800; font-family: monospace; background: #121212; border: 1px solid var(--border); border-radius: 8px; color: #fff;" oninput="updateManageTrocoDisplay()" />
-              <div id="manage-troco-badge" style="margin-top: 4px; font-size: 11px; font-weight: 800; color: var(--green); font-family: monospace; display: none;"></div>
-            </div>
-          </div>
-
-          <button id="btn-submit-comanda-payment" class="btn-action primary" style="width: 100%; padding: 10px; font-size: 12px; font-weight: 800; background: var(--green); border-color: var(--green);" onclick="handleComandaAddPayment()">
-            ✔ Confirmar Baixa na Conta
-          </button>
-
-          <!-- Lista de Baixas Já Efetuadas -->
-          <div>
-            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; display: block;">
-              Histórico de Baixas Desta Mesa
-            </span>
-            <div id="manage-payments-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 130px; overflow-y: auto;">
-              <!-- Itens preenchidos via JS -->
-            </div>
-          </div>
-        </div>
-
-        <!-- 5. ITENS CONSUMIDOS NA MESA -->
-        <div style="background: #181818; border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 12px; font-weight: 800; color: #fff;">📋 Itens Lançados na Cozinha</span>
-            <span id="manage-items-count-badge" style="font-size: 10px; color: var(--text-muted);">0 item(ns)</span>
-          </div>
-          <div id="manage-items-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
-            <!-- Itens de consumo -->
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL: TRANSFERÊNCIA DE MESA / ITEM -->
   <div id="modal-transfer-comanda" class="modal-overlay">
     <div class="modal-box" style="max-width: 400px;">
@@ -3417,6 +3918,12 @@
     function populateSettingsFields() {
       document.getElementById("cfg-server-url").value = appSettings.serverUrl || "http://localhost:3000";
       document.getElementById("cfg-api-key").value = appSettings.apiKey || "";
+
+      // Impressora Padrão
+      const defaultPr = document.getElementById("printer-DEFAULT");
+      if (defaultPr && appSettings.defaultPrinter) defaultPr.value = appSettings.defaultPrinter;
+      const defaultCp = document.getElementById("copies-DEFAULT");
+      if (defaultCp && appSettings.defaultCopies) defaultCp.value = String(appSettings.defaultCopies);
 
       const cfgs = appSettings.configs || {};
       ["NOVO", "EM_PREPARO", "PRONTO_RETIRADA", "EM_ROTA", "ENTREGUE"].forEach((key) => {
@@ -4170,11 +4677,33 @@
         <!-- Endereço se Delivery -->
         ${addressHtml}
 
-        <!-- Pagamento e Total (Mesas nunca mostram forma de pagamento) -->
-        <div class="card-meta-row">
-          ${!isTableOrder ? `<span>Pg: <strong>${payLabel}</strong></span>` : `<span style="color:#d8b4fe; font-weight:700;">🍽️ Pagamento no Balcão</span>`}
-          <span class="card-total-val">Total: R$ ${parseFloat(order.total || 0).toFixed(2)}</span>
-        </div>
+        <!-- Pagamento e Total -->
+        ${isTableOrder ? `
+          ${order.payments && order.payments.length > 0 ? `
+            <div style="margin-top: 4px; padding: 6px 8px; background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #d8b4fe; letter-spacing: 0.5px;">🍽️ Baixas da Mesa (${order.payments.length}):</span>
+                <span class="card-total-val" style="color: #34d399; font-size: 13px; font-family: monospace; font-weight: 900;">Total: R$ ${parseFloat(order.total || 0).toFixed(2).replace(".", ",")}</span>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                ${order.payments.map((p) => {
+                  const icon = p.method === "PIX" ? "⚡" : p.method === "DINHEIRO" ? "💵" : "💳";
+                  return `<span style="background: rgba(147, 51, 234, 0.35); border: 1px solid rgba(192, 132, 252, 0.45); color: #f3e8ff; padding: 2px 6px; border-radius: 5px; font-size: 10px; font-family: monospace; font-weight: 800;">${icon} ${p.method}: R$ ${parseFloat(p.amount || 0).toFixed(2).replace(".", ",")}</span>`;
+                }).join("")}
+              </div>
+            </div>
+          ` : `
+            <div class="card-meta-row">
+              ${order.status === "ENTREGUE" ? `<span style="color: #34d399; font-weight: 800;">✓ Mesa Concluída & Quitada</span>` : `<span style="color: #d8b4fe; font-weight: 700;">🍽️ Consumo na Mesa</span>`}
+              <span class="card-total-val">Total: R$ ${parseFloat(order.total || 0).toFixed(2).replace(".", ",")}</span>
+            </div>
+          `}
+        ` : `
+          <div class="card-meta-row">
+            <span>Pg: <strong>${payLabel}</strong></span>
+            <span class="card-total-val">Total: R$ ${parseFloat(order.total || 0).toFixed(2).replace(".", ",")}</span>
+          </div>
+        `}
 
         <!-- Ações do Card -->
         <div class="card-actions-row">
@@ -4358,7 +4887,7 @@
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px; background:#1e1e1e; padding:12px; border-radius:12px;">
           <div><span style="color:#999;">Tipo:</span> <strong>${isTable ? "COMANDA / MESA" : order.type}</strong></div>
           <div><span style="color:#999;">Status:</span> <strong style="color:var(--yellow);">${order.status}</strong></div>
-          <div><span style="color:#999;">Pagamento:</span> <strong style="color:${isTable ? "#c084fc" : "#fff"};">${isTable ? "🍽️ Pagar no Balcão" : (order.paymentMethod || "Pendente")}${!isTable && order.paymentMethod === "DINHEIRO" && parseFloat(order.changeFor || 0) > 0 ? ` (Troco p/ R$ ${parseFloat(order.changeFor).toFixed(2)})` : ""}</strong></div>
+          <div><span style="color:#999;">Pagamento:</span> <strong style="color:${isTable ? "#c084fc" : "#fff"};">${isTable ? (order.payments && order.payments.length > 0 ? `🍽️ Baixas: ${order.payments.map((p) => `${p.method} R$ ${parseFloat(p.amount || 0).toFixed(2).replace(".", ",")}`).join(" | ")}` : (order.status === "ENTREGUE" ? "✓ Mesa Concluída & Quitada" : "🍽️ Consumo na Mesa")) : (order.paymentMethod || "Pendente")}${!isTable && order.paymentMethod === "DINHEIRO" && parseFloat(order.changeFor || 0) > 0 ? ` (Troco p/ R$ ${parseFloat(order.changeFor).toFixed(2)})` : ""}</strong></div>
           <div><span style="color:#999;">Horário:</span> <strong>${new Date(order.createdAt).toLocaleTimeString("pt-BR")}</strong></div>
           ${order.customerAddress ? `<div style="grid-column:1/-1;"><span style="color:#999;">Endereço:</span> <strong>${order.customerAddress}, ${order.addressNumber || ""}</strong></div>` : ""}
         </div>
@@ -4431,7 +4960,7 @@
         const card = document.createElement("div");
         card.className = `table-card ${isOcupada ? "ocupada" : ""}`;
         card.style.cursor = "pointer";
-        card.onclick = () => openManageComandaModal(c.id);
+        card.onclick = () => openManageComandaPage(c.id);
         card.innerHTML = `
           <div class="table-header">
             <span class="table-badge-num">Mesa ${c.number}</span>
@@ -4446,8 +4975,8 @@
           </div>
 
           <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
-            <button class="btn-action" style="flex:1; padding:6px; font-size:11px; font-weight:700; background:rgba(227,24,55,0.15); border-color:rgba(227,24,55,0.3); color:var(--red);" onclick="event.stopPropagation(); openManageComandaModal('${c.id}')">
-              ⚙️ Gerenciar
+            <button class="btn-action primary" style="flex:1; padding:6px; font-size:11px; font-weight:800;" onclick="event.stopPropagation(); openManageComandaPage('${c.id}')">
+              🍽️ Abrir Mesa & Pedidos
             </button>
             <button class="btn-qr-card" style="padding:6px 10px;" onclick="event.stopPropagation(); openQrModal(${c.number})" title="QR Code da Mesa">
               📱 QR
@@ -4480,22 +5009,23 @@
     let transferMode = "ITEM"; // "ITEM" ou "TABLE"
     let transferItemId = null;
 
-    async function openManageComandaModal(comandaId) {
+    async function openManageComandaPage(comandaId) {
       try {
         currentManageComandaId = comandaId;
         const comanda = comandasList.find((c) => c.id === comandaId);
         currentManageComanda = comanda;
 
-        const modal = document.getElementById("modal-manage-comanda");
-        if (!modal) {
-          console.error("Modal modal-manage-comanda não encontrado no DOM!");
-          return;
-        }
-        modal.classList.add("active");
+        // Alterna entre a visualização do Grid e a Página Dedicada da Mesa
+        const gridCont = document.getElementById("comandas-grid-container");
+        const detailCont = document.getElementById("comandas-detail-container");
+        if (gridCont) gridCont.style.display = "none";
+        if (detailCont) detailCont.style.display = "flex";
 
         const numText = comanda ? comanda.number : "--";
         const titleEl = document.getElementById("manage-comanda-title");
         if (titleEl) titleEl.textContent = `Mesa #${String(numText).padStart(2, "0")}`;
+        const activeBadge = document.getElementById("mesa-active-title-badge");
+        if (activeBadge) activeBadge.textContent = `Mesa #${String(numText).padStart(2, "0")}: Pedido Cozinha`;
         const statusPill = document.getElementById("manage-comanda-status");
         const isOcupada = comanda && comanda.status === "OCUPADA";
         if (statusPill) {
@@ -4514,10 +5044,22 @@
         if (trocoBadge) trocoBadge.style.display = "none";
         setManagePayMethod("PIX");
 
+        // Inicializa o lançador de pedidos da mesa
+        await initMesaOrderBuilder();
+
         await loadManageComandaData(comandaId);
       } catch (err) {
-        console.error("Erro ao abrir modal de gerenciar comanda:", err);
+        console.error("Erro ao abrir página da mesa:", err);
       }
+    }
+
+    function closeManageComandaView() {
+      const gridCont = document.getElementById("comandas-grid-container");
+      const detailCont = document.getElementById("comandas-detail-container");
+      if (detailCont) detailCont.style.display = "none";
+      if (gridCont) gridCont.style.display = "flex";
+      currentManageComandaId = null;
+      fetchComandas();
     }
 
     async function loadManageComandaData(comandaId) {
@@ -4542,6 +5084,8 @@
             const comNum = dataOrders.comanda.number;
             const titleEl = document.getElementById("manage-comanda-title");
             if (titleEl) titleEl.textContent = `Mesa #${String(comNum).padStart(2, "0")}`;
+            const activeBadge = document.getElementById("mesa-active-title-badge");
+            if (activeBadge) activeBadge.textContent = `Mesa #${String(comNum).padStart(2, "0")}: Pedido Cozinha`;
             const isOcupada = dataOrders.comanda.status === "OCUPADA";
             const statusPill = document.getElementById("manage-comanda-status");
             if (statusPill) {
@@ -4573,29 +5117,36 @@
         currentManageTotalPaid = totalPaid;
         currentManageRemaining = remaining;
 
-        document.getElementById("manage-stat-consumption").textContent = `R$ ${consumption.toFixed(2)}`;
-        document.getElementById("manage-stat-orders-count").textContent = `${orders.length} subpedido(s)`;
-        document.getElementById("manage-stat-paid").textContent = `R$ ${totalPaid.toFixed(2)}`;
-        document.getElementById("manage-stat-payments-count").textContent = `${payments.length} baixa(s)`;
-        document.getElementById("manage-stat-balance").textContent = `R$ ${Math.max(0, remaining).toFixed(2)}`;
+        const statCons = document.getElementById("manage-stat-consumption");
+        if (statCons) statCons.textContent = `R$ ${consumption.toFixed(2)}`;
+        const statOrders = document.getElementById("manage-stat-orders-count");
+        if (statOrders) statOrders.textContent = `${orders.length} subpedido(s)`;
+        const statPaid = document.getElementById("manage-stat-paid");
+        if (statPaid) statPaid.textContent = `R$ ${totalPaid.toFixed(2)}`;
+        const statPaysCount = document.getElementById("manage-stat-payments-count");
+        if (statPaysCount) statPaysCount.textContent = `${payments.length} baixa(s)`;
+        const statBal = document.getElementById("manage-stat-balance");
+        if (statBal) statBal.textContent = `R$ ${Math.max(0, remaining).toFixed(2)}`;
 
         const quitadoBadge = document.getElementById("manage-badge-quitado");
         const balDesc = document.getElementById("manage-stat-balance-desc");
-        const statBal = document.getElementById("manage-stat-balance");
         if (remaining <= 0.01 && consumption > 0) {
-          quitadoBadge.style.display = "inline-block";
-          balDesc.textContent = "✓ Mesa 100% quitada";
-          statBal.style.color = "var(--green)";
+          if (quitadoBadge) quitadoBadge.style.display = "inline-block";
+          if (balDesc) balDesc.textContent = "✓ Mesa 100% quitada";
+          if (statBal) statBal.style.color = "var(--green)";
         } else {
-          quitadoBadge.style.display = "none";
-          balDesc.textContent = remaining > 0 ? "Aguardando baixa" : "Sem consumo pendente";
-          statBal.style.color = remaining > 0 ? "var(--red)" : "var(--text-muted)";
+          if (quitadoBadge) quitadoBadge.style.display = "none";
+          if (balDesc) balDesc.textContent = remaining > 0 ? "Aguardando baixa" : "Sem consumo pendente";
+          if (statBal) statBal.style.color = remaining > 0 ? "var(--red)" : "var(--text-muted)";
         }
 
-        if (remaining > 0) {
-          document.getElementById("manage-pay-amount").value = remaining.toFixed(2);
-        } else {
-          document.getElementById("manage-pay-amount").value = "";
+        const payAmtInput = document.getElementById("manage-pay-amount");
+        if (payAmtInput) {
+          if (remaining > 0) {
+            payAmtInput.value = remaining.toFixed(2);
+          } else {
+            payAmtInput.value = "";
+          }
         }
         updateManageTrocoDisplay();
 
@@ -4707,14 +5258,22 @@
     }
 
     function handleFillRemainingBalance() {
-      if (currentManageRemaining > 0) {
-        document.getElementById("manage-pay-amount").value = currentManageRemaining.toFixed(2);
-        updateManageTrocoDisplay();
+      if (currentManageRemaining <= 0) {
+        alert("Esta mesa já está 100% quitada (Saldo R$ 0,00)!\n\nVocê pode encerrar o atendimento e liberar a mesa para novos clientes clicando no botão 'Fechar Comanda & Liberar p/ Novo Consumo'.");
+        return;
       }
+      document.getElementById("manage-pay-amount").value = currentManageRemaining.toFixed(2);
+      updateManageTrocoDisplay();
     }
 
     async function handleComandaAddPayment() {
       if (!currentManageComandaId) return;
+
+      if (currentManageRemaining <= 0) {
+        alert("Esta comanda já está 100% quitada (Saldo R$ 0,00)!\n\nNão há saldo pendente para baixa. Para liberar a mesa para novos clientes, utilize o botão 'Fechar Comanda & Liberar p/ Novo Consumo'.");
+        return;
+      }
+
       const amtInput = document.getElementById("manage-pay-amount");
       const amt = parseFloat(amtInput.value.replace(",", "."));
       if (isNaN(amt) || amt <= 0) {
@@ -4876,7 +5435,12 @@
         </html>
       `;
 
-      const printerName = appSettings.configs?.["PRONTO_RETIRADA"]?.printer || appSettings.configs?.["NOVO"]?.printer || "";
+      // Prioriza a Impressora Padrão selecionada nas configurações
+      const printerName = (appSettings.defaultPrinter && appSettings.defaultPrinter.trim())
+        || appSettings.configs?.["PRONTO_RETIRADA"]?.printer
+        || appSettings.configs?.["NOVO"]?.printer
+        || "";
+
       if (window.electronAPI && window.electronAPI.printHtmlReceipt) {
         try {
           const res = await window.electronAPI.printHtmlReceipt(printerName, html);
@@ -4978,7 +5542,7 @@
           showToast(data.message || "Transferência realizada com sucesso!");
           closeModal("modal-transfer-comanda");
           if (transferMode === "TABLE") {
-            closeModal("modal-manage-comanda");
+            closeManageComandaView();
           } else {
             await loadManageComandaData(currentManageComandaId);
           }
@@ -4996,11 +5560,11 @@
       if (!currentManageComandaId || !currentManageComanda) return;
       if (currentManageRemaining > 0.05) {
         const confirmWithDebt = confirm(
-          `⚠️ ATENÇÃO: A Mesa #${currentManageComanda.number} ainda possui um saldo em aberto de R$ ${currentManageRemaining.toFixed(2)}!\n\nDeseja realmente liberar a mesa mesmo restando valor a pagar?`
+          `⚠️ ATENÇÃO: A Mesa #${currentManageComanda.number} ainda possui um saldo em aberto de R$ ${currentManageRemaining.toFixed(2)}!\n\nDeseja realmente fechar e liberar a mesa mesmo restando valor a pagar?`
         );
         if (!confirmWithDebt) return;
       } else {
-        if (!confirm(`Deseja realmente liberar a Mesa #${currentManageComanda.number}? Todos os pedidos e baixas serão finalizados para permitir um novo consumo.`)) {
+        if (!confirm(`Deseja realmente fechar a comanda e liberar a Mesa #${currentManageComanda.number}? Todos os pedidos serão arquivados como concluídos e a mesa será zerada para receber um novo consumo.`)) {
           return;
         }
       }
@@ -5012,9 +5576,11 @@
         });
         const data = await res.json();
         if (data.success) {
-          showToast(`✓ Mesa #${currentManageComanda.number} liberada com sucesso!`);
-          closeModal("modal-manage-comanda");
+          showToast(`✓ Mesa #${currentManageComanda.number} fechada e zerada para novo consumo!`);
+          await loadManageComandaData(currentManageComandaId);
           await fetchComandas();
+          await fetchOrders();
+          renderKanban();
         } else {
           alert(data.error || "Erro ao liberar mesa.");
         }
@@ -5047,48 +5613,930 @@
       }
     }
 
-    function handleAddOrderFromComandaModal() {
-      if (!currentManageComandaId || !currentManageComanda) return;
-      const num = currentManageComanda.number;
-      const resp = document.getElementById("manage-comanda-responsible").value.trim() || currentManageComanda.responsibleName || "";
-      openPdvForComanda(currentManageComandaId, num, resp);
+    // ==========================================
+    // LANÇADOR DE PEDIDOS DA MESA (DIRETO COZINHA)
+    // IDÊNTICO AO FLUXO & ESTILO DO WHATSAPP PDV
+    // ==========================================
+    const PDV_PIZZA_RULES = {
+      P: { label: "Pequena", slices: 4, maxFlavors: 2 },
+      M: { label: "Média", slices: 6, maxFlavors: 3 },
+      G: { label: "Grande", slices: 8, maxFlavors: 3 },
+      GG: { label: "Gigante", slices: 10, maxFlavors: 3 },
+    };
+    const MESA_PIZZA_RULES = PDV_PIZZA_RULES;
+
+    let flavorPickerContext = "PDV"; // "PDV" ou "MESA"
+
+    let mesaPizza = {
+      size: "G",
+      slices: 8,
+      flavorCount: 1,
+      selectedFlavors: [null, null, null],
+      slicesDistribution: [8],
+      crust: null,
+      caracolRequested: false,
+      notes: "",
+      toppings: [],
+    };
+    let mesaActiveSectorIndex = 0;
+    let mesaActiveToppingTarget = "FULL";
+    let mesaDraftItems = [];
+
+    // Compatibilidade com variáveis legadas
+    let mesaDraftSize = "G";
+    let mesaDraftFlavorCount = 1;
+    let mesaDraftSelectedFlavors = [];
+    let mesaDraftCrustId = "";
+    let mesaDraftToppings = [];
+
+    async function initMesaOrderBuilder() {
+      if (!pdvCatalog.flavors || pdvCatalog.flavors.length === 0) {
+        await loadPdvCatalogAndZones();
+      }
+      populateMesaCrusts();
+      populateMesaToppingsSelect();
+      populateMesaProductCategories();
+      renderMesaProductsList();
+      resetMesaOrderBuilder();
     }
 
-    function openPdvForComanda(comandaId, comandaNumber, responsibleName) {
-      closeModal("modal-manage-comanda");
-      const waTabBtn = document.querySelector('.tab-btn[data-tab="whatsapp"]');
-      if (waTabBtn) waTabBtn.click();
+    function resetMesaOrderBuilder() {
+      mesaDraftItems = [];
+      resetMesaPizza();
+      renderMesaDraftItems();
+      const notesInput = document.getElementById("mesa-order-notes");
+      if (notesInput) notesInput.value = "";
+      goToMesaStep(1);
+    }
 
-      pdvComandaId = comandaId;
-      pdvComandaNumber = comandaNumber;
-      setPdvOrderType("COMANDA");
+    function resetMesaPizza() {
+      mesaPizza = {
+        size: "G",
+        slices: 8,
+        flavorCount: 1,
+        selectedFlavors: [null, null, null],
+        slicesDistribution: [8],
+        crust: null,
+        caracolRequested: false,
+        notes: "",
+        toppings: [],
+      };
+      mesaActiveSectorIndex = 0;
+      mesaActiveToppingTarget = "FULL";
 
-      const banner = document.getElementById("pdv-comanda-banner");
-      const bannerText = document.getElementById("pdv-comanda-banner-text");
-      if (banner && bannerText) {
-        bannerText.textContent = `🍽️ Lançando Pedido na Mesa #${comandaNumber} ${responsibleName ? `(${responsibleName})` : ""}`;
-        banner.style.display = "flex";
+      const crustSel = document.getElementById("mesa-crust-select");
+      if (crustSel) crustSel.value = "";
+      const caracolCheck = document.getElementById("mesa-caracol-check");
+      if (caracolCheck) caracolCheck.checked = false;
+      const caracolBox = document.getElementById("mesa-caracol-box");
+      if (caracolBox) caracolBox.style.display = "none";
+      const pizzaNotes = document.getElementById("mesa-pizza-notes");
+      if (pizzaNotes) pizzaNotes.value = "";
+
+      selectMesaPizzaSize("G");
+      setMesaFlavorCount(1);
+      renderMesaSelectedToppings();
+    }
+
+    function resetMesaPizzaAndNew() {
+      resetMesaPizza();
+      goToMesaStep(1);
+      showToast("Pronto para montar uma nova pizza para a mesa!");
+    }
+
+    function goToMesaStep(step) {
+      for (let i = 1; i <= 4; i++) {
+        const nav = document.getElementById(`mesa-step-nav-${i}`);
+        const pane = document.getElementById(`mesa-step-pane-${i}`);
+        if (nav) {
+          nav.classList.toggle("active", i === step);
+          nav.classList.toggle("done", i < step);
+        }
+        if (pane) pane.classList.toggle("active", i === step);
+      }
+      const progress = document.getElementById("mesa-stepper-progress");
+      if (progress) {
+        progress.style.width = `${((step - 1) / 3) * 100}%`;
+      }
+      const orderBody = document.getElementById("mesa-order-body");
+      if (orderBody) orderBody.scrollTop = 0;
+
+      if (step === 2) {
+        renderMesaPizzaSvg();
+        renderMesaSliceDistribution();
+        updateMesaPizzaPrice();
+      } else if (step === 3) {
+        renderMesaToppingsPizzaSvg();
+        renderMesaToppingTargetPills();
+        populateMesaToppingsSelect();
+        renderMesaSelectedToppings();
+        updateMesaPizzaPrice();
+      } else if (step === 4) {
+        populateMesaProductCategories();
+        renderMesaProductsList();
+        renderMesaDraftItems();
+      }
+    }
+
+    function selectMesaPizzaSize(size) {
+      mesaPizza.size = size;
+      mesaDraftSize = size;
+      const rule = PDV_PIZZA_RULES[size] || PDV_PIZZA_RULES.G;
+      mesaPizza.slices = rule.slices;
+
+      document.querySelectorAll("#mesa-step-pane-1 .pdv-size-card").forEach((card) => {
+        const isMatch = card.dataset.size === size;
+        card.classList.toggle("active", isMatch);
+        const radio = card.querySelector(".pdv-size-radio");
+        if (radio) {
+          radio.textContent = isMatch ? "✓" : "";
+        }
+      });
+
+      if (mesaPizza.flavorCount > rule.maxFlavors) {
+        mesaPizza.flavorCount = rule.maxFlavors;
       }
 
-      const btnCom = document.getElementById("pdv-type-comanda");
-      if (btnCom) {
-        btnCom.style.display = "inline-flex";
-        btnCom.classList.add("active");
+      const countBtns = document.getElementById("mesa-flavor-count-buttons");
+      if (countBtns) {
+        countBtns.querySelectorAll(".flavor-count-btn").forEach((btn) => {
+          const cnt = parseInt(btn.dataset.count, 10);
+          btn.style.display = cnt <= rule.maxFlavors ? "block" : "none";
+          btn.classList.toggle("active", cnt === mesaPizza.flavorCount);
+        });
       }
 
-      const nameInput = document.getElementById("pdv-cust-name");
-      if (nameInput) {
-        nameInput.value = responsibleName || `Mesa #${comandaNumber}`;
+      mesaPizza.slicesDistribution = getDefaultSlicesDistribution(mesaPizza.size, mesaPizza.flavorCount);
+
+      populateMesaCrusts();
+
+      const caracolBox = document.getElementById("mesa-caracol-box");
+      if (caracolBox) {
+        const crustSel = document.getElementById("mesa-crust-select");
+        const crust = (pdvCatalog.crusts || []).find((c) => c.id === crustSel?.value);
+        caracolBox.style.display = crust && crust.caracol ? "flex" : "none";
       }
 
-      const phoneInput = document.getElementById("pdv-cust-phone");
-      if (phoneInput && !phoneInput.value) {
-        phoneInput.value = "11999999999";
+      renderMesaPizzaSvg();
+      renderMesaSliceDistribution();
+      updateMesaPizzaPrice();
+    }
+    const selectMesaSize = selectMesaPizzaSize;
+
+    function setMesaFlavorCount(count) {
+      const rule = PDV_PIZZA_RULES[mesaPizza.size] || PDV_PIZZA_RULES.G;
+      if (count > rule.maxFlavors) return;
+
+      mesaPizza.flavorCount = count;
+      mesaDraftFlavorCount = count;
+      document.querySelectorAll("#mesa-flavor-count-buttons .flavor-count-btn").forEach((btn) => {
+        btn.classList.toggle("active", parseInt(btn.dataset.count, 10) === count);
+      });
+
+      mesaPizza.slicesDistribution = getDefaultSlicesDistribution(mesaPizza.size, mesaPizza.flavorCount);
+
+      renderMesaPizzaSvg();
+      renderMesaSliceDistribution();
+      updateMesaPizzaPrice();
+    }
+
+    function getMesaSlicesDistribution() {
+      if (mesaPizza.slicesDistribution && mesaPizza.slicesDistribution.length === mesaPizza.flavorCount) {
+        return mesaPizza.slicesDistribution;
+      }
+      return getDefaultSlicesDistribution(mesaPizza.size, mesaPizza.flavorCount);
+    }
+
+    function renderMesaPizzaSvg() {
+      renderRealisticPizzaSvg({
+        containerId: "mesa-pizza-svg-container",
+        size: mesaPizza.size,
+        flavorCount: mesaPizza.flavorCount,
+        selectedFlavors: mesaPizza.selectedFlavors,
+        slicesDistribution: getMesaSlicesDistribution(),
+        activeSectorIndex: mesaActiveSectorIndex,
+        onSectorClickFnName: "openMesaFlavorPicker",
+        interactive: true,
+      });
+    }
+
+    function renderMesaToppingsPizzaSvg() {
+      renderRealisticPizzaSvg({
+        containerId: "mesa-pizza-toppings-svg-container",
+        size: mesaPizza.size,
+        flavorCount: mesaPizza.flavorCount,
+        selectedFlavors: mesaPizza.selectedFlavors,
+        slicesDistribution: getMesaSlicesDistribution(),
+        activeSectorIndex: null,
+        onSectorClickFnName: "openMesaFlavorPicker",
+        interactive: false,
+      });
+    }
+
+    function renderMesaSliceDistribution() {
+      const card = document.getElementById("mesa-slice-dist-card");
+      if (!card) return;
+
+      const totalSlices = mesaPizza.slices;
+      const isDynamic = mesaPizza.size !== "P" && mesaPizza.flavorCount > 1;
+
+      if (!isDynamic) {
+        card.style.display = "none";
+        return;
+      }
+      card.style.display = "flex";
+
+      const dist = getMesaSlicesDistribution();
+      const currentSum = dist.reduce((a, b) => a + b, 0);
+      const isComplete = currentSum === totalSlices;
+
+      const badge = document.getElementById("mesa-dist-badge");
+      const status = document.getElementById("mesa-dist-status");
+      if (badge) {
+        badge.textContent = currentSum + " / " + totalSlices + " fatias";
+        badge.classList.toggle("incomplete", !isComplete);
+      }
+      if (status) {
+        status.textContent = isComplete ? "✅ Completa" : "⚠️ Incompleta";
+        status.style.color = isComplete ? "#00e676" : "#ff5252";
       }
 
-      const submitBtn = document.getElementById("btn-submit-pdv-order");
-      if (submitBtn) {
-        submitBtn.textContent = `🍽️ Lançar Pedido na Mesa #${comandaNumber}`;
+      const content = document.getElementById("mesa-dist-content");
+      if (!content) return;
+
+      const activeFlavors = mesaPizza.selectedFlavors.slice(0, mesaPizza.flavorCount);
+      const allSelected = activeFlavors.every((f) => f !== null);
+
+      if (!allSelected) {
+        content.innerHTML = (
+          '<div style="text-align: center; padding: 12px; background: rgba(0,0,0,0.25); border: 1px dashed #333; border-radius: 10px; font-size: 10.5px; font-weight: 700; color: #888; text-transform: uppercase;">' +
+            '🍕 Selecione todos os ' + mesaPizza.flavorCount + ' sabores para ajustar a distribuição' +
+          '</div>'
+        );
+        return;
+      }
+
+      content.innerHTML = activeFlavors.map((flavor, idx) => {
+        const slices = dist[idx] || 2;
+        const canDecrease = slices > 2;
+        const canIncrease = activeFlavors.some((_, otherIdx) => otherIdx !== idx && dist[otherIdx] > 2);
+
+        return (
+          '<div class="pdv-dist-row">' +
+            '<div>' +
+              '<div style="font-size: 12.5px; font-weight: 800; color: #fff;">' + flavor.name + '</div>' +
+              '<div style="font-size: 10.5px; color: #00e676; font-weight: 700;">🍕 ' + slices + ' fatias</div>' +
+            '</div>' +
+            '<div style="display: flex; align-items: center; gap: 8px;">' +
+              '<button type="button" class="pdv-dist-btn" onclick="stepMesaSlice(' + idx + ', -1)" ' + (!canDecrease ? 'disabled' : '') + '>-</button>' +
+              '<span style="font-size: 13px; font-weight: 900; color: #fff; min-width: 18px; text-align: center;">' + slices + '</span>' +
+              '<button type="button" class="pdv-dist-btn" onclick="stepMesaSlice(' + idx + ', 1)" ' + (!canIncrease ? 'disabled' : '') + '>+</button>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join("");
+    }
+
+    function stepMesaSlice(flavorIdx, delta) {
+      if (mesaPizza.flavorCount <= 1 || mesaPizza.size === "P") return;
+
+      const dist = [...getMesaSlicesDistribution()];
+      const count = mesaPizza.flavorCount;
+
+      if (delta > 0) {
+        let otherIdx = -1;
+        for (let i = 0; i < count; i++) {
+          if (i !== flavorIdx && dist[i] > 2) {
+            otherIdx = i;
+            break;
+          }
+        }
+        if (otherIdx !== -1) {
+          dist[flavorIdx] += 1;
+          dist[otherIdx] -= 1;
+        }
+      } else if (delta < 0) {
+        if (dist[flavorIdx] > 2) {
+          let otherIdx = -1;
+          for (let i = 0; i < count; i++) {
+            if (i !== flavorIdx) {
+              otherIdx = i;
+              break;
+            }
+          }
+          if (otherIdx !== -1) {
+            dist[flavorIdx] -= 1;
+            dist[otherIdx] += 1;
+          }
+        }
+      }
+
+      mesaPizza.slicesDistribution = dist;
+      renderMesaPizzaSvg();
+      renderMesaSliceDistribution();
+      updateMesaPizzaPrice();
+    }
+
+    function openMesaFlavorPicker(sectorIndex) {
+      flavorPickerContext = "MESA";
+      mesaActiveSectorIndex = sectorIndex;
+      const modal = document.getElementById("pdv-flavor-picker-modal");
+      const title = document.getElementById("pdv-picker-title");
+      if (!modal) return;
+
+      let sectorName = "";
+      if (mesaPizza.flavorCount === 1) {
+        sectorName = "Pizza Inteira";
+      } else if (mesaPizza.flavorCount === 2) {
+        sectorName = sectorIndex === 0 ? "Metade Esquerda (Sabor 1)" : "Metade Direita (Sabor 2)";
+      } else {
+        sectorName = "Sabor " + (sectorIndex + 1);
+      }
+
+      if (title) {
+        title.innerHTML = '<span>🍕</span> <span>Escolha o Sabor (' + sectorName + ')</span>';
+      }
+
+      const searchInput = document.getElementById("pdv-picker-search");
+      if (searchInput) searchInput.value = "";
+      pdvSelectedCategoryFilter = "ALL";
+
+      renderPdvFlavorPickerCategories();
+      renderPdvFlavorPickerGrid();
+
+      modal.classList.add("active");
+      if (searchInput) searchInput.focus();
+    }
+
+    function populateMesaCrusts() {
+      const sel = document.getElementById("mesa-crust-select");
+      if (!sel) return;
+      const currentVal = sel.value;
+      sel.innerHTML = '<option value="">Sem borda recheada (Massa tradicional)</option>';
+      (pdvCatalog.crusts || []).forEach((c) => {
+        const isPM = mesaPizza.size === "P" || mesaPizza.size === "M";
+        const p = isPM ? c.pricePM : c.priceGGG;
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = `${c.name} (+ R$ ${p.toFixed(2)})`;
+        sel.appendChild(opt);
+      });
+      sel.value = currentVal || "";
+    }
+
+    function handleMesaCaracolChange() {
+      const chk = document.getElementById("mesa-caracol-check");
+      mesaPizza.caracolRequested = chk ? chk.checked : false;
+      updateMesaPizzaPrice();
+    }
+
+    function updateMesaPizzaPrice() {
+      let maxBasePrice = 0;
+      const priceKey = "price" + mesaPizza.size;
+
+      for (let i = 0; i < mesaPizza.flavorCount; i++) {
+        const f = mesaPizza.selectedFlavors[i];
+        if (f && f.category) {
+          const p = f.category[priceKey] || 0;
+          if (p > maxBasePrice) maxBasePrice = p;
+        }
+      }
+
+      if (maxBasePrice === 0 && (pdvCatalog.pizzaCategories || []).length > 0) {
+        maxBasePrice = pdvCatalog.pizzaCategories[0][priceKey] || 0;
+      }
+
+      const crustSel = document.getElementById("mesa-crust-select");
+      let crustPrice = 0;
+      const caracolBox = document.getElementById("mesa-caracol-box");
+      if (crustSel && crustSel.value) {
+        const c = (pdvCatalog.crusts || []).find((x) => x.id === crustSel.value);
+        if (c) {
+          crustPrice = (mesaPizza.size === "P" || mesaPizza.size === "M") ? c.pricePM : c.priceGGG;
+          if (caracolBox) caracolBox.style.display = c.caracol ? "flex" : "none";
+          if (c.caracol && mesaPizza.caracolRequested) {
+            crustPrice += 5.0; // Adicional caracol
+          }
+        }
+      } else if (caracolBox) {
+        caracolBox.style.display = "none";
+      }
+
+      let toppingsTotal = 0;
+      const dist = getMesaSlicesDistribution();
+      (mesaPizza.toppings || []).forEach((t) => {
+        if (t.targetType === "FULL") {
+          toppingsTotal += t.price;
+        } else {
+          const match = t.targetType.match(/SAB_(\d+)/);
+          const sIdx = match ? parseInt(match[1], 10) - 1 : 0;
+          const slices = dist[sIdx] || 1;
+          toppingsTotal += t.price * (slices / mesaPizza.slices);
+        }
+      });
+
+      const totalPizza = maxBasePrice + crustPrice + toppingsTotal;
+
+      const previewEl = document.getElementById("mesa-pizza-subtotal");
+      if (previewEl) {
+        previewEl.textContent = `R$ ${totalPizza.toFixed(2)}`;
+      }
+
+      const descEl = document.getElementById("mesa-pizza-desc-preview");
+      if (descEl) {
+        const flNames = mesaPizza.selectedFlavors.slice(0, mesaPizza.flavorCount).filter(Boolean).map((f) => f.name).join(" / ");
+        descEl.textContent = `Pizza ${mesaPizza.size}${flNames ? ` (${flNames})` : ""}`;
+      }
+
+      return { maxBasePrice, crustPrice, toppingsTotal, totalPizza };
+    }
+
+    function renderMesaToppingTargetPills() {
+      const box = document.getElementById("mesa-topping-target-pills");
+      if (!box) return;
+
+      const count = mesaPizza.flavorCount;
+      const dist = getMesaSlicesDistribution();
+      const pills = [{ id: "FULL", label: "🍕 Pizza Inteira (" + mesaPizza.slices + " fat.)" }];
+
+      for (let i = 0; i < count; i++) {
+        const f = mesaPizza.selectedFlavors[i];
+        const slices = dist[i] || 1;
+        let label = f ? f.name : "Sabor " + (i + 1);
+        let prefix = count === 2 ? (i === 0 ? "Metade 1" : "Metade 2") : "Parte " + (i + 1);
+        pills.push({
+          id: "SAB_" + (i + 1),
+          label: "🍕 " + prefix + ": " + label + " (" + slices + " fat.)",
+        });
+      }
+
+      box.innerHTML = pills.map((p) => {
+        return (
+          '<div class="pdv-target-pill ' + (mesaActiveToppingTarget === p.id ? 'active' : '') + '" onclick="setMesaToppingTarget(\'' + p.id + '\')">' +
+            p.label +
+          '</div>'
+        );
+      }).join("");
+    }
+
+    function setMesaToppingTarget(targetId) {
+      mesaActiveToppingTarget = targetId;
+      renderMesaToppingTargetPills();
+      updateMesaToppingPricePreview();
+    }
+
+    function populateMesaToppingsSelect() {
+      const topSel = document.getElementById("mesa-topping-select");
+      if (!topSel) return;
+      topSel.innerHTML = '<option value="">-- Selecione o Adicional --</option>';
+
+      (pdvCatalog.toppingCategories || []).forEach((cat) => {
+        const group = document.createElement("optgroup");
+        group.label = cat.name;
+        (cat.toppings || []).forEach((top) => {
+          const isPM = mesaPizza.size === "P" || mesaPizza.size === "M";
+          const price = isPM ? top.pricePM : top.priceGGG;
+          const opt = document.createElement("option");
+          opt.value = top.id;
+          opt.textContent = `${top.name} (+ R$ ${price.toFixed(2)})`;
+          group.appendChild(opt);
+        });
+        topSel.appendChild(group);
+      });
+    }
+
+    function updateMesaToppingPricePreview() {
+      const sel = document.getElementById("mesa-topping-select");
+      const preview = document.getElementById("mesa-topping-price-preview");
+      if (!sel || !preview) return;
+
+      if (!sel.value) {
+        preview.textContent = "";
+        return;
+      }
+
+      let topping = null;
+      for (const cat of pdvCatalog.toppingCategories || []) {
+        const found = (cat.toppings || []).find((t) => t.id === sel.value);
+        if (found) {
+          topping = found;
+          break;
+        }
+      }
+      if (!topping) return;
+
+      const isPM = mesaPizza.size === "P" || mesaPizza.size === "M";
+      const fullPrice = isPM ? topping.pricePM : topping.priceGGG;
+
+      if (mesaActiveToppingTarget === "FULL") {
+        preview.textContent = "Adicional na Pizza Inteira: + R$ " + fullPrice.toFixed(2);
+      } else {
+        const match = mesaActiveToppingTarget.match(/SAB_(\d+)/);
+        const sIdx = match ? parseInt(match[1], 10) - 1 : 0;
+        const dist = getMesaSlicesDistribution();
+        const slices = dist[sIdx] || 1;
+        const propPrice = fullPrice * (slices / mesaPizza.slices);
+        preview.textContent = "Adicional proporcional (" + slices + " fatias): + R$ " + propPrice.toFixed(2);
+      }
+    }
+
+    function addMesaTopping() {
+      const topSel = document.getElementById("mesa-topping-select");
+      if (!topSel || !topSel.value) {
+        showToast("Selecione um adicional da lista.");
+        return;
+      }
+
+      let selectedTopping = null;
+      for (const cat of pdvCatalog.toppingCategories || []) {
+        const found = (cat.toppings || []).find((t) => t.id === topSel.value);
+        if (found) {
+          selectedTopping = found;
+          break;
+        }
+      }
+
+      if (!selectedTopping) return;
+
+      const isPM = mesaPizza.size === "P" || mesaPizza.size === "M";
+      const basePrice = isPM ? selectedTopping.pricePM : selectedTopping.priceGGG;
+      const targetType = mesaActiveToppingTarget || "FULL";
+
+      let targetLabel = "Inteira";
+      if (targetType !== "FULL") {
+        const match = targetType.match(/SAB_(\d+)/);
+        const sIdx = match ? parseInt(match[1], 10) - 1 : 0;
+        const f = mesaPizza.selectedFlavors[sIdx];
+        targetLabel = f ? f.name : "Sabor " + (sIdx + 1);
+      }
+
+      mesaPizza.toppings.push({
+        id: selectedTopping.id,
+        name: selectedTopping.name,
+        targetType,
+        targetLabel,
+        price: basePrice,
+      });
+
+      renderMesaSelectedToppings();
+      updateMesaPizzaPrice();
+      showToast("Adicional " + selectedTopping.name + " adicionado!");
+    }
+
+    function removeMesaTopping(index) {
+      mesaPizza.toppings.splice(index, 1);
+      renderMesaSelectedToppings();
+      updateMesaPizzaPrice();
+    }
+
+    function renderMesaSelectedToppings() {
+      const container = document.getElementById("mesa-selected-toppings-list");
+      if (!container) return;
+
+      container.innerHTML = "";
+      const dist = getMesaSlicesDistribution();
+
+      (mesaPizza.toppings || []).forEach((t, idx) => {
+        let calcPrice = t.price;
+        if (t.targetType !== "FULL") {
+          const match = t.targetType.match(/SAB_(\d+)/);
+          const sIdx = match ? parseInt(match[1], 10) - 1 : 0;
+          const slices = dist[sIdx] || 1;
+          calcPrice = t.price * (slices / mesaPizza.slices);
+        }
+
+        const div = document.createElement("div");
+        div.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: #222; padding: 6px 10px; border-radius: 8px; border: 1px solid #333;";
+        div.innerHTML = (
+          '<span style="font-size: 11.5px; color: #fff;">+ ' + t.name + ' <em style="color: #00e676; font-style: normal; font-size: 10px;">(' + t.targetLabel + ')</em></span>' +
+          '<div style="display: flex; align-items: center; gap: 8px;">' +
+            '<strong style="color: #00e676; font-size: 11.5px;">R$ ' + calcPrice.toFixed(2) + '</strong>' +
+            '<button type="button" style="background: none; border: none; color: #e31837; cursor: pointer; font-size: 14px; font-weight: 800;" onclick="removeMesaTopping(' + idx + ')">✕</button>' +
+          '</div>'
+        );
+        container.appendChild(div);
+      });
+    }
+
+    function commitMesaPizzaAndGoStep4() {
+      if (!mesaPizza.selectedFlavors[0]) {
+        showToast("Selecione pelo menos o primeiro sabor da pizza.");
+        goToMesaStep(2);
+        return;
+      }
+
+      const dist = getMesaSlicesDistribution();
+      const flavorNames = [];
+      const flavorsPayload = [];
+
+      for (let i = 0; i < mesaPizza.flavorCount; i++) {
+        const f = mesaPizza.selectedFlavors[i] || mesaPizza.selectedFlavors[0];
+        const slices = dist[i] || 1;
+        flavorNames.push(`${slices} fat. ${f.name}`);
+        flavorsPayload.push({
+          flavorName: `${slices} fatias ${f.name}`,
+          categoryName: f.category ? f.category.name : "Pizza",
+          slices,
+        });
+      }
+
+      const crustSel = document.getElementById("mesa-crust-select");
+      let crustName = null;
+      let crustPrice = 0;
+      if (crustSel && crustSel.value) {
+        const c = (pdvCatalog.crusts || []).find((x) => x.id === crustSel.value);
+        if (c) {
+          crustName = c.name + (c.caracol && mesaPizza.caracolRequested ? " (Caracol)" : "");
+          crustPrice = (mesaPizza.size === "P" || mesaPizza.size === "M") ? c.pricePM : c.priceGGG;
+          if (c.caracol && mesaPizza.caracolRequested) crustPrice += 5.0;
+        }
+      }
+
+      const toppingsPayload = (mesaPizza.toppings || []).map((t) => {
+        let slicesCount = mesaPizza.slices;
+        let flavorName = null;
+        if (t.targetType !== "FULL") {
+          const match = t.targetType.match(/SAB_(\d+)/);
+          const sIdx = match ? parseInt(match[1], 10) - 1 : 0;
+          slicesCount = dist[sIdx] || 1;
+          flavorName = mesaPizza.selectedFlavors[sIdx] ? mesaPizza.selectedFlavors[sIdx].name : null;
+        }
+        return {
+          toppingName: t.name,
+          targetType: t.targetType === "FULL" ? "INTEIRA" : "SABOR",
+          flavorName,
+          slicesCount,
+          totalSlices: mesaPizza.slices,
+          price: t.price,
+        };
+      });
+
+      const { totalPizza } = updateMesaPizzaPrice();
+      const pizzaNotes = document.getElementById("mesa-pizza-notes")?.value.trim() || "";
+
+      const itemDescParts = [flavorNames.join(" / ")];
+      if (crustName) itemDescParts.push(`Borda: ${crustName}`);
+      if ((mesaPizza.toppings || []).length > 0) {
+        itemDescParts.push(`Adic: ${mesaPizza.toppings.map((t) => t.name).join(", ")}`);
+      }
+      if (pizzaNotes) itemDescParts.push(`Obs: ${pizzaNotes}`);
+
+      const pizzaItem = {
+        id: "pizza_mesa_" + Date.now(),
+        isPizza: true,
+        name: `Pizza ${mesaPizza.size} (${flavorNames.join(" / ")})`,
+        displayDesc: itemDescParts.join(" • "),
+        quantity: 1,
+        basePrice: totalPizza,
+        totalPrice: totalPizza,
+        pizzaSize: mesaPizza.size,
+        crustType: crustName,
+        crustPrice,
+        flavors: flavorsPayload,
+        toppings: toppingsPayload,
+        notes: pizzaNotes,
+      };
+
+      mesaDraftItems.push(pizzaItem);
+      showToast("✓ Pizza adicionada ao lançamento da mesa!");
+      goToMesaStep(4);
+    }
+
+    function populateMesaProductCategories() {
+      const catSel = document.getElementById("mesa-prod-cat-select");
+      if (!catSel) return;
+      const cur = catSel.value;
+      catSel.innerHTML = '<option value="">Todas as categorias</option>';
+      (pdvCatalog.standardCategories || []).forEach((cat) => {
+        const opt = document.createElement("option");
+        opt.value = cat.id;
+        opt.textContent = cat.name;
+        catSel.appendChild(opt);
+      });
+      catSel.value = cur || "";
+    }
+
+    function renderMesaProductsList() {
+      const container = document.getElementById("mesa-products-list-container");
+      const catSel = document.getElementById("mesa-prod-cat-select");
+      const searchInput = document.getElementById("mesa-prod-search");
+      if (!container) return;
+
+      container.innerHTML = "";
+      const catId = catSel ? catSel.value : "";
+      const search = (searchInput?.value || "").toLowerCase().trim();
+
+      let count = 0;
+      (pdvCatalog.standardCategories || []).forEach((cat) => {
+        if (!catId || cat.id === catId) {
+          (cat.products || []).forEach((p) => {
+            if (search) {
+              const matchName = (p.name || "").toLowerCase().includes(search);
+              const matchDesc = (p.description || "").toLowerCase().includes(search);
+              if (!matchName && !matchDesc) return;
+            }
+
+            count++;
+            const existingItem = mesaDraftItems.find((it) => !it.isPizza && it.productId === p.id);
+            const qty = existingItem ? existingItem.quantity : 0;
+
+            const div = document.createElement("div");
+            div.className = "pdv-product-item";
+            div.innerHTML = `
+              <div>
+                <div style="font-size: 12px; font-weight: 700; color: #fff;">${p.name}</div>
+                <div style="font-size: 11px; color: #00e676; font-weight: 800;">R$ ${p.price.toFixed(2)}</div>
+              </div>
+              <div class="pdv-qty-ctrl">
+                <button type="button" class="pdv-qty-btn" onclick="updateMesaProductQty('${p.id}', -1)">−</button>
+                <span class="pdv-qty-val" id="mesa-pqty-${p.id}">${qty}</span>
+                <button type="button" class="pdv-qty-btn" onclick="updateMesaProductQty('${p.id}', 1)">+</button>
+              </div>
+            `;
+            container.appendChild(div);
+          });
+        }
+      });
+
+      if (count === 0) {
+        container.innerHTML = `<div style="text-align: center; color: #777; font-size: 11px; padding: 12px;">Nenhum produto cadastrado nesta categoria.</div>`;
+      }
+    }
+
+    function updateMesaProductQty(prodId, delta) {
+      let product = null;
+      for (const cat of pdvCatalog.standardCategories || []) {
+        const found = (cat.products || []).find((p) => p.id === prodId);
+        if (found) {
+          product = found;
+          break;
+        }
+      }
+      if (!product) return;
+
+      const existingIdx = mesaDraftItems.findIndex((it) => !it.isPizza && it.productId === prodId);
+
+      if (existingIdx > -1) {
+        const item = mesaDraftItems[existingIdx];
+        const newQty = item.quantity + delta;
+        if (newQty <= 0) {
+          mesaDraftItems.splice(existingIdx, 1);
+        } else {
+          item.quantity = newQty;
+          item.totalPrice = newQty * item.basePrice;
+          item.displayDesc = `Qtd: ${newQty}x • R$ ${item.basePrice.toFixed(2)} un`;
+        }
+      } else if (delta > 0) {
+        mesaDraftItems.push({
+          id: "item_mesa_" + Date.now(),
+          productId: product.id,
+          isPizza: false,
+          name: product.name,
+          displayDesc: `Qtd: 1x • R$ ${product.price.toFixed(2)} un`,
+          quantity: 1,
+          basePrice: product.price,
+          totalPrice: product.price,
+          flavors: [],
+          toppings: [],
+        });
+      }
+
+      const badge = document.getElementById(`mesa-pqty-${prodId}`);
+      if (badge) {
+        const it = mesaDraftItems.find((x) => !x.isPizza && x.productId === prodId);
+        badge.textContent = it ? it.quantity : 0;
+      }
+
+      renderMesaDraftItems();
+    }
+
+    function renderMesaDraftItems() {
+      const container = document.getElementById("mesa-draft-items-list");
+      const countEl = document.getElementById("mesa-items-count-badge");
+      const totalValEl = document.getElementById("mesa-draft-total-val");
+      if (!container) return;
+
+      container.innerHTML = "";
+      if (mesaDraftItems.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; color: #666; font-size: 11px; padding: 12px 0;">
+            Nenhum item adicionado ainda. Monte a pizza ou adicione bebidas acima.
+          </div>
+        `;
+        if (countEl) countEl.textContent = "0 itens";
+        if (totalValEl) totalValEl.textContent = "R$ 0,00";
+        return;
+      }
+
+      if (countEl) countEl.textContent = `${mesaDraftItems.length} item(s)`;
+
+      let totalDraft = 0;
+      mesaDraftItems.forEach((it, idx) => {
+        totalDraft += (it.totalPrice || 0);
+
+        const card = document.createElement("div");
+        card.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: #202020; border: 1px solid #333; border-radius: 8px; padding: 8px 10px;";
+        card.innerHTML = `
+          <div style="display: flex; flex-direction: column; gap: 2px; flex: 1;">
+            <div style="font-size: 12px; font-weight: 700; color: #fff;">${it.name}</div>
+            <div style="font-size: 10px; color: #aaa;">${it.displayDesc || ""}</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="font-size: 13px; font-weight: 800; color: #00e676;">R$ ${(it.totalPrice || 0).toFixed(2)}</div>
+            <button type="button" style="background: none; border: none; color: #e31837; cursor: pointer; font-size: 13px;" onclick="removeMesaDraftItem(${idx})">🗑️</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      if (totalValEl) {
+        totalValEl.textContent = `R$ ${totalDraft.toFixed(2)}`;
+      }
+    }
+
+    function removeMesaDraftItem(index) {
+      mesaDraftItems.splice(index, 1);
+      renderMesaDraftItems();
+      renderMesaProductsList();
+    }
+
+    async function submitMesaOrderToKitchen() {
+      if (!currentManageComandaId || !currentManageComanda) {
+        alert("Nenhuma mesa selecionada!");
+        return;
+      }
+
+      if (mesaDraftItems.length === 0) {
+        alert("Adicione ao menos um item (pizza ou produto) para lançar na mesa!");
+        return;
+      }
+
+      const btn = document.getElementById("btn-submit-mesa-order");
+      btn.disabled = true;
+      btn.innerHTML = "<span>⏳ Enviando para a Cozinha...</span>";
+
+      const custName = document.getElementById("manage-comanda-responsible")?.value.trim()
+        || currentManageComanda.responsibleName
+        || `Mesa #${currentManageComanda.number}`;
+      const notes = document.getElementById("mesa-order-notes")?.value.trim() || "";
+
+      const payload = {
+        type: "COMANDA",
+        comandaId: currentManageComandaId,
+        status: "EM_PREPARO",
+        customerName: custName,
+        customerPhone: "11999999999",
+        notes,
+        paymentMethod: "PIX",
+        items: mesaDraftItems.map((it) => ({
+          name: it.name,
+          basePrice: it.basePrice,
+          totalPrice: it.totalPrice,
+          quantity: it.quantity,
+          isPizza: Boolean(it.isPizza),
+          pizzaSize: it.pizzaSize || null,
+          crustType: it.crustType || null,
+          crustPrice: it.crustPrice || 0,
+          flavors: it.flavors || [],
+          toppings: it.toppings || [],
+          notes: it.notes || "",
+        })),
+      };
+
+      try {
+        const res = await fetch(`${appSettings.serverUrl}/api/admin/orders`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-print-auth": appSettings.apiKey,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.order) {
+          throw new Error(data.error || "Erro ao salvar pedido na cozinha");
+        }
+
+        const createdOrder = data.order;
+        playAlertSound();
+        showToast(`✓ Pedido #${createdOrder.orderNumber} enviado diretamente para a Cozinha!`);
+
+        // Roteamento de Impressão Automática (Cozinha)
+        handleAutoPrint(createdOrder, "EM_PREPARO");
+
+        // Reseta o lançador de pedidos da mesa
+        resetMesaOrderBuilder();
+
+        // Recarrega os dados da mesa (consumo atualizado na hora)
+        await loadManageComandaData(currentManageComandaId);
+        await fetchComandas();
+      } catch (err) {
+        console.error("Erro ao enviar pedido para a cozinha:", err);
+        alert(err.message || "Erro ao conectar com o servidor.");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = "<span>🚀 Lançar Pedido Direto na Cozinha</span>";
       }
     }
 
@@ -5557,6 +7005,12 @@
       appSettings.serverUrl = document.getElementById("cfg-server-url").value.trim();
       appSettings.apiKey = document.getElementById("cfg-api-key").value.trim();
 
+      // Salva Impressora Padrão
+      const defaultPr = document.getElementById("printer-DEFAULT");
+      if (defaultPr) appSettings.defaultPrinter = defaultPr.value;
+      const defaultCp = document.getElementById("copies-DEFAULT");
+      if (defaultCp) appSettings.defaultCopies = parseInt(defaultCp.value, 10) || 1;
+
       ["NOVO", "EM_PREPARO", "PRONTO_RETIRADA", "EM_ROTA", "ENTREGUE"].forEach((key) => {
         appSettings.configs[key] = {
           auto: document.getElementById(`auto-${key}`).checked,
@@ -5658,13 +7112,7 @@
     let pdvGeocodeTimeout = null;
     let pdvCustomerLookupTimeout = null;
     let pdvCustomerAddresses = [];
-
-    const PDV_PIZZA_RULES = {
-      P: { label: "Pequena", slices: 4, maxFlavors: 2 },
-      M: { label: "Média", slices: 6, maxFlavors: 3 },
-      G: { label: "Grande", slices: 8, maxFlavors: 3 },
-      GG: { label: "Gigante", slices: 10, maxFlavors: 3 },
-    };
+    // PDV_PIZZA_RULES declarado no topo para acesso compartilhado por Mesa e PDV
 
     // Navegação entre passos (1 a 5)
     function goToPdvStep(stepNum) {
@@ -6637,6 +8085,7 @@
 
     // MODAL DE SELEÇÃO DE SABORES (DRAWER / CATALOG PICKER)
     function openPdvFlavorPicker(sectorIndex) {
+      flavorPickerContext = "PDV";
       pdvActiveSectorIndex = sectorIndex;
       const modal = document.getElementById("pdv-flavor-picker-modal");
       const title = document.getElementById("pdv-picker-title");
@@ -6704,7 +8153,8 @@
       if (!grid) return;
 
       const search = (document.getElementById("pdv-picker-search")?.value || "").toLowerCase().trim();
-      const priceKey = "price" + pdvPizza.size;
+      const currentActiveSize = (flavorPickerContext === "MESA") ? (mesaPizza ? mesaPizza.size : "G") : (pdvPizza ? pdvPizza.size : "G");
+      const priceKey = "price" + currentActiveSize;
 
       const filtered = (pdvCatalog.flavors || []).filter((f) => {
         if (pdvSelectedCategoryFilter !== "ALL") {
@@ -6749,6 +8199,29 @@
     function selectPdvFlavorFromPicker(flavorId) {
       const flavor = (pdvCatalog.flavors || []).find((f) => f.id === flavorId) || null;
       if (!flavor) return;
+
+      if (flavorPickerContext === "MESA") {
+        mesaPizza.selectedFlavors[mesaActiveSectorIndex] = flavor;
+        closePdvFlavorPicker();
+
+        renderMesaPizzaSvg();
+        renderMesaSliceDistribution();
+        updateMesaPizzaPrice();
+
+        let nextEmpty = -1;
+        for (let i = 0; i < mesaPizza.flavorCount; i++) {
+          if (!mesaPizza.selectedFlavors[i]) {
+            nextEmpty = i;
+            break;
+          }
+        }
+        if (nextEmpty !== -1) {
+          setTimeout(() => {
+            openMesaFlavorPicker(nextEmpty);
+          }, 250);
+        }
+        return;
+      }
 
       pdvPizza.selectedFlavors[pdvActiveSectorIndex] = flavor;
       closePdvFlavorPicker();
@@ -7373,7 +8846,7 @@
           const comTabBtn = document.querySelector('.tab-btn[data-tab="comandas"]');
           if (comTabBtn) comTabBtn.click();
           if (savedComandaId) {
-            openManageComandaModal(savedComandaId);
+            openManageComandaPage(savedComandaId);
           }
           return;
         }

@@ -42,7 +42,50 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, orders });
+    // Enriquece pedidos de comanda com suas respectivas baixas/pagamentos
+    const comandaOrders = orders.filter((o) => o.type === "COMANDA" || Boolean(o.comandaId));
+    const orderIds = comandaOrders.map((o) => o.id);
+    const activeComandaIds = Array.from(new Set(comandaOrders.filter((o) => o.comandaId).map((o) => o.comandaId as string)));
+
+    const [orderPaymentConfigs, activeComandaConfigs] = await Promise.all([
+      orderIds.length > 0
+        ? prisma.systemConfig.findMany({
+            where: { key: { in: orderIds.map((id) => `order_payments_${id}`) } },
+          })
+        : [],
+      activeComandaIds.length > 0
+        ? prisma.systemConfig.findMany({
+            where: { key: { in: activeComandaIds.map((cid) => `comanda_payments_${cid}`) } },
+          })
+        : [],
+    ]);
+
+    const orderPaymentsMap = new Map<string, any[]>();
+    orderPaymentConfigs.forEach((cfg) => {
+      const oid = cfg.key.replace("order_payments_", "");
+      try {
+        orderPaymentsMap.set(oid, JSON.parse(cfg.value));
+      } catch (e) {}
+    });
+
+    const activeComandaPaymentsMap = new Map<string, any[]>();
+    activeComandaConfigs.forEach((cfg) => {
+      const cid = cfg.key.replace("comanda_payments_", "");
+      try {
+        activeComandaPaymentsMap.set(cid, JSON.parse(cfg.value));
+      } catch (e) {}
+    });
+
+    const enrichedOrders = orders.map((o) => {
+      const savedPays = orderPaymentsMap.get(o.id);
+      const activePays = o.comandaId ? activeComandaPaymentsMap.get(o.comandaId) : null;
+      return {
+        ...o,
+        payments: savedPays || activePays || [],
+      };
+    });
+
+    return NextResponse.json({ success: true, orders: enrichedOrders });
   } catch (error) {
     console.error("List admin orders error:", error);
     return NextResponse.json({ error: "Erro interno ao buscar pedidos" }, { status: 500 });
@@ -131,9 +174,9 @@ export async function POST(request: Request) {
     const parsedDeliveryFee = Math.max(0, parseFloat(deliveryFee) || 0);
     const total = roundCurrency(subtotal + parsedDeliveryFee);
 
-    // Determina o status inicial (padrão NOVO para passar pelas etapas Novos > Na Cozinha > Comanda de Mesa)
+    // Determina o status inicial (pedidos de mesa por comanda vão direto para a cozinha "EM_PREPARO")
     const isComanda = type === "COMANDA" || Boolean(comandaId);
-    const initialStatus = body.status || "NOVO";
+    const initialStatus = body.status || (isComanda ? "EM_PREPARO" : "NOVO");
 
     let comandaNumber = null;
     let effectiveCustomerName = customerName || "Cliente";
@@ -162,6 +205,9 @@ export async function POST(request: Request) {
         : itemNotes.join(" | ");
     }
 
+    const validPaymentMethods = ["PIX", "DINHEIRO", "CREDITO", "DEBITO"];
+    const effectivePaymentMethod = validPaymentMethods.includes(paymentMethod) ? paymentMethod : "PIX";
+
     // Cria o Pedido em transação atômica
     const order = await prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
@@ -175,7 +221,7 @@ export async function POST(request: Request) {
           reference: reference || null,
           customerLat: body.customerLat !== undefined && body.customerLat !== null && !isNaN(parseFloat(body.customerLat)) ? parseFloat(body.customerLat) : null,
           customerLng: body.customerLng !== undefined && body.customerLng !== null && !isNaN(parseFloat(body.customerLng)) ? parseFloat(body.customerLng) : null,
-          paymentMethod,
+          paymentMethod: effectivePaymentMethod,
           changeFor: changeFor ? parseFloat(changeFor) : null,
           subtotal,
           deliveryFee: parsedDeliveryFee,

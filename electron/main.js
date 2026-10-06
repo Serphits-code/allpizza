@@ -15,6 +15,8 @@ function loadSettings() {
     serverUrl: "http://localhost:3001",
     apiKey: "alldelivery_internal_print_secret",
     soundEnabled: true,
+    defaultPrinter: "",
+    defaultCopies: 1,
     configs: {
       NOVO: { printer: "", auto: false, copies: 1, layout: "caixa" },
       EM_PREPARO: { printer: "", auto: true, copies: 1, layout: "cozinha" },
@@ -111,14 +113,16 @@ function printHtmlSilently(printerName, htmlContent) {
     printWindow.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(htmlContent));
 
     printWindow.webContents.once("did-finish-load", () => {
-      // Se não especificou impressora, usa a padrão do sistema
+      // Se não especificou impressora, usa a configurada como padrão ou a do sistema
       const printOptions = {
         silent: true,
         margins: { marginType: "none" },
       };
 
-      if (printerName && printerName.trim()) {
-        printOptions.deviceName = printerName.trim();
+      const settings = loadSettings();
+      const targetDevice = (printerName && printerName.trim()) || (settings.defaultPrinter && settings.defaultPrinter.trim()) || "";
+      if (targetDevice) {
+        printOptions.deviceName = targetDevice;
       }
 
       printWindow.webContents.print(printOptions, (success, errorType) => {
@@ -1051,6 +1055,8 @@ app.whenReady().then(() => {
   );
 
   ipcMain.handle("test-print", async (event, { printerName, statusKey }) => {
+    const settings = loadSettings();
+    const effectivePrinter = (printerName && printerName.trim()) || (statusKey === "DEFAULT" ? settings.defaultPrinter : null);
     const dline = "====================================\n";
     const line = "------------------------------------\n";
     const testText =
@@ -1059,8 +1065,8 @@ app.whenReady().then(() => {
       "      ARTISANAL CRUST & EMBER       \n" +
       "        AllDelivery Desktop         \n" +
       dline +
-      `Impressora: ${printerName || "Padrao Windows"}\n` +
-      `Modulo    : ${statusKey || "GERAL"}\n` +
+      `Impressora: ${effectivePrinter || "Padrao Windows"}\n` +
+      `Modulo    : ${statusKey === "DEFAULT" ? "PADRAO (PRE-CONTA/AVULSO)" : (statusKey || "GERAL")}\n` +
       `Data/Hora : ${new Date().toLocaleString("pt-BR")}\n` +
       line +
       "Status: COMUNICACAO BEM SUCEDIDA!\n" +
@@ -1068,7 +1074,7 @@ app.whenReady().then(() => {
       dline +
       "\n\n\n\n";
 
-    const success = await printSilently(printerName, testText);
+    const success = await printSilently(effectivePrinter, testText);
     return { success };
   });
 

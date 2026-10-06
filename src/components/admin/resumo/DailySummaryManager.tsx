@@ -54,6 +54,7 @@ interface SummaryOrder {
     flavors: { id: string; flavorName: string; categoryName: string }[];
     toppings: { id: string; toppingName: string; price: number }[];
   }[];
+  payments?: DailyPaymentRecord[];
 }
 
 interface DailyPaymentRecord {
@@ -610,15 +611,20 @@ export default function DailySummaryManager() {
 
       {/* KPIs Operacionais do Dia */}
       {data && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div className="rounded-xl border border-brand-mediumGray bg-brand-darkGray p-3.5 shadow">
-            <span className="text-xxs font-semibold uppercase text-brand-lightGray">Total Pedidos</span>
-            <div className="text-lg font-bold font-mono text-white mt-0.5">{data.count}</div>
+            <span className="text-xxs font-semibold uppercase text-emerald-400">Concluídos</span>
+            <div className="text-lg font-bold font-mono text-emerald-400 mt-0.5">{data.finishedCount}</div>
+          </div>
+
+          <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-3.5 shadow">
+            <span className="text-xxs font-semibold uppercase text-red-400">Cancelados</span>
+            <div className="text-lg font-bold font-mono text-red-400 mt-0.5">{data.canceledCount || 0}</div>
           </div>
 
           <div className="rounded-xl border border-brand-mediumGray bg-brand-darkGray p-3.5 shadow">
-            <span className="text-xxs font-semibold uppercase text-brand-lightGray">Finalizados</span>
-            <div className="text-lg font-bold font-mono text-emerald-400 mt-0.5">{data.finishedCount}</div>
+            <span className="text-xxs font-semibold uppercase text-brand-lightGray">Total Pedidos</span>
+            <div className="text-lg font-bold font-mono text-white mt-0.5">{data.orders.length}</div>
           </div>
 
           <div className="rounded-xl border border-brand-mediumGray bg-brand-darkGray p-3.5 shadow">
@@ -741,12 +747,29 @@ export default function DailySummaryManager() {
                         <div>
                           <span className="font-bold text-white block">{ord.customerName}</span>
                           <span className="text-xxxs font-mono">{ord.customerPhone}</span>
+                          {ord.type === "COMANDA" && ord.payments && ord.payments.length > 0 && (
+                            <div className="flex items-center gap-1 mt-1 flex-wrap">
+                              {ord.payments.map((p, idx) => (
+                                <span
+                                  key={idx}
+                                  className="bg-purple-950/80 border border-purple-500/40 text-purple-200 text-xxxs px-1.5 py-0.2 rounded font-mono font-bold"
+                                >
+                                  {p.method === "PIX" ? "⚡ PIX" : p.method === "DINHEIRO" ? "💵 Dinheiro" : p.method === "DEBITO" ? "💳 Débito" : "💳 Crédito"}: {formatCurrency(p.amount)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         <div className="text-right">
-                          <span className="font-mono font-bold text-white text-sm block">
+                          <span className={`font-mono font-bold text-sm block ${ord.status === "CANCELADO" ? "line-through text-red-400" : "text-white"}`}>
                             {formatCurrency(ord.total)}
                           </span>
+                          {ord.status === "CANCELADO" && (
+                            <span className="text-xxxs font-bold text-red-400 block">
+                              Não somado no caixa
+                            </span>
+                          )}
                           <span className="text-xxxs font-mono">
                             {new Date(ord.createdAt).toLocaleTimeString("pt-BR")}
                           </span>
@@ -817,7 +840,25 @@ export default function DailySummaryManager() {
 
                           <div>
                             <strong className="text-white block mb-0.5">Pagamento:</strong>
-                            <span>Método: {ord.paymentMethod}</span>
+                            {ord.type === "COMANDA" && ord.payments && ord.payments.length > 0 ? (
+                              <div className="space-y-1">
+                                <span className="text-xxxs font-bold uppercase text-purple-300 block">
+                                  🍽️ Baixas da Mesa ({ord.payments.length}):
+                                </span>
+                                <div className="flex flex-wrap gap-1">
+                                  {ord.payments.map((p, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="bg-purple-950/80 border border-purple-500/40 text-purple-200 px-1.5 py-0.5 rounded text-xxxs font-mono font-bold"
+                                    >
+                                      {p.method === "PIX" ? "⚡ PIX" : p.method === "DINHEIRO" ? "💵 Dinheiro" : p.method === "DEBITO" ? "💳 Débito" : "💳 Crédito"}: {formatCurrency(p.amount)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <span>Método: {ord.paymentMethod}</span>
+                            )}
                             {ord.changeFor && (
                               <span className="block font-mono">Troco para: {formatCurrency(ord.changeFor)}</span>
                             )}

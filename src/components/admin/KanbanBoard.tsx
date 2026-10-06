@@ -48,6 +48,7 @@ interface Order {
   notes?: string | null;
   createdAt: string | Date;
   items: OrderItem[];
+  payments?: { id?: string; method: string; amount: number }[];
 }
 
 interface KanbanBoardProps {
@@ -277,14 +278,37 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
         )}
 
         {/* Pagamento e Valor */}
-        <div className="flex justify-between items-center text-xs text-brand-lightGray font-mono pt-1">
-          {!isTableOrder ? (
-            <span>Pg: {paymentLabels[order.paymentMethod] || "Comanda"}</span>
-          ) : (
-            <span className="text-purple-300 font-bold">🍽️ Pagar no Balcão</span>
-          )}
-          <span className="font-bold text-white text-xs">Total: R$ {order.total.toFixed(2)}</span>
-        </div>
+        {isTableOrder && order.payments && order.payments.length > 0 ? (
+          <div className="space-y-1.5 pt-1.5 border-t border-purple-500/25">
+            <div className="flex justify-between items-center text-xs font-mono">
+              <span className="text-purple-300 font-extrabold text-xxs uppercase tracking-wider flex items-center gap-1">
+                <span>🍽️</span> Baixas da Mesa ({order.payments.length}):
+              </span>
+              <span className="font-bold text-white text-xs font-mono">Total: R$ {order.total.toFixed(2)}</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {order.payments.map((p, idx) => (
+                <span
+                  key={idx}
+                  className="bg-purple-950/70 border border-purple-500/40 text-purple-200 px-1.5 py-0.5 rounded text-xxs font-mono font-bold"
+                >
+                  {p.method === "PIX" ? "⚡ PIX" : p.method === "DINHEIRO" ? "💵 Dinheiro" : p.method === "DEBITO" ? "💳 Débito" : "💳 Crédito"}: R$ {Number(p.amount).toFixed(2)}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-between items-center text-xs text-brand-lightGray font-mono pt-1">
+            {!isTableOrder ? (
+              <span>Pg: {paymentLabels[order.paymentMethod] || "Comanda"}</span>
+            ) : order.status === OrderStatus.ENTREGUE ? (
+              <span className="text-emerald-400 font-bold">✓ Concluído & Quitado</span>
+            ) : (
+              <span className="text-purple-300 font-bold">🍽️ Consumo na Mesa</span>
+            )}
+            <span className="font-bold text-white text-xs">Total: R$ {order.total.toFixed(2)}</span>
+          </div>
+        )}
 
         {/* Acoes de Estado */}
         <div className="pt-2 flex flex-wrap gap-1.5 border-t border-brand-mediumGray/50">

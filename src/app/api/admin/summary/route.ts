@@ -28,18 +28,21 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const dateParam = searchParams.get("date");
 
-    const targetDate = dateParam ? new Date(dateParam) : new Date();
-    if (isNaN(targetDate.getTime())) {
-      return NextResponse.json({ error: "Data inválida" }, { status: 400 });
+    let startOfDay: Date;
+    let endOfDay: Date;
+    let dateStr: string;
+
+    if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      const [y, m, d] = dateParam.split("-").map(Number);
+      startOfDay = new Date(y, m - 1, d, 0, 0, 0, 0);
+      endOfDay = new Date(y, m - 1, d, 23, 59, 59, 999);
+      dateStr = dateParam;
+    } else {
+      const now = new Date();
+      startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     }
-
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const dateStr = startOfDay.toISOString().split("T")[0];
 
     // 1. Busca paralela de pedidos do dia, configs de pagamentos de comanda e pedidos travados
     const [orders, dailyPaymentsConfig, activeComandaConfigs, stalledOrders] = await Promise.all([
@@ -168,9 +171,14 @@ export async function GET(request: Request) {
     comandasCredito = roundCurrency(comandasCredito);
     const comandasTotal = roundCurrency(comandasPix + comandasDinheiro + comandasDebito + comandasCredito);
 
-    // 4. Cálculos de Pedidos (Delivery e Retirada - não cancelados)
-    const billableOrders = orders.filter((o) => o.status !== "CANCELADO");
-    const nonComandaOrders = billableOrders.filter((o) => o.type !== "COMANDA");
+    // 4. Cálculos de Pedidos (Delivery e Retirada)
+    // Conforme regra de negócio: apenas pedidos que chegaram a ser CONCLUÍDOS no kanban e não cancelados
+    // têm seus valores somados nos totais gerais.
+    // Pedidos cancelados constam na listagem com seus cards e valores para conferência, mas NÃO somam nos valores gerais.
+    const concludedOrders = orders.filter(
+      (o) => o.status === "ENTREGUE" || o.status === "PRONTO_RETIRADA"
+    );
+    const nonComandaConcludedOrders = concludedOrders.filter((o) => o.type !== "COMANDA");
 
     let ordersPix = 0;
     let ordersDinheiro = 0;
@@ -178,7 +186,7 @@ export async function GET(request: Request) {
     let ordersCredito = 0;
     let totalDeliveryFee = 0;
 
-    nonComandaOrders.forEach((o) => {
+    nonComandaConcludedOrders.forEach((o) => {
       const tot = roundCurrency(o.total || 0);
       if (o.paymentMethod === "PIX") ordersPix += tot;
       else if (o.paymentMethod === "DINHEIRO") ordersDinheiro += tot;
@@ -186,7 +194,7 @@ export async function GET(request: Request) {
       else if (o.paymentMethod === "CREDITO") ordersCredito += tot;
     });
 
-    billableOrders.forEach((o) => {
+    concludedOrders.forEach((o) => {
       if (o.type === "DELIVERY") {
         totalDeliveryFee += roundCurrency(o.deliveryFee || 0);
       }
@@ -199,7 +207,7 @@ export async function GET(request: Request) {
     totalDeliveryFee = roundCurrency(totalDeliveryFee);
     const ordersTotal = roundCurrency(ordersPix + ordersDinheiro + ordersDebito + ordersCredito);
 
-    // 5. Consolidado Geral do Caixa do Dia (Pedidos Delivery/Retirada + Baixas de Mesa)
+    // 5. Consolidado Geral do Caixa do Dia (Pedidos Concluídos Delivery/Retirada + Baixas de Mesa)
     const totalPix = roundCurrency(ordersPix + comandasPix);
     const totalDinheiro = roundCurrency(ordersDinheiro + comandasDinheiro);
     const totalDebito = roundCurrency(ordersDebito + comandasDebito);
@@ -207,12 +215,10 @@ export async function GET(request: Request) {
     const grandTotalRevenue = roundCurrency(totalPix + totalDinheiro + totalDebito + totalCredito);
 
     // Métricas operacionais
-    const count = billableOrders.length;
+    const finishedCount = concludedOrders.length;
     const canceledCount = orders.filter((o) => o.status === "CANCELADO").length;
-    const finishedCount = billableOrders.filter(
-      (o) => o.status === "ENTREGUE" || o.status === "PRONTO_RETIRADA"
-    ).length;
-    const averageTicket = count > 0 ? roundCurrency(grandTotalRevenue / count) : 0;
+    const count = finishedCount;
+    const averageTicket = finishedCount > 0 ? roundCurrency(grandTotalRevenue / finishedCount) : 0;
 
     const now = new Date();
     const stalledDeliveryAlert = stalledOrders.map((o) => {
@@ -233,6 +239,36 @@ export async function GET(request: Request) {
         itemsCount: o.items.length,
         createdAt: o.createdAt,
         elapsedTimeFormatted: `${elapsedHours}h ${elapsedMinutes}min`,
+      };
+    });
+
+    // Enriquece pedidos de comanda com suas respectivas baixas
+    const comandaOrders = orders.filter((o) => o.type === "COMANDA" || Boolean(o.comandaId));
+    const orderIds = comandaOrders.map((o) => o.id);
+    const orderPaymentConfigs = orderIds.length > 0
+      ? await prisma.systemConfig.findMany({
+          where: { key: { in: orderIds.map((id) => `order_payments_${id}`) } },
+        })
+      : [];
+
+    const orderPaymentsMap = new Map<string, any[]>();
+    orderPaymentConfigs.forEach((cfg) => {
+      const oid = cfg.key.replace("order_payments_", "");
+      try {
+        orderPaymentsMap.set(oid, JSON.parse(cfg.value));
+      } catch (e) {}
+    });
+
+    const enrichedOrders = orders.map((o) => {
+      let pays = orderPaymentsMap.get(o.id);
+      if (!pays || pays.length === 0) {
+        if (o.comandaId) {
+          pays = comandaPayments.filter((p) => p.comandaId === o.comandaId);
+        }
+      }
+      return {
+        ...o,
+        payments: pays || [],
       };
     });
 
@@ -259,7 +295,7 @@ export async function GET(request: Request) {
           debito: ordersDebito,
           credito: ordersCredito,
           deliveryFee: totalDeliveryFee,
-          count: nonComandaOrders.length,
+          count: nonComandaConcludedOrders.length,
         },
         comandasBreakdown: {
           total: comandasTotal,
@@ -275,7 +311,7 @@ export async function GET(request: Request) {
       canceledCount,
       finishedCount,
       averageTicket,
-      orders,
+      orders: enrichedOrders,
       comandaPayments,
       stalledDeliveryAlert,
     });
