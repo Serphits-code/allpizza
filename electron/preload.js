@@ -14,6 +14,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("print-qr-flyer", { printerName, tableNumber, qrDataUrl, mesaUrl }),
   testPrint: (printerName, statusKey) =>
     ipcRenderer.invoke("test-print", { printerName, statusKey }),
-  printOrder: (order, status) =>
-    ipcRenderer.invoke("print-order", { order, status }),
+  printOrder: (order, status, layout) =>
+    ipcRenderer.invoke("print-order", { order, status, layout }),
 });

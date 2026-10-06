@@ -7,13 +7,20 @@ import { signOut, useSession } from "next-auth/react";
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Se for a página de login, não exibe o shell com menu lateral
   if (pathname === "/admin/login") {
     return <>{children}</>;
   }
+
+  // Redireciona imediatamente para o login se a sessão estiver não autenticada
+  React.useEffect(() => {
+    if (status === "unauthenticated" && pathname !== "/admin/login") {
+      window.location.href = "/admin/login";
+    }
+  }, [status, pathname]);
 
   const navItems = [
     { name: "Dashboard", href: "/admin", icon: "📊", roles: ["ADMIN", "MANAGER"] },
@@ -28,15 +35,26 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     { name: "Configurações", href: "/admin/configuracoes", icon: "⚙️", roles: ["ADMIN", "MANAGER"] },
   ];
 
-  const userRole = session?.user?.role || "KITCHEN";
+  const userRole = session?.user?.role;
 
   const handleLogout = async () => {
     try {
-      await signOut({ callbackUrl: "/admin/login", redirect: true });
-    } catch (err) {
+      await signOut({ redirect: false });
+    } finally {
       window.location.href = "/admin/login";
     }
   };
+
+  if (status === "loading" || (!userRole && pathname !== "/admin/login")) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-brand-bg text-brand-lightGray">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-brand-red border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs font-semibold">Verificando credenciais...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-brand-bg text-white">
@@ -50,7 +68,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </div>
         <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
           {navItems
-            .filter((item) => item.roles.includes(userRole))
+            .filter((item) => userRole ? item.roles.includes(userRole) : false)
             .map((item) => {
               const active = pathname === item.href;
               return (
@@ -118,7 +136,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               </div>
               <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
                 {navItems
-                  .filter((item) => item.roles.includes(userRole))
+                  .filter((item) => userRole ? item.roles.includes(userRole) : false)
                   .map((item) => (
                     <Link
                       key={item.href}

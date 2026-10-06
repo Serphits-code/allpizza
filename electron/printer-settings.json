@@ -1,6 +1,8 @@
 {
   "serverUrl": "http://localhost:3001",
   "apiKey": "alldelivery_internal_print_secret",
+  "storeName": "AllDelivery",
+  "separatePizzaTickets": true,
   "soundEnabled": true,
   "configs": {
     "NOVO": {

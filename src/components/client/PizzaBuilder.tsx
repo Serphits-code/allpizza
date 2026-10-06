@@ -74,6 +74,7 @@ interface PizzaBuilderProps {
   onCancel?: () => void;
   cartCount?: number;
   onOpenCart?: () => void;
+  hideDrinksStep?: boolean;
 }
 
 export default function PizzaBuilder({
@@ -87,7 +88,9 @@ export default function PizzaBuilder({
   onCancel,
   cartCount,
   onOpenCart,
+  hideDrinksStep = false,
 }: PizzaBuilderProps) {
+  const shouldHideDrinks = hideDrinksStep || !!tableNumber;
   const router = useRouter();
   const searchParams = useSearchParams();
   const addItem = useCartStore((state) => state.addItem);
@@ -573,6 +576,7 @@ export default function PizzaBuilder({
           canNavigateFlavors={true}
           canNavigateToppings={canProceedToToppings}
           canNavigateDrinks={canProceedToToppings}
+          hideDrinksStep={shouldHideDrinks}
         />
       </div>
 
@@ -986,10 +990,10 @@ export default function PizzaBuilder({
 
             <button
               type="button"
-              onClick={handleProceedToDrinks}
-              className="w-full sm:w-auto rounded-2xl bg-brand-red hover:bg-brand-redHover px-6 py-3.5 font-bold text-xs sm:text-sm text-white transition-all cursor-pointer text-center shadow-lg shadow-brand-red/20"
+              onClick={shouldHideDrinks ? handleConfirmAll : handleProceedToDrinks}
+              className="w-full sm:w-auto rounded-2xl bg-brand-red hover:bg-brand-redHover px-6 py-3.5 font-bold text-xs sm:text-sm text-white transition-all cursor-pointer text-center shadow-lg shadow-brand-red/20 flex items-center justify-center gap-2"
             >
-              Avançar para Bebidas →
+              <span>{shouldHideDrinks ? (tableNumber ? "Adicionar ao Pedido da Mesa ✓" : "Adicionar Pizza ao Pedido ✓") : "Avançar para Bebidas →"}</span>
             </button>
           </div>
         </div>

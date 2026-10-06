@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { roundCurrency } from "@/lib/pricing";
+import { authenticateApiRequest } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/garcom/mesas - Lista todas as comandas/mesas e pedidos prontos
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user.role !== "GARCOM" && session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+export async function GET(request: Request) {
+  const auth = await authenticateApiRequest(request, ["GARCOM", "ADMIN", "MANAGER"]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Não autorizado" }, { status: 401 });
   }
 
   try {
@@ -20,7 +19,7 @@ export async function GET() {
       include: {
         orders: {
           where: {
-            status: { in: ["NOVO", "EM_PREPARO", "PRONTO_RETIRADA", "ENTREGUE"] },
+            status: { in: ["NOVO", "EM_PREPARO", "PRONTO_RETIRADA", "COMANDA_MESA", "ENTREGUE"] },
           },
           include: {
             items: {
@@ -71,9 +70,9 @@ export async function GET() {
 
 // POST /api/garcom/mesas - Atualiza responsável / abre comanda
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user.role !== "GARCOM" && session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
-    return NextResponse.json({ error: "Acesso não autorizado para esta função" }, { status: 403 });
+  const auth = await authenticateApiRequest(request, ["GARCOM", "ADMIN", "MANAGER"]);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.error || "Acesso não autorizado para esta função" }, { status: 403 });
   }
 
   try {

@@ -48,7 +48,7 @@ export default function AdminLoginPage() {
         }),
       });
 
-      const checkData = await checkRes.json();
+      const checkData = await checkRes.json().catch(() => ({}));
 
       if (!checkRes.ok || checkData.error) {
         setError(checkData.error || "E-mail ou senha incorretos.");
@@ -64,7 +64,7 @@ export default function AdminLoginPage() {
       });
 
       if (!authRes || authRes.error) {
-        setError("Falha ao iniciar sessão de autenticação. Tente novamente.");
+        setError(authRes?.error || "Falha ao iniciar sessão de autenticação. Tente novamente.");
         setLoading(false);
         return;
       }
@@ -81,9 +81,9 @@ export default function AdminLoginPage() {
       } else {
         window.location.href = "/admin/pedidos";
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login error:", err);
-      setError("Ocorreu um erro de conexão ao fazer login. Tente novamente.");
+      setError(err?.message || "Ocorreu um erro de conexão ao fazer login. Tente novamente.");
       setLoading(false);
     }
   };
@@ -101,8 +101,6 @@ export default function AdminLoginPage() {
         </div>
 
         <form
-          method="POST"
-          action="#"
           onSubmit={handleSubmit}
           className="mt-8 space-y-6"
           noValidate

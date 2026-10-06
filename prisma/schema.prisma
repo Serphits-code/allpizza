@@ -259,3 +259,24 @@ enum ComandaStatus {
   OCUPADA
   INATIVA
 }
+
+model IbgeAddress {
+  id               String  @id @default(cuid())
+  cityCode         String  @default("2603108")
+  cityName         String  @default("Cachoeirinha")
+  neighborhood     String?
+  streetType       String?
+  streetTitle      String?
+  streetName       String
+  streetFull       String
+  streetNormalized String
+  number           String
+  numberInt        Int?
+  complement       String?
+  latitude         Float
+  longitude        Float
+
+  @@index([streetNormalized, number])
+  @@index([streetNormalized])
+  @@index([cityName])
+}

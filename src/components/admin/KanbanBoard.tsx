@@ -162,7 +162,9 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
 
     // Area de Comandas de Mesa (Prontos para Servir no salão ou em consumo)
     const comandas = orders.filter(
-      (o) => o.type === OrderType.COMANDA && o.status === OrderStatus.PRONTO_RETIRADA
+      (o) =>
+        o.type === OrderType.COMANDA &&
+        (o.status === OrderStatus.PRONTO_RETIRADA || o.status === OrderStatus.COMANDA_MESA)
     );
 
     return { novo, emPreparo, emRota, entregue, balcao, comandas };
@@ -303,6 +305,8 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
               <span>Pg: {paymentLabels[order.paymentMethod] || "Comanda"}</span>
             ) : order.status === OrderStatus.ENTREGUE ? (
               <span className="text-emerald-400 font-bold">✓ Concluído & Quitado</span>
+            ) : order.status === OrderStatus.COMANDA_MESA ? (
+              <span className="text-purple-300 font-bold">🍽️ Servido (Em Consumo)</span>
             ) : (
               <span className="text-purple-300 font-bold">🍽️ Consumo na Mesa</span>
             )}
@@ -376,11 +380,18 @@ export default function KanbanBoard({ initialOrders, initialStoreOpen }: KanbanB
           {/* Status PRONTO_RETIRADA (Mesa) -> Garçom / Admin marca como Servido */}
           {order.status === OrderStatus.PRONTO_RETIRADA && order.type === OrderType.COMANDA && (
             <button
-              onClick={() => handleUpdateStatus(order.id, OrderStatus.ENTREGUE)}
+              onClick={() => handleUpdateStatus(order.id, OrderStatus.COMANDA_MESA)}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded font-bold transition-colors cursor-pointer text-center text-xxs flex items-center justify-center gap-1"
             >
               <span>✓</span> Servido na Mesa
             </button>
+          )}
+
+          {/* Status COMANDA_MESA (Mesa) -> Já servido na mesa, em consumo no salão */}
+          {order.status === OrderStatus.COMANDA_MESA && (
+            <span className="flex-1 text-center py-1 bg-purple-500/15 border border-purple-500/30 text-purple-300 font-bold rounded text-xxs flex items-center justify-center gap-1">
+              <span>🍽️</span> Servido na Mesa (Em Consumo)
+            </span>
           )}
 
           {/* Pedidos concluídos */}

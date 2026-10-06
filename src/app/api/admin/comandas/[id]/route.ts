@@ -22,7 +22,7 @@ export async function GET(
       include: {
         orders: {
           where: {
-            status: { notIn: ["ENTREGUE", "CANCELADO"] },
+            status: { not: "CANCELADO" },
           },
           include: {
             items: {

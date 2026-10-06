@@ -28,7 +28,7 @@ export interface ReceiptOrder {
 }
 
 // Algoritmo de Formatação Monoespaçado de Cupom para Bobina Térmica de 48 caracteres
-export function formatThermalReceipt(order: ReceiptOrder, companyName: string = "ARTISANAL CRUST & EMBER"): string {
+export function formatThermalReceipt(order: ReceiptOrder, companyName: string = "AllDelivery"): string {
   const line = "------------------------------------------------\n";
   const doubleLine = "================================================\n";
   const W = 48;
@@ -91,7 +91,10 @@ export function formatThermalReceipt(order: ReceiptOrder, companyName: string = 
   out += `Tel: ${order.customerPhone || "—"}\n`;
 
   if (order.customerAddress) {
-    const fullAddress = `${order.customerAddress}${order.addressNumber ? `, ${order.addressNumber}` : ""}`;
+    const addrStr = String(order.customerAddress).trim();
+    const numStr = order.addressNumber ? String(order.addressNumber).trim() : "";
+    const hasNum = numStr && new RegExp(`(^|\\D)${numStr}(\\D|$)`).test(addrStr);
+    const fullAddress = numStr && !hasNum ? `${addrStr}, ${numStr}` : addrStr;
     out += wrapText(fullAddress, "End: ");
     if (order.reference) {
       out += wrapText(order.reference, "Ref: ");

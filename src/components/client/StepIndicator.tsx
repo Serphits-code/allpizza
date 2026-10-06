@@ -13,6 +13,7 @@ interface StepIndicatorProps {
   canNavigateFlavors?: boolean;
   canNavigateToppings?: boolean;
   canNavigateDrinks?: boolean;
+  hideDrinksStep?: boolean;
 }
 
 interface StepItem {
@@ -37,8 +38,10 @@ export default function StepIndicator({
   canNavigateFlavors = true,
   canNavigateToppings = true,
   canNavigateDrinks = true,
+  hideDrinksStep = false,
 }: StepIndicatorProps) {
-  const stepIndex = STEPS.findIndex((s) => s.id === currentStep);
+  const stepsList = hideDrinksStep ? STEPS.filter((s) => s.id !== "drinks") : STEPS;
+  const stepIndex = stepsList.findIndex((s) => s.id === currentStep);
 
   const getStepStatus = (index: number) => {
     if (index < stepIndex) return "completed";
@@ -63,10 +66,10 @@ export default function StepIndicator({
   };
 
   const getProgressWidth = () => {
-    if (stepIndex === 0) return "0%";
-    if (stepIndex === 1) return "33%";
-    if (stepIndex === 2) return "66%";
-    return "calc(100% - 40px)";
+    if (stepIndex <= 0) return "0%";
+    if (stepIndex >= stepsList.length - 1) return "calc(100% - 40px)";
+    const pct = Math.round((stepIndex / (stepsList.length - 1)) * 100);
+    return `${pct}%`;
   };
 
   return (
@@ -84,7 +87,7 @@ export default function StepIndicator({
         />
 
         {/* Círculos e Rótulos dos Passos */}
-        {STEPS.map((step, index) => {
+        {stepsList.map((step, index) => {
           const status = getStepStatus(index);
           const isActive = status === "active";
           const isCompleted = status === "completed";

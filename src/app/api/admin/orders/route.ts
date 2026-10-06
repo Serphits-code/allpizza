@@ -292,6 +292,14 @@ export async function POST(request: Request) {
               name: f.flavorName,
               categoryName: f.categoryName,
             })),
+            toppings: (item.toppings || []).map((t) => ({
+              toppingName: t.toppingName,
+              targetType: t.targetType,
+              flavorName: t.flavorName,
+              slicesCount: t.slicesCount,
+              totalSlices: t.totalSlices,
+              price: t.price,
+            })),
           })),
         },
       };

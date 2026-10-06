@@ -382,7 +382,10 @@ export default function DriverDashboard() {
         </div>
 
         <button
-          onClick={() => signOut({ callbackUrl: "/admin/login" })}
+          onClick={async () => {
+            await signOut({ redirect: false });
+            window.location.href = "/admin/login";
+          }}
           className="p-2 rounded-xl bg-brand-darkGray border border-brand-mediumGray text-brand-lightGray hover:text-white hover:bg-brand-bg transition-colors cursor-pointer"
           title="Sair da Conta"
         >

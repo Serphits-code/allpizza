@@ -105,9 +105,153 @@ export default function MesaMenuClient({
   standardCategories,
   toppingCategories = [],
 }: MesaMenuClientProps) {
-  // Visão atual: "menu" (cardápio estilo delivery), "builder" (montagem dinâmica idêntica ao delivery), "cart" (carrinho da mesa), "success" (pedido enviado)
+  // Visão atual dentro da aba de pedidos: "menu" (cardápio estilo delivery), "builder" (montagem dinâmica), "cart" (carrinho da mesa), "success" (pedido enviado)
   const [currentView, setCurrentView] = useState<"menu" | "builder" | "cart" | "success">("menu");
   const [builderFlavorId, setBuilderFlavorId] = useState<string | null>(null);
+
+  // Navegação entre as 2 páginas principais do autoatendimento: "pedidos" vs "conta"
+  const [activePage, setActivePage] = useState<"pedidos" | "conta">("pedidos");
+
+  // Estado da conta da mesa em tempo real
+  const [accountData, setAccountData] = useState<any | null>(null);
+  const [loadingAccount, setLoadingAccount] = useState<boolean>(false);
+  const [assistanceMessage, setAssistanceMessage] = useState<string | null>(null);
+  const [sendingAssistance, setSendingAssistance] = useState<boolean>(false);
+
+  // Busca conta da mesa em tempo real
+  const fetchAccountData = async (silent = false) => {
+    if (!silent) setLoadingAccount(true);
+    try {
+      const res = await fetch(`/api/public/table-account?tableNumber=${tableNumber}&t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAccountData(data);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar conta da mesa:", err);
+    } finally {
+      if (!silent) setLoadingAccount(false);
+    }
+  };
+
+  // Carrega conta na inicialização e faz polling periódico quando na aba "conta"
+  useEffect(() => {
+    fetchAccountData(true);
+  }, [tableNumber]);
+
+  useEffect(() => {
+    if (activePage === "conta") {
+      fetchAccountData(true);
+      const interval = setInterval(() => {
+        fetchAccountData(true);
+      }, 7000);
+      return () => clearInterval(interval);
+    }
+  }, [activePage, tableNumber]);
+
+  // Chamar garçom ou pedir a conta
+  const handleCallAssistance = async (type: "BILL" | "WAITER") => {
+    if (sendingAssistance) return;
+    setSendingAssistance(true);
+    try {
+      const res = await fetch("/api/public/table-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tableNumber, type }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAssistanceMessage(
+          type === "BILL"
+            ? "💳 Pedido de conta enviado! O garçom foi avisado e trará o fechamento até a sua mesa."
+            : "🙋‍♂️ Garçom chamado! Um atendente já está a caminho da sua mesa."
+        );
+        showToast(type === "BILL" ? "Conta solicitada com sucesso!" : "Garçom chamado com sucesso!");
+      } else {
+        alert(data.error || "Erro ao solicitar atendimento.");
+      }
+    } catch (err) {
+      console.error("Falha ao chamar atendimento:", err);
+      alert("Erro de conexão ao chamar garçom.");
+    } finally {
+      setSendingAssistance(false);
+    }
+  };
+
+  // Formatação de data/hora
+  const formatOrderTime = (isoString: string) => {
+    try {
+      const d = new Date(isoString);
+      return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "";
+    }
+  };
+
+  const formatOrderDate = (isoString: string) => {
+    try {
+      const d = new Date(isoString);
+      return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+    } catch {
+      return "";
+    }
+  };
+
+  // Badge de status do pedido
+  const getOrderStatusBadge = (status: string) => {
+    switch (status) {
+      case "PENDENTE":
+      case "NOVO":
+        return {
+          label: "Aguardando Cozinha",
+          emoji: "⏳",
+          bg: "bg-amber-500/15 border-amber-500/30 text-amber-300",
+        };
+      case "EM_PREPARO":
+        return {
+          label: "No Forno / Em Preparo",
+          emoji: "🔥",
+          bg: "bg-orange-500/20 border-orange-500/40 text-orange-400 animate-pulse",
+        };
+      case "PRONTO":
+      case "PRONTO_RETIRADA":
+        return {
+          label: "Pronto na Cozinha",
+          emoji: "🛎️",
+          bg: "bg-purple-500/20 border-purple-500/40 text-purple-300 animate-pulse",
+        };
+      case "COMANDA_MESA":
+        return {
+          label: "Servido na Mesa",
+          emoji: "🍽️",
+          bg: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400",
+        };
+      case "ENTREGUE":
+        return {
+          label: "Conta Quitada & Concluída",
+          emoji: "✅",
+          bg: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400",
+        };
+      case "FINALIZADO":
+        return {
+          label: "Finalizado",
+          emoji: "✅",
+          bg: "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
+        };
+      case "CANCELADO":
+        return {
+          label: "Cancelado",
+          emoji: "❌",
+          bg: "bg-red-500/15 border-red-500/30 text-red-400",
+        };
+      default:
+        return {
+          label: status,
+          emoji: "📋",
+          bg: "bg-brand-mediumGray border-brand-lightGray/20 text-white",
+        };
+    }
+  };
 
   // Estados do Cardápio
   const [searchQuery, setSearchQuery] = useState("");
@@ -161,17 +305,27 @@ export default function MesaMenuClient({
     return cart.reduce((sum, item) => sum + (item.totalPrice || item.price * (item.quantity || 1)), 0);
   }, [cart]);
 
-  // Tabs do Cardápio (idêntico ao MenuPage do delivery)
+  // Switch Principal: Pizzas vs Outros
+  const [mainSection, setMainSection] = useState<"pizzas" | "outros">("pizzas");
+
+  // Tabs do Cardápio por seção
   const tabs = useMemo(() => {
-    return [
-      { id: "todas-pizzas", name: "Pizzas (Todas)" },
-      ...pizzaCategories.map((c) => ({ id: c.name, name: c.name })),
-      ...standardCategories.map((c) => ({ id: c.name, name: c.name })),
-    ];
-  }, [pizzaCategories, standardCategories]);
+    if (mainSection === "pizzas") {
+      return [
+        { id: "todas-pizzas", name: "Pizzas (Todas)" },
+        ...pizzaCategories.map((c) => ({ id: c.name, name: c.name })),
+      ];
+    } else {
+      return [
+        { id: "todos-outros", name: "Todos os Produtos" },
+        ...standardCategories.map((c) => ({ id: c.name, name: c.name })),
+      ];
+    }
+  }, [mainSection, pizzaCategories, standardCategories]);
 
   // Filtro de Pizzas
   const filteredPizzas = useMemo(() => {
+    if (mainSection !== "pizzas") return [];
     const result: { flavor: any; categoryName: string; prices: any }[] = [];
 
     for (const cat of pizzaCategories) {
@@ -199,14 +353,15 @@ export default function MesaMenuClient({
       }
     }
     return result;
-  }, [pizzaCategories, activeTab, searchQuery]);
+  }, [mainSection, pizzaCategories, activeTab, searchQuery]);
 
   // Filtro de Produtos Avulsos (Bebidas, etc.)
   const filteredProducts = useMemo(() => {
+    if (mainSection !== "outros") return [];
     const result: { product: StandardProduct; categoryName: string }[] = [];
 
     for (const cat of standardCategories) {
-      if (activeTab !== "todas-pizzas" && activeTab !== cat.name) {
+      if (activeTab !== "todos-outros" && activeTab !== cat.name) {
         continue;
       }
 
@@ -224,7 +379,7 @@ export default function MesaMenuClient({
       }
     }
     return result;
-  }, [standardCategories, activeTab, searchQuery]);
+  }, [mainSection, standardCategories, activeTab, searchQuery]);
 
   // Adicionar produto avulso direto do cardápio
   const handleAddStandardProduct = (prod: StandardProduct) => {
@@ -388,6 +543,7 @@ export default function MesaMenuClient({
       try {
         localStorage.removeItem(`mesa_cart_${tableNumber}`);
       } catch (e) {}
+      fetchAccountData(true);
       setCurrentView("success");
     } catch (err) {
       console.error("Falha ao enviar pedido:", err);
@@ -410,7 +566,10 @@ export default function MesaMenuClient({
       {/* Top Header Unificado da Mesa */}
       <header className="sticky top-0 z-40 bg-brand-darkGray/95 backdrop-blur-md border-b border-brand-mediumGray/70 px-4 py-3 flex items-center justify-between shadow-md">
         <div
-          onClick={() => setCurrentView("menu")}
+          onClick={() => {
+            setActivePage("pedidos");
+            setCurrentView("menu");
+          }}
           className="flex items-center gap-3 cursor-pointer group select-none"
         >
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-red to-amber-600 flex items-center justify-center font-bold text-white shadow-lg shadow-brand-red/20 group-hover:scale-105 transition-transform">
@@ -431,7 +590,14 @@ export default function MesaMenuClient({
 
           <button
             type="button"
-            onClick={() => setCurrentView(currentView === "cart" ? "menu" : "cart")}
+            onClick={() => {
+              if (activePage !== "pedidos") {
+                setActivePage("pedidos");
+                setCurrentView("cart");
+              } else {
+                setCurrentView(currentView === "cart" ? "menu" : "cart");
+              }
+            }}
             className="relative bg-brand-bg hover:bg-brand-mediumGray p-2.5 rounded-xl border border-brand-mediumGray transition-all cursor-pointer flex items-center justify-center text-white"
             title="Ver Pedido da Mesa"
           >
@@ -446,12 +612,105 @@ export default function MesaMenuClient({
       </header>
 
       {/* ========================================================================= */}
-      {/* VISÃO 1: CARDÁPIO COMPLETO (IDÊNTICO AO MENU DO DELIVERY) */}
+      {/* SWITCHER DAS 2 PÁGINAS PRINCIPAIS: FAZER PEDIDOS vs VER A CONTA */}
       {/* ========================================================================= */}
-      {currentView === "menu" && (
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 flex-1 w-full">
-          {/* Banner Superior Idêntico ao Delivery */}
-          <section className="mb-10 overflow-hidden rounded-3xl border border-brand-mediumGray bg-brand-darkGray relative p-6 sm:p-10 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8">
+      <div className="sticky top-[57px] z-30 bg-brand-darkGray/95 backdrop-blur-md border-b border-brand-mediumGray/70 px-4 py-2.5 flex items-center justify-center">
+        <div className="grid grid-cols-2 w-full max-w-md bg-brand-bg p-1 rounded-2xl border border-brand-mediumGray shadow-inner gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setActivePage("pedidos");
+              if (currentView === "success") {
+                setCurrentView("menu");
+              }
+            }}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activePage === "pedidos"
+                ? "bg-brand-red text-white shadow-md shadow-brand-red/30 scale-[1.01]"
+                : "text-brand-lightGray hover:text-white"
+            }`}
+          >
+            <span className="text-base">🍕</span>
+            <span>Fazer Pedidos</span>
+            {cartTotalItems > 0 && (
+              <span className="bg-white text-brand-red text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
+                {cartTotalItems}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActivePage("conta");
+              fetchAccountData();
+            }}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activePage === "conta"
+                ? "bg-brand-red text-white shadow-md shadow-brand-red/30 scale-[1.01]"
+                : "text-brand-lightGray hover:text-white"
+            }`}
+          >
+            <span className="text-base">🧾</span>
+            <span>Ver a Conta</span>
+            {accountData && accountData.orderCount > 0 && (
+              <span className="bg-amber-400 text-neutral-900 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
+                {accountData.orderCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* PÁGINA 1: FAZER NOVOS PEDIDOS (CARDÁPIO, BUILDER, CARRINHO, SUCESSO) */}
+      {/* ========================================================================= */}
+      {activePage === "pedidos" && (
+        <>
+          {/* ========================================================================= */}
+          {/* VISÃO 1: CARDÁPIO COMPLETO (IDÊNTICO AO MENU DO DELIVERY) */}
+          {/* ========================================================================= */}
+          {currentView === "menu" && (
+            <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 flex-1 w-full">
+          {/* SWITCH RÁPIDO ENTRE PIZZAS E OUTROS PRODUTOS */}
+          <div className="flex justify-center mb-8">
+            <div className="inline-flex p-1.5 rounded-2xl bg-brand-darkGray border border-brand-mediumGray shadow-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setMainSection("pizzas");
+                  setActiveTab("todas-pizzas");
+                }}
+                className={`flex items-center gap-2.5 px-6 sm:px-8 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  mainSection === "pizzas"
+                    ? "bg-brand-red text-white shadow-lg shadow-brand-red/35 scale-[1.02]"
+                    : "text-brand-lightGray hover:text-white"
+                }`}
+              >
+                <span className="text-base sm:text-lg">🍕</span>
+                <span>Pizzas</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMainSection("outros");
+                  setActiveTab("todos-outros");
+                }}
+                className={`flex items-center gap-2.5 px-6 sm:px-8 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  mainSection === "outros"
+                    ? "bg-brand-red text-white shadow-lg shadow-brand-red/35 scale-[1.02]"
+                    : "text-brand-lightGray hover:text-white"
+                }`}
+              >
+                <span className="text-base sm:text-lg">🥤</span>
+                <span>Outros (Bebidas & Produtos)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Banner Superior Idêntico ao Delivery (Apenas na aba Pizzas) */}
+          {mainSection === "pizzas" && (
+            <section className="mb-10 overflow-hidden rounded-3xl border border-brand-mediumGray bg-brand-darkGray relative p-6 sm:p-10 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="space-y-4 max-w-lg text-center md:text-left">
               <span className="inline-block rounded-full bg-brand-red/10 border border-brand-red/20 px-3 py-1 text-xs font-semibold tracking-wider text-brand-red uppercase">
                 Inovação Exclusiva
@@ -487,13 +746,18 @@ export default function MesaMenuClient({
               </div>
             </div>
           </section>
+          )}
 
           {/* Caixa de Busca */}
           <section className="mb-8 max-w-xl mx-auto">
             <div className="relative">
               <input
                 type="text"
-                placeholder="Buscar por sabores, bebidas ou acompanhamentos..."
+                placeholder={
+                  mainSection === "pizzas"
+                    ? "Buscar por sabores de pizzas..."
+                    : "Buscar por bebidas, sobremesas ou porções..."
+                }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full rounded-2xl border border-brand-mediumGray bg-brand-darkGray px-5 py-3.5 pl-12 text-sm text-white placeholder-brand-lightGray/50 focus:border-brand-red focus:outline-none transition-colors"
@@ -531,8 +795,8 @@ export default function MesaMenuClient({
             ))}
           </section>
 
-          {/* Listagem de Pizzas (Card idêntico ao delivery com fotos e zoom) */}
-          {filteredPizzas.length > 0 && (
+          {/* Listagem de Pizzas (Card idêntico ao delivery com fotos sem sobreposição) */}
+          {mainSection === "pizzas" && filteredPizzas.length > 0 && (
             <section className="mb-12">
               <h3 className="text-xl sm:text-2xl font-bold tracking-tight mb-6 border-l-4 border-brand-red pl-3 text-white">
                 Sabores de Pizzas
@@ -541,12 +805,12 @@ export default function MesaMenuClient({
                 {filteredPizzas.map(({ flavor, categoryName, prices }) => (
                   <div
                     key={flavor.id}
-                    className="group relative ml-8 sm:ml-12 flex items-center rounded-2xl border border-brand-mediumGray bg-brand-darkGray hover:border-brand-red/40 transition-all p-4 pl-22 sm:pl-28 shadow-lg min-h-[150px]"
+                    className="group relative ml-10 sm:ml-12 flex items-center rounded-2xl border border-brand-mediumGray bg-brand-darkGray hover:border-brand-red/40 transition-all p-4 pl-24 sm:pl-28 shadow-lg min-h-[150px]"
                   >
                     {/* Imagem circular da Pizza com zoom e clique */}
                     <div
                       onClick={() => setLightboxImage(getOptimizedImageUrl(flavor.imageUrl))}
-                      className="absolute -left-8 sm:-left-12 top-1/2 -translate-y-1/2 w-24 h-24 sm:w-32 sm:h-32 rounded-full border border-brand-mediumGray bg-brand-bg shadow-xl overflow-hidden flex-shrink-0 cursor-pointer group/img"
+                      className="absolute -left-10 sm:-left-12 top-1/2 -translate-y-1/2 w-28 h-28 sm:w-32 sm:h-32 rounded-full border border-brand-mediumGray bg-brand-bg shadow-xl overflow-hidden flex-shrink-0 cursor-pointer group/img"
                       title="Visualizar pizza grande"
                     >
                       <img
@@ -581,7 +845,7 @@ export default function MesaMenuClient({
                     <div className="flex-1 flex flex-col justify-between min-w-0 space-y-3">
                       <div className="space-y-1.5">
                         <div className="flex justify-between items-start gap-3">
-                          <h4 className="text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-brand-red transition-colors whitespace-normal break-words">
+                          <h4 className="font-serif text-base sm:text-lg font-bold tracking-wide text-white group-hover:text-brand-red transition-colors whitespace-normal break-words">
                             {flavor.name}
                           </h4>
                           {/* Botão de Olhinho */}
@@ -635,10 +899,10 @@ export default function MesaMenuClient({
           )}
 
           {/* Listagem de Bebidas e Outros Produtos */}
-          {filteredProducts.length > 0 && (
+          {mainSection === "outros" && filteredProducts.length > 0 && (
             <section className="mb-12">
               <h3 className="text-xl sm:text-2xl font-bold tracking-tight mb-6 border-l-4 border-brand-red pl-3 text-white">
-                Bebidas e Acompanhamentos
+                Bebidas & Outros Produtos
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {filteredProducts.map(({ product, categoryName }) => (
@@ -646,29 +910,44 @@ export default function MesaMenuClient({
                     key={product.id}
                     className="group flex flex-col justify-between rounded-2xl border border-brand-mediumGray bg-brand-darkGray hover:border-brand-red/40 transition-all p-5 shadow-lg min-h-[140px]"
                   >
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-start gap-2">
-                        <h4 className="text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-brand-red transition-colors">
-                          {product.name}
-                        </h4>
-                        <span className="text-[10px] font-semibold uppercase tracking-wider bg-brand-bg border border-brand-mediumGray text-brand-lightGray px-2 py-0.5 rounded-md">
-                          {categoryName}
-                        </span>
-                      </div>
-                      <p className="text-xs text-brand-lightGray line-clamp-2 leading-relaxed">
-                        {product.description}
-                      </p>
+                    <div className="flex gap-4 items-start">
+                      {product.imageUrl && (
+                        <div className="w-16 h-16 rounded-xl bg-brand-bg border border-brand-mediumGray overflow-hidden flex-shrink-0">
+                          <img
+                            src={getOptimizedImageUrl(product.imageUrl)}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "/images/pizza-placeholder.png";
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex justify-between items-start gap-2">
+                          <h4 className="text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-brand-red transition-colors truncate">
+                            {product.name}
+                          </h4>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider bg-brand-bg border border-brand-mediumGray text-brand-lightGray px-2 py-0.5 rounded-md flex-shrink-0">
+                            {categoryName}
+                          </span>
+                        </div>
+                        <p className="text-xs text-brand-lightGray line-clamp-2 leading-relaxed">
+                          {product.description}
+                        </p>
 
-                      <div className="text-base sm:text-lg font-bold font-mono text-brand-red">
-                        R$ {Number(product.price || 0).toFixed(2)}
+                        <div className="text-base sm:text-lg font-bold font-mono text-brand-red">
+                          R$ {Number(product.price || 0).toFixed(2)}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="pt-4">
+                    <div className="pt-4 mt-2 border-t border-brand-mediumGray/40">
                       <button
                         type="button"
                         onClick={() => handleAddStandardProduct(product)}
-                        className="w-full rounded-xl bg-brand-bg hover:bg-brand-mediumGray border border-brand-mediumGray py-2 text-xs font-bold text-white transition-colors cursor-pointer text-center hover:border-brand-red"
+                        className="w-full rounded-xl bg-brand-bg hover:bg-brand-mediumGray border border-brand-mediumGray py-2 text-xs font-bold text-white transition-colors cursor-pointer text-center hover:border-brand-red hover:text-brand-red"
                       >
                         + Adicionar ao Pedido da Mesa
                       </button>
@@ -766,6 +1045,7 @@ export default function MesaMenuClient({
             tableNumber={tableNumber}
             initialFlavorId={builderFlavorId}
             cartCount={cartTotalItems}
+            hideDrinksStep={true}
             onCancel={() => setCurrentView("menu")}
             onOpenCart={() => setCurrentView("cart")}
             onFinishOrder={(pizzaItem, drinksList) => {
@@ -1054,7 +1334,358 @@ export default function MesaMenuClient({
               >
                 Fazer Novo Pedido para a Mesa {tableNumber}
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCompletedOrder(null);
+                  setActivePage("conta");
+                  fetchAccountData();
+                }}
+                className="w-full rounded-xl bg-brand-darkGray hover:bg-brand-mediumGray border border-brand-mediumGray py-3 text-xs font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:border-amber-400"
+              >
+                <span>🧾</span>
+                <span>Acompanhar na Minha Conta</span>
+              </button>
             </div>
+          </div>
+        </main>
+      )}
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* PÁGINA 2: VER A CONTA DA MESA (CONSUMO, PEDIDOS, STATUS, PAGAMENTOS) */}
+      {/* ========================================================================= */}
+      {activePage === "conta" && (
+        <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 flex-1 w-full space-y-6">
+          {/* Card de Identificação da Mesa & Status */}
+          <div className="rounded-3xl border border-brand-mediumGray bg-brand-darkGray p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold uppercase tracking-widest text-brand-red">
+                    Autoatendimento
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-mediumGray"></span>
+                  <span className="text-xs font-semibold text-brand-lightGray font-mono">
+                    Comanda #{accountData?.comandaId ? accountData.comandaId.slice(-4) : tableNumber}
+                  </span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                  Conta da Mesa {tableNumber}
+                </h2>
+                <p className="text-xs text-brand-lightGray">
+                  Responsável:{" "}
+                  <strong className="text-white">
+                    {accountData?.responsibleName || `Mesa ${tableNumber}`}
+                  </strong>
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => fetchAccountData()}
+                  disabled={loadingAccount}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-bg hover:bg-brand-mediumGray border border-brand-mediumGray text-xs font-semibold text-brand-lightGray hover:text-white transition-all cursor-pointer shadow-md"
+                  title="Atualizar conta agora"
+                >
+                  <span className={loadingAccount ? "animate-spin" : ""}>🔄</span>
+                  <span>{loadingAccount ? "Atualizando..." : "Atualizar Conta"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Banner de Feedback de Chamada de Garçom / Pedido de Conta */}
+          {assistanceMessage && (
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs sm:text-sm text-amber-200 flex items-center justify-between gap-3 shadow-lg animate-pulse">
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg">🔔</span>
+                <span className="font-medium">{assistanceMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAssistanceMessage(null)}
+                className="text-amber-300 hover:text-white font-bold text-xs p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Grid com 3 Métricas Financeiras */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Consumo Total */}
+            <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 shadow-lg flex flex-col justify-between">
+              <div className="flex items-center justify-between text-brand-lightGray text-xs font-semibold mb-2">
+                <span>Consumo Total</span>
+                <span className="text-base">🍽️</span>
+              </div>
+              <div>
+                <div className="text-2xl font-bold font-mono text-white">
+                  R$ {Number(accountData?.totalConsumption || 0).toFixed(2)}
+                </div>
+                <div className="text-[11px] text-brand-lightGray/80 mt-1">
+                  {accountData?.orderCount || 0} pedido(s) realizados
+                </div>
+              </div>
+            </div>
+
+            {/* Total Pago / Baixas */}
+            <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 shadow-lg flex flex-col justify-between">
+              <div className="flex items-center justify-between text-brand-lightGray text-xs font-semibold mb-2">
+                <span>Total Pago (Adiantamentos)</span>
+                <span className="text-base">💰</span>
+              </div>
+              <div>
+                <div className="text-2xl font-bold font-mono text-emerald-400">
+                  R$ {Number(accountData?.totalPaid || 0).toFixed(2)}
+                </div>
+                <div className="text-[11px] text-brand-lightGray/80 mt-1">
+                  {accountData?.payments?.length || 0} baixa(s) registrada(s)
+                </div>
+              </div>
+            </div>
+
+            {/* Saldo Restante */}
+            <div
+              className={`rounded-2xl border p-4 shadow-lg flex flex-col justify-between ${
+                (accountData?.remainingBalance || 0) === 0 && (accountData?.totalConsumption || 0) > 0
+                  ? "border-emerald-500/40 bg-emerald-500/10"
+                  : "border-brand-red/40 bg-brand-darkGray"
+              }`}
+            >
+              <div className="flex items-center justify-between text-brand-lightGray text-xs font-semibold mb-2">
+                <span>Saldo Restante a Pagar</span>
+                <span className="text-base">💳</span>
+              </div>
+              <div>
+                <div
+                  className={`text-2xl font-bold font-mono ${
+                    (accountData?.remainingBalance || 0) === 0 && (accountData?.totalConsumption || 0) > 0
+                      ? "text-emerald-400"
+                      : "text-amber-400"
+                  }`}
+                >
+                  R$ {Number(accountData?.remainingBalance || 0).toFixed(2)}
+                </div>
+                <div className="text-[11px] text-brand-lightGray/80 mt-1">
+                  {(accountData?.remainingBalance || 0) === 0 && (accountData?.totalConsumption || 0) > 0
+                    ? "Conta 100% quitada! 🎉"
+                    : "Valor a acertar ao fechar"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Painel de Ações Rápidas */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              type="button"
+              disabled={sendingAssistance}
+              onClick={() => handleCallAssistance("WAITER")}
+              className="rounded-2xl bg-brand-bg hover:bg-brand-mediumGray border border-brand-mediumGray p-3.5 text-xs sm:text-sm font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:border-amber-400 hover:text-amber-300 active:scale-95 disabled:opacity-50"
+            >
+              <span>🙋‍♂️</span>
+              <span>Chamar Garçom</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={sendingAssistance}
+              onClick={() => handleCallAssistance("BILL")}
+              className="rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 p-3.5 text-xs sm:text-sm font-bold text-amber-300 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md active:scale-95 disabled:opacity-50"
+            >
+              <span>💳</span>
+              <span>Pedir a Conta</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActivePage("pedidos");
+                setCurrentView("menu");
+              }}
+              className="rounded-2xl bg-brand-red hover:bg-brand-redHover p-3.5 text-xs sm:text-sm font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-brand-red/25 active:scale-95"
+            >
+              <span>🍕</span>
+              <span>Fazer Mais Pedidos</span>
+            </button>
+          </div>
+
+          {/* Histórico Completo de Pedidos */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg sm:text-xl font-bold tracking-tight text-white border-l-4 border-brand-red pl-3">
+                Pedidos Realizados na Mesa ({accountData?.orders?.length || 0})
+              </h3>
+              <span className="text-[11px] text-brand-lightGray hidden sm:inline">
+                Atualização automática
+              </span>
+            </div>
+
+            {(!accountData?.orders || accountData.orders.length === 0) ? (
+              <div className="text-center py-12 rounded-3xl border border-dashed border-brand-mediumGray bg-brand-darkGray/30 space-y-4 p-6">
+                <span className="text-4xl block">📋</span>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-white">Nenhum pedido realizado nesta mesa ainda</h4>
+                  <p className="text-xs text-brand-lightGray max-w-sm mx-auto">
+                    Abra o cardápio para montar suas pizzas exclusivas ou escolher bebidas refrescantes.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("pedidos");
+                    setCurrentView("menu");
+                  }}
+                  className="rounded-xl bg-brand-red hover:bg-brand-redHover px-6 py-2.5 text-xs font-bold text-white transition-all cursor-pointer shadow-lg shadow-brand-red/20"
+                >
+                  Explorar Cardápio Agora
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {accountData.orders.map((order: any) => {
+                  const badge = getOrderStatusBadge(order.status);
+                  return (
+                    <div
+                      key={order.id}
+                      className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 sm:p-5 shadow-lg space-y-3"
+                    >
+                      {/* Header do Pedido */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-brand-mediumGray/50">
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-mono text-sm font-extrabold text-white">
+                            Pedido #{order.orderNumber}
+                          </span>
+                          <span className="text-xs text-brand-lightGray font-mono">
+                            {formatOrderTime(order.createdAt)}
+                          </span>
+                        </div>
+
+                        <span
+                          className={`text-xs font-bold px-3 py-1 rounded-full border flex items-center gap-1.5 ${badge.bg}`}
+                        >
+                          <span>{badge.emoji}</span>
+                          <span>{badge.label}</span>
+                        </span>
+                      </div>
+
+                      {/* Itens do Pedido */}
+                      <div className="space-y-2.5">
+                        {order.items?.map((it: any) => (
+                          <div key={it.id} className="text-xs flex items-start justify-between gap-3">
+                            <div className="space-y-0.5 flex-1 min-w-0">
+                              <div className="font-semibold text-white">
+                                <span className="font-mono text-brand-red mr-1.5">{it.quantity}x</span>
+                                <span>{it.name}</span>
+                              </div>
+
+                              {it.isPizza && (
+                                <div className="text-[11px] text-brand-lightGray space-y-0.5 pl-5">
+                                  {it.pizzaSize && (
+                                    <div>
+                                      Tamanho: <strong className="text-white">{it.pizzaSize}</strong>
+                                      {it.crustType && (
+                                        <span className="ml-2">
+                                          • Borda: <strong className="text-white">{it.crustType}</strong>
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {it.flavors && Array.isArray(it.flavors) && it.flavors.length > 0 && (
+                                    <div>
+                                      <span className="text-white/80">Sabores: </span>
+                                      {it.flavors.map((f: any, fIdx: number) => (
+                                        <span key={f.id || fIdx}>
+                                          {f.flavorName}
+                                          {f.slices ? ` (${f.slices} fat.)` : ""}
+                                          {fIdx < it.flavors.length - 1 ? ", " : ""}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {it.toppings && Array.isArray(it.toppings) && it.toppings.length > 0 && (
+                                    <div className="text-amber-300/90">
+                                      <span>Adicionais: </span>
+                                      {it.toppings.map((top: any, tIdx: number) => (
+                                        <span key={top.id || tIdx} className="mr-1.5">
+                                          +{top.toppingName}
+                                          {top.price ? ` (R$ ${Number(top.price).toFixed(2)})` : ""}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="font-mono text-xs font-bold text-brand-lightGray whitespace-nowrap">
+                              R$ {Number(it.totalPrice || it.basePrice * it.quantity).toFixed(2)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {order.notes && (
+                        <div className="text-xs italic text-brand-lightGray bg-brand-bg/50 p-2.5 rounded-xl border border-brand-mediumGray/30">
+                          Obs: &quot;{order.notes}&quot;
+                        </div>
+                      )}
+
+                      {/* Subtotal do Pedido */}
+                      <div className="pt-2 border-t border-brand-mediumGray/40 flex items-center justify-between text-xs font-bold">
+                        <span className="text-brand-lightGray">Subtotal deste pedido</span>
+                        <span className="font-mono text-white text-sm">
+                          R$ {Number(order.total || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Histórico de Baixas / Pagamentos Registrados */}
+          {accountData?.payments && accountData.payments.length > 0 && (
+            <section className="space-y-3 pt-2">
+              <h3 className="text-base sm:text-lg font-bold tracking-tight text-white border-l-4 border-emerald-500 pl-3">
+                Baixas & Pagamentos Registrados ({accountData.payments.length})
+              </h3>
+              <div className="rounded-2xl border border-brand-mediumGray bg-brand-darkGray p-4 space-y-2">
+                {accountData.payments.map((p: any, idx: number) => (
+                  <div
+                    key={p.id || idx}
+                    className="flex items-center justify-between text-xs py-2 border-b border-brand-mediumGray/40 last:border-b-0"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="font-semibold text-white flex items-center gap-2">
+                        <span>{p.method === "PIX" ? "📱" : p.method === "DINHEIRO" ? "💵" : "💳"}</span>
+                        <span>{p.method}</span>
+                      </div>
+                      <div className="text-[11px] text-brand-lightGray font-mono">
+                        {formatOrderTime(p.createdAt)} {formatOrderDate(p.createdAt)}
+                      </div>
+                    </div>
+                    <div className="font-mono font-bold text-emerald-400 text-sm">
+                      R$ {Number(p.amount || 0).toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Footer Informativo */}
+          <div className="rounded-2xl bg-brand-darkGray/60 border border-brand-mediumGray/40 p-4 text-center text-xs text-brand-lightGray/80 space-y-1">
+            <p>
+              Ao encerrar seu consumo, você pode clicar em <strong>&quot;Pedir a Conta&quot;</strong> para que o garçom traga a máquina até você, ou se dirigir diretamente ao caixa informando a <strong>Mesa {tableNumber}</strong>.
+            </p>
           </div>
         </main>
       )}

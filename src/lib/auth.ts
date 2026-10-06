@@ -116,6 +116,17 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      try {
+        const u = new URL(url);
+        const b = new URL(baseUrl);
+        if (u.origin === b.origin) return url;
+      } catch {
+        // Fallback caso a URL seja inválida
+      }
+      return baseUrl;
+    },
   },
   pages: {
     signIn: "/admin/login",

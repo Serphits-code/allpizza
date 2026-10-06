@@ -54,6 +54,7 @@ export default function CheckoutPage() {
   const [checkingCoverage, setCheckingCoverage] = useState(false);
   const [coverageError, setCoverageError] = useState<string | null>(null);
   const [matchedZoneTitle, setMatchedZoneTitle] = useState("");
+  const [geocodeBadge, setGeocodeBadge] = useState<string | null>(null);
   // Guarda se o usuário já escolheu uma localização — impede checagem automática no mount
   const [userPickedLocation, setUserPickedLocation] = useState(false);
 
@@ -231,24 +232,38 @@ export default function CheckoutPage() {
     );
   };
 
-  // Geocodificação do Endereço Digitado Manualmente (Nominatim)
+  // Geocodificação do Endereço Digitado Manualmente (IBGE CNEFE com fallback Nominatim)
   const geocodeTypedAddress = async () => {
     setCheckingCoverage(true);
-    
-    // Constrói query adicionando a cidade configurada no banco para maior precisão
+    setGeocodeBadge(null);
+
     const cityContext = deliveryCities.length > 0 ? deliveryCities[0] : "Cachoeirinha";
-    const searchQuery = `${address}, ${addressNumber}, ${cityContext}, Pernambuco, Brasil`;
 
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`);
+      const res = await fetch(
+        `/api/public/geocode-address?street=${encodeURIComponent(address)}&number=${encodeURIComponent(
+          addressNumber
+        )}&city=${encodeURIComponent(cityContext)}`
+      );
       const data = await res.json();
 
-      if (data && data.length > 0) {
-        const foundLat = parseFloat(data[0].lat);
-        const foundLng = parseFloat(data[0].lon);
-        setLat(foundLat);
-        setLng(foundLng);
-        // useEffect do lat/lng recalculará a taxa de entrega automaticamente
+      if (data && data.success && data.found) {
+        setLat(data.lat);
+        setLng(data.lng);
+
+        if (data.source === "IBGE_EXACT") {
+          setGeocodeBadge("📍 Localizado no número exato do imóvel (Censo IBGE)");
+        } else if (data.source === "IBGE_NEAREST") {
+          setGeocodeBadge(`📍 Número aproximado (${data.nearestNumber}) na mesma rua (IBGE)`);
+        } else if (data.source === "IBGE_STREET") {
+          setGeocodeBadge("📍 Rua localizada na base do município (IBGE)");
+        } else {
+          setGeocodeBadge("📍 Localizado via OpenStreetMap");
+        }
+      } else if (data && data.lat && data.lng) {
+        setLat(data.lat);
+        setLng(data.lng);
+        setGeocodeBadge(null);
       } else {
         console.warn("Endereço não geocodificado. Mantendo coordenadas atuais da cidade.");
       }
@@ -863,11 +878,16 @@ export default function CheckoutPage() {
                   </div>
                 ) : (
                   // Caso contrário exibe caixa estática de resumo do endereço digitado
-                  <div className="p-3.5 bg-brand-bg rounded-xl border border-brand-mediumGray/50 text-xxs leading-relaxed">
-                    <span className="font-bold text-white block">📍 Endereço Confirmado:</span>
+                  <div className="p-3.5 bg-brand-bg rounded-xl border border-brand-mediumGray/50 text-xxs leading-relaxed space-y-1">
+                    <span className="font-bold text-white block">📍 Endereço Informado:</span>
                     <span className="text-brand-lightGray block mt-0.5">
                       {address}, {addressNumber} {reference && `— ${reference}`}
                     </span>
+                    {geocodeBadge && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                        <span>{geocodeBadge}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 

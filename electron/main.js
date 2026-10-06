@@ -5,6 +5,25 @@ const http = require("http");
 const os = require("os");
 const QRCode = require("qrcode");
 
+// ============================================================================
+// COMPATIBILIDADE GARANTIDA COM WINDOWS 7 SP1, WINDOWS 8, 8.1, 10 E 11
+// ============================================================================
+if (process.platform === "win32") {
+  // Previne crash de GPU sandbox em drivers legados (WDDM 1.1 / Intel HD antigos)
+  app.commandLine.appendSwitch("disable-gpu-sandbox");
+  // Desativa infobar do Chromium alertando sobre fim de suporte ao Windows 7
+  app.commandLine.appendSwitch("disable-features", "Win7DeprecationWarning");
+  // Otimização de estabilidade em hardware antigo
+  app.commandLine.appendSwitch("no-sandbox");
+}
+
+// Em caso de falha de processo GPU (comum em GPUs antigas do Win 7), mantém o app vivo
+app.on("child-process-gone", (event, details) => {
+  if (details.type === "GPU") {
+    console.warn("[Electron] Falha no processo GPU. Mantendo app vivo com renderização por software.");
+  }
+});
+
 const SETTINGS_PATH = path.join(__dirname, "printer-settings.json");
 
 let mainWindow;
@@ -14,6 +33,8 @@ function loadSettings() {
   const defaultSettings = {
     serverUrl: "http://localhost:3001",
     apiKey: "alldelivery_internal_print_secret",
+    storeName: "AllDelivery",
+    separatePizzaTickets: true,
     soundEnabled: true,
     defaultPrinter: "",
     defaultCopies: 1,
@@ -559,10 +580,264 @@ function generatePizzaCalloutSvgReceipt(item, options = {}) {
   };
 }
 
-function formatThermalReceipt(order, layout = "completo") {
+// Higieniza o endereço para evitar duplicar número (ex: "Rua X, 123, 123")
+function sanitizeAddress(address, number) {
+  if (!address) return "";
+  const addrStr = String(address).trim();
+  if (!number) return addrStr;
+  const numStr = String(number).trim();
+  if (!numStr) return addrStr;
+  const regex = new RegExp(`(^|\\D)${numStr}(\\D|$)`);
+  if (regex.test(addrStr)) {
+    return addrStr;
+  }
+  return `${addrStr}, ${numStr}`;
+}
+
+// Gera o cupom térmico individual de UMA PIZZA na cozinha (com mesmo ID do pedido)
+function formatSinglePizzaReceipt(order, item, pizzaIndex, totalPizzas, options = {}) {
+  const isTable = order.type === "COMANDA" || Boolean(order.comandaId);
+  const tableNum = order.comanda?.number || order.comandaNumber;
+  const storeName = options.storeName || (loadSettings().storeName || "AllDelivery");
+
+  const dateStr = new Date(order.createdAt || Date.now()).toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+
+  const pizzaCard = generatePizzaCardReceipt(item, {
+    isKitchen: true,
+    unitIndex: options.unitIndex || 1,
+    totalUnits: options.totalUnitsOfItem || 1,
+  });
+
+  let typeBanner = "";
+  if (isTable) {
+    typeBanner = `
+      <div class="table-box">
+        &gt;&gt;&gt; MESA ${tableNum || "—"} &lt;&lt;&lt;
+      </div>
+    `;
+  } else if (order.type === "RETIRADA") {
+    typeBanner = `
+      <div style="background: #000; color: #fff; padding: 4px; text-align: center; font-size: 13px; font-weight: 900; margin: 4px 0;">
+        *** RETIRADA NO BALCÃO (CLIENTE VEM BUSCAR) ***
+      </div>
+    `;
+  } else if (order.type === "BALCAO") {
+    typeBanner = `
+      <div style="background: #000; color: #fff; padding: 4px; text-align: center; font-size: 13px; font-weight: 900; margin: 4px 0;">
+        *** CONSUMO NO BALCÃO ***
+      </div>
+    `;
+  } else {
+    typeBanner = `
+      <div style="background: #000; color: #fff; padding: 4px; text-align: center; font-size: 13px; font-weight: 900; margin: 4px 0;">
+        *** ENTREGA (DELIVERY) ***
+      </div>
+    `;
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        @page { margin: 0; size: 80mm auto; }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          padding: 2mm 3mm;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          font-size: 11.5px;
+          font-weight: bold;
+          line-height: 1.25;
+          color: #000000;
+          background-color: #ffffff;
+          width: 74mm;
+        }
+        .center { text-align: center; }
+        .dline { border-bottom: 2px dashed #000; margin: 4px 0; }
+        .sline { border-bottom: 1px dashed #000; margin: 4px 0; }
+        .table-box {
+          border: 3px solid #000;
+          padding: 4px;
+          margin: 4px 0;
+          text-align: center;
+          font-size: 16px;
+          font-weight: 900;
+          letter-spacing: 1px;
+        }
+        .row { display: flex; justify-content: space-between; }
+        .pizza-badge {
+          background: #000000;
+          color: #ffffff;
+          padding: 5px;
+          text-align: center;
+          font-size: 14.5px;
+          font-weight: 900;
+          margin: 5px 0;
+          letter-spacing: 0.5px;
+        }
+        .cut-space { height: 35mm; }
+      </style>
+    </head>
+    <body>
+      <div class="center dline" style="padding-bottom: 2px;">
+        <div style="font-size: 14px; font-weight: 900;">${storeName.toUpperCase()}</div>
+        <div style="font-size: 11px; font-weight: 900;">COZINHA & PIZZAIOLO</div>
+      </div>
+
+      ${typeBanner}
+
+      <div class="pizza-badge">
+        🍕 PIZZA ${pizzaIndex} DE ${totalPizzas}
+      </div>
+
+      <div style="font-size: 11.5px; margin: 3px 0;">
+        <div class="row">
+          <span>Pedido: <strong>#${order.orderNumber}</strong></span>
+          <span>${dateStr}</span>
+        </div>
+        <div class="row">
+          <span>Cliente: <strong>${order.customerName || "Cliente"}</strong></span>
+        </div>
+      </div>
+
+      <div class="dline"></div>
+
+      <div style="font-weight: 900; font-size: 11px; margin-bottom: 2px;">
+        ITEM DE PREPARO:
+      </div>
+
+      <div style="margin: 4px 0;">
+        <div style="font-size: 12.5px; font-weight: 900; margin-bottom: 2px;">
+          ${item.name}
+        </div>
+        ${pizzaCard}
+      </div>
+
+      ${order.notes ? `
+        <div style="margin-top: 6px; border: 2.5px solid #000; padding: 5px 6px; font-size: 12px; background: #fff;">
+          <div style="font-weight: 900; text-transform: uppercase;">⚠️ OBSERVAÇÃO DO PEDIDO:</div>
+          <div style="font-size: 11.5px; font-weight: 900; margin-top: 2px;">&quot;${order.notes}&quot;</div>
+        </div>
+      ` : ""}
+
+      <div class="cut-space"></div>
+    </body>
+    </html>
+  `;
+}
+
+// Gera o cupom térmico individual de BEBIDAS / ACOMPANHAMENTOS na cozinha/copa
+function formatOtherItemsReceipt(order, otherItems, options = {}) {
+  const isTable = order.type === "COMANDA" || Boolean(order.comandaId);
+  const tableNum = order.comanda?.number || order.comandaNumber;
+  const storeName = options.storeName || (loadSettings().storeName || "AllDelivery");
+
+  const dateStr = new Date(order.createdAt || Date.now()).toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+
+  const itemsHtml = otherItems.map((item) => {
+    const qty = Math.max(1, item.quantity || 1);
+    return `
+      <div style="margin: 6px 0; padding-bottom: 4px; border-bottom: 1px dashed #777;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; font-size:13px; font-weight:900;">
+          <div>[ ${qty}x ] ${item.name}</div>
+        </div>
+        ${item.notes ? `<div style="font-size:11px; font-style:italic; margin-top:2px;">Obs: "${item.notes}"</div>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        @page { margin: 0; size: 80mm auto; }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          padding: 2mm 3mm;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          font-size: 11.5px;
+          font-weight: bold;
+          line-height: 1.25;
+          color: #000000;
+          background-color: #ffffff;
+          width: 74mm;
+        }
+        .center { text-align: center; }
+        .dline { border-bottom: 2px dashed #000; margin: 4px 0; }
+        .sline { border-bottom: 1px dashed #000; margin: 4px 0; }
+        .table-box {
+          border: 3px solid #000;
+          padding: 4px;
+          margin: 4px 0;
+          text-align: center;
+          font-size: 16px;
+          font-weight: 900;
+          letter-spacing: 1px;
+        }
+        .row { display: flex; justify-content: space-between; }
+        .cut-space { height: 35mm; }
+      </style>
+    </head>
+    <body>
+      <div class="center dline" style="padding-bottom: 2px;">
+        <div style="font-size: 14px; font-weight: 900;">${storeName.toUpperCase()}</div>
+        <div style="font-size: 11px; font-weight: 900;">COPA / BEBIDAS / ACOMPANHAMENTOS</div>
+      </div>
+
+      ${isTable ? `
+        <div class="table-box">&gt;&gt;&gt; MESA ${tableNum || "—"} &lt;&lt;&lt;</div>
+      ` : ""}
+
+      <div style="background: #000; color: #fff; padding: 4px; text-align: center; font-size: 13px; font-weight: 900; margin: 4px 0;">
+        🥤 BEBIDAS E ACOMPANHAMENTOS
+      </div>
+
+      <div style="font-size: 11.5px; margin: 3px 0;">
+        <div class="row">
+          <span>Pedido: <strong>#${order.orderNumber}</strong></span>
+          <span>${dateStr}</span>
+        </div>
+        <div>Cliente: <strong>${order.customerName || "Cliente"}</strong></div>
+      </div>
+
+      <div class="dline"></div>
+
+      <div style="font-weight: 900; font-size: 11px; margin-bottom: 2px;">
+        ITENS PARA EXPEDIÇÃO:
+      </div>
+
+      ${itemsHtml}
+
+      ${order.notes ? `
+        <div style="margin-top: 6px; border: 2.5px solid #000; padding: 5px 6px; font-size: 12px; background: #fff;">
+          <div style="font-weight: 900; text-transform: uppercase;">⚠️ OBSERVAÇÃO DO PEDIDO:</div>
+          <div style="font-size: 11.5px; font-weight: 900; margin-top: 2px;">&quot;${order.notes}&quot;</div>
+        </div>
+      ` : ""}
+
+      <div class="cut-space"></div>
+    </body>
+    </html>
+  `;
+}
+
+// Gera o cupom térmico consolidado (completo / caixa / entrega / conferência)
+function formatThermalReceipt(order, layout = "completo", options = {}) {
   const isTable = order.type === "COMANDA" || Boolean(order.comandaId);
   const tableNum = order.comanda?.number || order.comandaNumber;
   const isKitchen = layout === "cozinha";
+  const storeName = options.storeName || (loadSettings().storeName || "AllDelivery");
 
   const dateStr = new Date(order.createdAt || Date.now()).toLocaleString("pt-BR", {
     dateStyle: "short",
@@ -570,6 +845,7 @@ function formatThermalReceipt(order, layout = "completo") {
   });
 
   const money = (v) => `R$ ${parseFloat(v || 0).toFixed(2)}`;
+  const cleanAddress = sanitizeAddress(order.customerAddress, order.addressNumber);
 
   // Itens HTML com Card Oficial da Pizza para cada Pizza do pedido
   const itemsHtml = (order.items || []).map((item) => {
@@ -579,7 +855,6 @@ function formatThermalReceipt(order, layout = "completo") {
     const isPizzaItem = Boolean(item.isPizza) || (item.name && item.name.toLowerCase().includes("pizza")) || (item.flavors && item.flavors.length > 0);
     
     if (isPizzaItem) {
-      // Se tiver mais de 1 pizza do mesmo item, gera um card para cada pizza
       let pizzaCards = "";
       for (let q = 1; q <= qty; q++) {
         pizzaCards += generatePizzaCardReceipt(item, {
@@ -612,6 +887,42 @@ function formatThermalReceipt(order, layout = "completo") {
     `;
   }).join("");
 
+  // Banners visuais de destaque por tipo de pedido
+  let typeBanner = "";
+  if (isTable) {
+    typeBanner = `
+      <div class="table-box">
+        &gt;&gt;&gt; MESA ${tableNum || "—"} &lt;&lt;&lt;
+      </div>
+    `;
+  } else if (order.type === "RETIRADA") {
+    typeBanner = `
+      <div style="background: #000; color: #fff; padding: 4px; text-align: center; font-size: 13px; font-weight: 900; margin: 4px 0;">
+        *** RETIRADA NO BALCÃO (CLIENTE VEM BUSCAR) ***
+      </div>
+    `;
+  } else if (order.type === "BALCAO") {
+    typeBanner = `
+      <div style="background: #000; color: #fff; padding: 4px; text-align: center; font-size: 13px; font-weight: 900; margin: 4px 0;">
+        *** CONSUMO NO BALCÃO ***
+      </div>
+    `;
+  } else {
+    typeBanner = `
+      <div style="background: #000; color: #fff; padding: 4px; text-align: center; font-size: 13px; font-weight: 900; margin: 4px 0;">
+        *** ENTREGA (DELIVERY) ***
+      </div>
+    `;
+  }
+
+  // Descrição amigável de pagamento
+  let paymentText = order.paymentMethod || "Pendente";
+  if (isTable) {
+    paymentText = "PAGAR NO CAIXA";
+  } else if (order.paymentMethod === "CARTAO" || order.paymentMethod === "CARTAO_CREDITO" || order.paymentMethod === "CARTAO_DEBITO") {
+    paymentText = order.type === "DELIVERY" ? "CARTÃO (LEVAR MAQUININHA)" : "CARTÃO";
+  }
+
   return `
     <!DOCTYPE html>
     <html>
@@ -637,7 +948,7 @@ function formatThermalReceipt(order, layout = "completo") {
         .table-box {
           border: 3px solid #000;
           padding: 4px;
-          margin: 6px 0;
+          margin: 4px 0;
           text-align: center;
           font-size: 16px;
           font-weight: 900;
@@ -658,15 +969,11 @@ function formatThermalReceipt(order, layout = "completo") {
     </head>
     <body>
       <div class="center dline" style="padding-bottom: 2px;">
-        <div style="font-size: 14px; font-weight: 900;">ARTISANAL CRUST & EMBER</div>
-        <div style="font-size: 12px; font-weight: 900;">AllDelivery</div>
+        <div style="font-size: 14px; font-weight: 900;">${storeName.toUpperCase()}</div>
+        <div style="font-size: 11.5px; font-weight: 900;">AllDelivery Desktop</div>
       </div>
 
-      ${isTable ? `
-        <div class="table-box">
-          &gt;&gt;&gt; MESA ${tableNum || "—"} &lt;&lt;&lt;
-        </div>
-      ` : ""}
+      ${typeBanner}
 
       ${isKitchen ? `
         <div class="kitchen-title">
@@ -675,8 +982,8 @@ function formatThermalReceipt(order, layout = "completo") {
       ` : ""}
 
       <div style="font-size: 11.5px; margin: 4px 0;">
-        <div class="row"><span>Pedido: #${order.orderNumber}</span><span>${dateStr}</span></div>
-        <div class="row"><span>Tipo  : <strong>${isTable ? "COMANDA / MESA" : order.type}</strong></span><span>${!isKitchen && !isTable ? `Pg: ${order.paymentMethod || "Pendente"}` : (isTable ? `PAGAR NO BALCÃO` : "")}</span></div>
+        <div class="row"><span>Pedido: <strong>#${order.orderNumber}</strong></span><span>${dateStr}</span></div>
+        <div class="row"><span>Tipo  : <strong>${isTable ? "COMANDA / MESA" : order.type}</strong></span><span>${!isKitchen ? `Pg: ${paymentText}` : ""}</span></div>
         ${!isKitchen && order.paymentMethod === "DINHEIRO" && parseFloat(order.changeFor || 0) > 0 ? `
           <div class="row" style="background:#000; color:#fff; padding:2px 4px; margin:3px 0; font-size:11px; font-weight:900;">
             <span>TROCO P/: ${money(order.changeFor)}</span>
@@ -690,9 +997,9 @@ function formatThermalReceipt(order, layout = "completo") {
       <div style="font-size: 11.5px; margin: 4px 0;">
         <div>Cliente: <strong>${order.customerName || "Cliente"}</strong></div>
         ${order.customerPhone && !order.customerPhone.includes("Mesa") ? `<div>Tel    : ${order.customerPhone}</div>` : ""}
-        ${order.customerAddress && !isKitchen ? `
-          <div>End    : ${order.customerAddress}, ${order.addressNumber || ""}</div>
-          ${order.reference ? `<div>Ref    : ${order.reference}</div>` : ""}
+        ${cleanAddress && !isKitchen ? `
+          <div style="margin-top: 2px;">End    : <strong>${cleanAddress}</strong></div>
+          ${order.reference ? `<div style="font-style: italic; margin-top: 1px;">Ref    : &quot;${order.reference}&quot;</div>` : ""}
         ` : ""}
       </div>
 
@@ -716,7 +1023,7 @@ function formatThermalReceipt(order, layout = "completo") {
 
       ${order.notes ? `
         <div style="margin-top: 6px; border: 2.5px solid #000; padding: 5px 6px; font-size: 12px; background: #fff;">
-          <div style="font-weight: 900; text-transform: uppercase;">⚠️ OBSERVAÇÃO DA COZINHA:</div>
+          <div style="font-weight: 900; text-transform: uppercase;">⚠️ OBSERVAÇÃO DO PEDIDO:</div>
           <div style="font-size: 11.5px; font-weight: 900; margin-top: 2px;">&quot;${order.notes}&quot;</div>
         </div>
       ` : ""}
@@ -725,6 +1032,100 @@ function formatThermalReceipt(order, layout = "completo") {
     </body>
     </html>
   `;
+}
+
+// Analisa o pedido e gera a lista de documentos para corte individual ou consolidado
+function generateOrderPrintDocuments(order, layout = "completo", settings = null) {
+  const currentSettings = settings || loadSettings();
+  const storeName = currentSettings.storeName || "AllDelivery";
+  const shouldSeparate = currentSettings.separatePizzaTickets !== false;
+  const isKitchen = layout === "cozinha";
+
+  // Se não deve separar ou se o layout for consolidado (caixa/entrega/balcao), emite documento único
+  if (!shouldSeparate || !isKitchen) {
+    return [formatThermalReceipt(order, layout, { storeName })];
+  }
+
+  // Separa as unidades físicas de pizza e os itens que não são pizza
+  const pizzaUnits = [];
+  const otherItems = [];
+
+  (order.items || []).forEach((item) => {
+    const isPizza = Boolean(item.isPizza) || 
+      (item.name && item.name.toLowerCase().includes("pizza")) || 
+      (item.flavors && item.flavors.length > 0);
+
+    const qty = Math.max(1, item.quantity || 1);
+
+    if (isPizza) {
+      for (let q = 1; q <= qty; q++) {
+        pizzaUnits.push({
+          item,
+          unitIndex: q,
+          totalUnitsOfItem: qty,
+        });
+      }
+    } else {
+      otherItems.push(item);
+    }
+  });
+
+  const totalPizzas = pizzaUnits.length;
+
+  // Se não há pizza ou se é exatamente 1 pizza e nenhum item extra, cupom único basta
+  if (totalPizzas === 0 || (totalPizzas === 1 && otherItems.length === 0)) {
+    return [formatThermalReceipt(order, layout, { storeName })];
+  }
+
+  // Múltiplas pizzas ou pizza + acompanhamentos: gera documentos individuais para corte térmico
+  const docs = [];
+
+  // 1. Cada filipeta de pizza com o corte individual
+  pizzaUnits.forEach((pUnit, idx) => {
+    docs.push(formatSinglePizzaReceipt(order, pUnit.item, idx + 1, totalPizzas, {
+      storeName,
+      unitIndex: pUnit.unitIndex,
+      totalUnitsOfItem: pUnit.totalUnitsOfItem,
+    }));
+  });
+
+  // 2. Se houver bebidas ou acompanhamentos, gera filipeta separada
+  if (otherItems.length > 0) {
+    docs.push(formatOtherItemsReceipt(order, otherItems, { storeName }));
+  }
+
+  return docs;
+}
+
+// Execução sequencial garantida de impressão com intervalo de corte térmico
+async function printOrderReceipts(order, status, customLayout) {
+  const targetStatus = status || order.status || "NOVO";
+  const settings = loadSettings();
+  const config = settings.configs?.[targetStatus];
+
+  if (!config || !config.printer) {
+    return { success: false, error: "Nenhuma impressora configurada para esta etapa" };
+  }
+
+  const effectiveLayout = customLayout || config.layout || "completo";
+  const printer = config.printer;
+  const copies = Math.max(1, config.copies || 1);
+
+  const docs = generateOrderPrintDocuments(order, effectiveLayout, settings);
+
+  let allSuccess = true;
+  for (let c = 0; c < copies; c++) {
+    for (const docHtml of docs) {
+      const ok = await printSilently(printer, docHtml);
+      if (!ok) allSuccess = false;
+      // Intervalo de segurança para acionamento do corte da guilhotina pelo spooler
+      if (docs.length > 1) {
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    }
+  }
+
+  return { success: allSuccess, totalSlips: docs.length * copies };
 }
 
 // Cria flyer térmico com QR Code para colocar na mesa
@@ -791,7 +1192,7 @@ async function formatTableQrFlyer(tableNumber, qrDataUrl, mesaUrl) {
     </head>
     <body>
       <div class="header">
-        <div class="title">ARTISANAL CRUST & EMBER</div>
+        <div class="title">${(loadSettings().storeName || "AllDelivery").toUpperCase()}</div>
         <div class="subtitle">CARDÁPIO DIGITAL NA MESA</div>
       </div>
 
@@ -918,24 +1319,13 @@ const localServer = http.createServer((req, res) => {
       try {
         const payload = JSON.parse(body);
         const { order, status, layout } = payload;
-        const targetStatus = status || order.status || "NOVO";
-
-        const settings = loadSettings();
-        const config = settings.configs[targetStatus];
-
-        if (config && config.printer) {
-          const receiptText = formatThermalReceipt(order, layout || config.layout || "completo");
-          const copies = Math.max(1, config.copies || 1);
-          let allSuccess = true;
-          for (let i = 0; i < copies; i++) {
-            const success = await printSilently(config.printer, receiptText);
-            if (!success) allSuccess = false;
-          }
+        const result = await printOrderReceipts(order, status, layout);
+        if (result.success) {
           res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ success: allSuccess }));
+          res.end(JSON.stringify(result));
         } else {
           res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: "Nenhuma impressora configurada para esta etapa" }));
+          res.end(JSON.stringify(result));
         }
       } catch (err) {
         res.writeHead(500, { "Content-Type": "application/json" });
@@ -994,7 +1384,12 @@ app.whenReady().then(() => {
   ipcMain.handle("get-printers", async () => {
     if (!mainWindow) return [];
     try {
-      return await mainWindow.webContents.getPrintersAsync();
+      if (typeof mainWindow.webContents.getPrintersAsync === "function") {
+        return await mainWindow.webContents.getPrintersAsync();
+      } else if (typeof mainWindow.webContents.getPrinters === "function") {
+        return mainWindow.webContents.getPrinters();
+      }
+      return [];
     } catch (err) {
       console.error("Erro ao listar impressoras:", err);
       return [];
@@ -1057,12 +1452,13 @@ app.whenReady().then(() => {
   ipcMain.handle("test-print", async (event, { printerName, statusKey }) => {
     const settings = loadSettings();
     const effectivePrinter = (printerName && printerName.trim()) || (statusKey === "DEFAULT" ? settings.defaultPrinter : null);
+    const storeName = settings.storeName || "AllDelivery";
     const dline = "====================================\n";
     const line = "------------------------------------\n";
     const testText =
       dline +
       "       TESTE DE IMPRESSORA          \n" +
-      "      ARTISANAL CRUST & EMBER       \n" +
+      "      " + storeName.toUpperCase().padEnd(28, " ") + "\n" +
       "        AllDelivery Desktop         \n" +
       dline +
       `Impressora: ${effectivePrinter || "Padrao Windows"}\n` +
@@ -1078,23 +1474,9 @@ app.whenReady().then(() => {
     return { success };
   });
 
-  ipcMain.handle("print-order", async (event, { order, status }) => {
+  ipcMain.handle("print-order", async (event, { order, status, layout }) => {
     try {
-      const targetStatus = status || order.status || "NOVO";
-      const settings = loadSettings();
-      const config = settings.configs?.[targetStatus];
-
-      if (config && config.printer) {
-        const receiptText = formatThermalReceipt(order, config.layout || "completo");
-        const copies = Math.max(1, config.copies || 1);
-        let allSuccess = true;
-        for (let i = 0; i < copies; i++) {
-          const success = await printSilently(config.printer, receiptText);
-          if (!success) allSuccess = false;
-        }
-        return { success: allSuccess };
-      }
-      return { success: false, error: "Nenhuma impressora configurada para esta etapa" };
+      return await printOrderReceipts(order, status, layout);
     } catch (err) {
       console.error("Erro no IPC print-order:", err);
       return { success: false, error: err.message };
